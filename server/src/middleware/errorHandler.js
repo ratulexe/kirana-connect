@@ -18,5 +18,9 @@ export function errorHandler(err, req, res, next) {
       message,
       ...(isProduction ? {} : { stack: err.stack }),
     },
+    // Some rejections are still useful to the caller. A duplicate store
+    // submission, for example, returns the application the owner already has
+    // so the UI can show its status instead of a dead end.
+    ...(err.payload ? { data: err.payload } : {}),
   });
 }

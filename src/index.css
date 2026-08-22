@@ -1,4 +1,7 @@
-@import "tailwindcss";
+/* source() scopes Tailwind's automatic class detection to this app. Without it
+   the scanner walks the repository root and pulls the Store Portal's classes
+   (apps/store) into the consumer bundle. */
+@import "tailwindcss" source("../src");
 
 /* ==========================================================================
    Kirana Connect design tokens
