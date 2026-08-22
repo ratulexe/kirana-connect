@@ -40,10 +40,13 @@ kirana-connect/
   .env.example          frontend environment template
   public/
   src/                  frontend source
-    animations/  assets/     components/  features/
-    hooks/       layouts/    lib/         pages/
-    routes/      services/   store/       utils/
-    App.jsx      main.jsx    index.css
+    animations/         GSAP helpers, all motion-preference aware
+    components/common/  Button, IconButton, SearchBar, Badge, PriceDisplay, ...
+    features/home/      home page sections
+    layouts/            CustomerLayout, SiteHeader, SiteFooter
+    lib/                api.js, queryClient.js, supabase.js, cn.js
+    hooks/  pages/  routes/  services/  store/  utils/  assets/
+    App.jsx      main.jsx    index.css   design tokens live in index.css
   supabase/             database
     README.md           schema architecture and RLS notes
     migrations/         SQL migrations
@@ -97,9 +100,15 @@ Neither `.env` file is committed. Copy each template and fill it in locally.
 ### Frontend - `.env` at the repository root (from `.env.example`)
 
 ```
+VITE_API_BASE_URL=http://localhost:5000
 VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
 ```
+
+`VITE_API_BASE_URL` points the customer app at the Express API. Discovery reads
+go React -> Express -> Supabase; the frontend Supabase client is reserved for
+authentication and other client-side Supabase work, so discovery components must
+not query the database directly. In production set it to the deployed Render URL.
 
 ### Backend - `server/.env` (from `server/.env.example`)
 

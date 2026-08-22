@@ -1,15 +1,148 @@
 @import "tailwindcss";
 
+/* ==========================================================================
+   Kirana Connect design tokens
+   --------------------------------------------------------------------------
+   Declared inside @theme so Tailwind v4 generates matching utilities:
+   --color-ink        -> text-ink / bg-ink / border-ink
+   --radius-card      -> rounded-card
+   --text-display     -> text-display
+   --container-content-> max-w-content
+
+   The palette is deliberately small. One deep green carries every primary
+   action, one marigold carries savings and highlights, and everything else is
+   a warm neutral. Restraint is the brand.
+   ========================================================================== */
+
 @theme {
   --font-sans: "Parkinsans", system-ui, sans-serif;
+
+  /* Surfaces ------------------------------------------------------------- */
+  /* Warm off-white rather than pure white: reads as paper, not as a dashboard. */
+  --color-canvas: #faf9f6;
+  --color-surface: #ffffff;
+  --color-surface-sunken: #f4f2ed;
+
+  /* Foreground ----------------------------------------------------------- */
+  --color-ink: #16181c;
+  --color-ink-soft: #4b4f57;
+  /* Darkened from the first pass: the lighter grey measured 4.09:1 on canvas,
+     under the 4.5:1 AA floor for body text. This sits at 4.85:1. */
+  --color-ink-muted: #6a6e77;
+
+  /* Primary: deep kirana green. Trustworthy and local without clip-art. --- */
+  --color-primary: #0c6b4f;
+  --color-primary-hover: #0a5942;
+  --color-primary-fg: #ffffff;
+  --color-primary-soft: #e8f2ee;
+
+  /* Accent: marigold. Reserved for savings and emphasis, never decoration. */
+  --color-accent: #e0a018;
+  --color-accent-fg: #402c05;
+  --color-accent-soft: #fdf4e0;
+
+  /* Lines ---------------------------------------------------------------- */
+  --color-line: #e5e2db;
+  --color-line-soft: #f0eee9;
+
+  /* Status --------------------------------------------------------------- */
+  /* Deepened: the first green measured 4.28:1 on success-soft. Now 5.37:1. */
+  --color-success: #187048;
+  --color-success-soft: #e6f4ee;
+  /* Deepened: the first amber measured 4.16:1 on warning-soft. Now 5.2:1. */
+  --color-warning: #925708;
+  --color-warning-soft: #fcf1e0;
+  --color-danger: #b23b30;
+  --color-danger-soft: #fbeceb;
+
+  /* Radii ---------------------------------------------------------------- */
+  --radius-control: 0.625rem;
+  --radius-card: 1rem;
+  --radius-panel: 1.5rem;
+  --radius-pill: 62.4375rem;
+
+  /* Depth: shallow and tight. Depth comes from borders first, shadow second. */
+  --shadow-subtle: 0 1px 2px rgba(22, 24, 28, 0.04);
+  --shadow-raised: 0 1px 2px rgba(22, 24, 28, 0.04), 0 4px 12px rgba(22, 24, 28, 0.05);
+  --shadow-float: 0 2px 4px rgba(22, 24, 28, 0.04), 0 12px 32px rgba(22, 24, 28, 0.09);
+
+  /* Layout --------------------------------------------------------------- */
+  --container-content: 75rem;
+
+  /* Motion --------------------------------------------------------------- */
+  --ease-brand: cubic-bezier(0.22, 0.61, 0.36, 1);
+
+  /* Type scale: fluid, so it never needs per-breakpoint overrides ---------- */
+  --text-display: clamp(2.25rem, 1.35rem + 3.6vw, 4rem);
+  --text-display--line-height: 1.03;
+  --text-display--letter-spacing: -0.035em;
+  --text-display--font-weight: 700;
+
+  --text-heading: clamp(1.75rem, 1.25rem + 2vw, 2.5rem);
+  --text-heading--line-height: 1.1;
+  --text-heading--letter-spacing: -0.025em;
+  --text-heading--font-weight: 700;
+
+  --text-section: clamp(1.375rem, 1.15rem + 0.9vw, 1.75rem);
+  --text-section--line-height: 1.2;
+  --text-section--letter-spacing: -0.02em;
+  --text-section--font-weight: 600;
+
+  --text-card: 1.0625rem;
+  --text-card--line-height: 1.35;
+  --text-card--letter-spacing: -0.011em;
+  --text-card--font-weight: 600;
+
+  --text-body: 1rem;
+  --text-body--line-height: 1.6;
+
+  --text-meta: 0.8125rem;
+  --text-meta--line-height: 1.45;
 }
 
-html {
-  font-family: "Parkinsans", system-ui, sans-serif;
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* One consistent, always-visible keyboard focus treatment. :where() keeps
+     specificity at zero so a component can still opt out. */
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  /* Honour the OS setting rather than assuming everyone wants motion. The GSAP
+     helpers check the same query before building any timeline. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
 
-body {
-  margin: 0;
-  min-height: 100vh;
-  font-family: "Parkinsans", system-ui, sans-serif;
+@layer utilities {
+  /* Horizontal scrollers that should not show a scrollbar chrome. */
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }
