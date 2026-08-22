@@ -44,6 +44,9 @@ kirana-connect/
     hooks/       layouts/    lib/         pages/
     routes/      services/   store/       utils/
     App.jsx      main.jsx    index.css
+  supabase/             database
+    README.md           schema architecture and RLS notes
+    migrations/         SQL migrations
   server/               backend package
     package.json
     .env.example        backend environment template
@@ -117,6 +120,26 @@ variable, in the browser bundle, or in a committed file.
 `CLIENT_URL` is the origin the API accepts cross-origin browser requests from. In
 production set it to the deployed Vercel URL. Multiple origins may be given as a
 comma-separated list.
+
+## Database
+
+The PostgreSQL schema lives in `supabase/migrations/` and is documented in
+[supabase/README.md](supabase/README.md).
+
+Seven tables: `profiles`, `stores`, `store_hours`, `categories`, `brands`,
+`products`, `store_products`.
+
+The model that matters: `products` is the canonical catalogue - one row per real
+item, store independent. `store_products` joins a store to a product and holds
+that store's own `selling_price`, `discount_percentage` and stock state. That is
+what makes price comparison across nearby stores possible.
+
+Row Level Security is enabled on every table. Customers read only active,
+verified data; sellers manage only what they own; role changes and store
+verification are service-role operations performed by the backend.
+
+The migration is not applied automatically. See
+[supabase/README.md](supabase/README.md) for how to run it against your project.
 
 ## API
 
