@@ -15,6 +15,9 @@ supabase/
   README.md
   migrations/
     20260822102000_initial_schema.sql
+  seed/
+    01_catalogue.sql        categories, brands, canonical products
+    02_demo_stores.sql      demo stores, hours and priced inventory
 ```
 
 The migration is a normal Supabase CLI migration and is also safe to paste into
@@ -277,5 +280,51 @@ Check in the dashboard that:
 - Creating a test user through Authentication produces a matching `profiles` row
   with `role = 'customer'`.
 
-Categories, brands and products are intentionally **not** seeded. Seed data
-belongs in its own file or in an admin tool, not in the schema migration.
+Categories, brands and products are intentionally **not** created by the
+migration. Seed data belongs in its own file, not in a schema migration.
+
+## Seed data
+
+`supabase/seed/` holds optional sample content. Run it after the migration, in
+order, from the SQL Editor. Both files are safe to re-run.
+
+### `01_catalogue.sql`
+
+Six categories, fourteen brands and nineteen canonical products drawn from a
+typical Indian kirana shelf, with real MRPs. No prices and no stock: those belong
+to a store. Has no prerequisites, so it can be run immediately.
+
+### `02_demo_stores.sql`
+
+Three verified stores in Mumbai (Andheri East, Bandra West, Powai), a week of
+opening hours each, and overlapping inventory priced **differently at each store**
+so the comparison journey has something real to compare. One line is deliberately
+out of stock so that case is exercised too.
+
+This file needs an owner. Before running it, find a profile id:
+
+```sql
+select p.id, u.email, p.role
+from public.profiles p
+join auth.users u on u.id = p.id;
+```
+
+Paste that id over the placeholder near the top of the file:
+
+```sql
+v_owner_id uuid := '00000000-0000-0000-0000-000000000000';
+```
+
+If you forget, the script raises an error rather than doing anything, so a
+half-applied seed is not possible. It also promotes that profile to `seller` and
+marks the stores verified - both service-role operations, which is exactly why it
+runs in the SQL Editor rather than from the app.
+
+To remove the demo data later:
+
+```sql
+delete from public.stores where slug in
+  ('sharma-kirana-stores', 'bandra-daily-needs', 'powai-fresh-mart');
+```
+
+Inventory and opening hours cascade away with the stores.

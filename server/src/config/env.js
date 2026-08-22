@@ -24,11 +24,22 @@ export const env = {
   port: parsePort(process.env.PORT, 5000),
   clientUrls: parseOrigins(process.env.CLIENT_URL, "http://localhost:5173"),
   supabaseUrl: process.env.SUPABASE_URL ?? "",
+  supabaseAnonKey: process.env.SUPABASE_ANON_KEY ?? "",
   supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
 };
 
 export const isProduction = env.nodeEnv === "production";
 
-export const isSupabaseConfigured = Boolean(
+// Public discovery endpoints only need the anon key, and are safer with it,
+// because row level security still applies.
+export const isPublicSupabaseConfigured = Boolean(
+  env.supabaseUrl && env.supabaseAnonKey,
+);
+
+// The service role bypasses RLS and is reserved for privileged work.
+export const isServiceSupabaseConfigured = Boolean(
   env.supabaseUrl && env.supabaseServiceRoleKey,
 );
+
+export const isSupabaseConfigured =
+  isPublicSupabaseConfigured || isServiceSupabaseConfigured;

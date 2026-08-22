@@ -47,6 +47,7 @@ kirana-connect/
   supabase/             database
     README.md           schema architecture and RLS notes
     migrations/         SQL migrations
+    seed/               optional sample catalogue and demo stores
   server/               backend package
     package.json
     .env.example        backend environment template
@@ -54,11 +55,11 @@ kirana-connect/
       app.js            express app wiring
       server.js         process entrypoint
       config/           env.js, supabase.js
-      routes/           index.js, health.routes.js
-      controllers/      health.controller.js
+      routes/           index.js and one module per area
+      controllers/      request parsing and responses
+      services/         Supabase queries and business rules
       middleware/       notFound.js, errorHandler.js
-      services/
-      utils/
+      utils/            geo.js, queryParams.js, httpError.js
 ```
 
 The frontend and the backend are separate npm packages with separate
@@ -107,6 +108,7 @@ PORT=5000
 NODE_ENV=development
 CLIENT_URL=http://localhost:5173
 SUPABASE_URL=
+SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 ```
 
@@ -116,6 +118,12 @@ The browser only ever receives the Supabase **anon** key, through `VITE_` variab
 The Supabase **service role key** bypasses row level security and lives only in
 `server/.env` and in the Render environment. It must never appear in a `VITE_`
 variable, in the browser bundle, or in a committed file.
+
+The backend holds **both** keys and uses them for different jobs. Public discovery
+endpoints go through an anon-key client, so row level security still filters every
+result: if a condition is ever forgotten in application code, the database remains
+the backstop. The service-role client is reserved for privileged work such as
+verifying a store or promoting a profile to seller.
 
 `CLIENT_URL` is the origin the API accepts cross-origin browser requests from. In
 production set it to the deployed Vercel URL. Multiple origins may be given as a
@@ -141,24 +149,60 @@ verification are service-role operations performed by the backend.
 The migration is not applied automatically. See
 [supabase/README.md](supabase/README.md) for how to run it against your project.
 
+### Seed data
+
+`supabase/seed/` holds optional sample content, kept out of the migration because
+a migration describes structure and a seed describes content. Both files are safe
+to re-run.
+
+- `01_catalogue.sql` - categories, brands and canonical products. No dependencies.
+- `02_demo_stores.sql` - three verified Mumbai stores with overlapping inventory at
+  different prices, so price comparison has something real to compare. Requires a
+  `profiles.id` to be pasted in first; it refuses to run with the placeholder.
+
 ## API
 
-The backend currently exposes a single endpoint.
+All responses are JSON and share the shape `{ "success": true, "data": ... }`, or
+`{ "success": false, "error": { "message": ... } }` on failure. List endpoints add
+a `meta` object with paging information.
 
-| Method | Path          | Purpose                              |
-| ------ | ------------- | ------------------------------------ |
-| GET    | `/api/health` | Service liveness check. Returns 200. |
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/api/health` | Service liveness check |
+| GET | `/api/categories` | Active categories |
+| GET | `/api/brands` | All brands |
+| GET | `/api/products` | Browse and search the catalogue |
+| GET | `/api/products/:slug` | One canonical product |
+| GET | `/api/products/:slug/stores` | **Price comparison.** Nearby stores stocking the product |
+| GET | `/api/stores/nearby` | Stores near a coordinate |
+| GET | `/api/stores/:slug` | One store, with opening hours |
 
-```json
-{
-  "success": true,
-  "service": "kirana-connect-api",
-  "status": "healthy",
-  "timestamp": "2026-01-01T00:00:00.000Z"
-}
-```
+### Query parameters
 
-No product, store, or authentication endpoints exist yet.
+`/api/products` accepts `q` (name search), `category` and `brand` (slugs), plus
+`limit` (1-50, default 20) and `offset`.
+
+`/api/stores/nearby` requires `lat` and `lng`, and accepts `radius` in kilometres
+(0.1-50, default 5) plus `limit` and `offset`.
+
+`/api/products/:slug/stores` accepts optional `lat`, `lng` and `radius`, and
+`sort` of either `price` (default) or `distance`. Without coordinates it returns
+every store stocking the product, cheapest first; `sort=distance` requires them.
+
+### Price comparison response
+
+Each offer carries the store, that store's own price, and how it compares:
+
+- `selling_price` - what this store charges
+- `discount_percentage` - the store's own advertised offer
+- `savings` and `savings_percentage` - computed against the product's printed MRP
+- `is_cheapest` - true on the lowest-priced offer
+- `distance_km` - present when coordinates were supplied
+
+Nearby search uses a bounding box in the database followed by true great-circle
+distances in the application, which is why the project needs no PostGIS.
+
+There are no authentication, seller or admin endpoints yet.
 
 ## Deployment targets
 

@@ -1,32 +1,69 @@
 import { createClient } from "@supabase/supabase-js";
-import { env, isSupabaseConfigured } from "./env.js";
+import {
+  env,
+  isPublicSupabaseConfigured,
+  isServiceSupabaseConfigured,
+} from "./env.js";
 
-let client = null;
+let publicClient = null;
+let serviceClient = null;
+
+const clientOptions = {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+  },
+};
+
+function missing(message) {
+  const error = new Error(message);
+  error.status = 503;
+  return error;
+}
 
 /**
- * Returns the shared Supabase client, created on first use.
+ * Client for public, customer-facing reads.
  *
- * The client is built lazily so the API can boot and serve non-Supabase routes
- * while credentials are still missing. The service role key bypasses RLS and
- * must never be sent to the browser.
+ * Deliberately uses the anon key rather than the service role, so every query
+ * is still filtered by row level security. If a filter is ever forgotten in
+ * application code, the database is the backstop and unverified stores or
+ * inactive products still cannot leak.
  */
-export function getSupabaseClient() {
-  if (!isSupabaseConfigured) {
-    const error = new Error(
-      "Supabase is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in server/.env.",
+export function getPublicClient() {
+  if (!isPublicSupabaseConfigured) {
+    throw missing(
+      "Supabase public client is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY in server/.env.",
     );
-    error.status = 503;
-    throw error;
   }
 
-  if (!client) {
-    client = createClient(env.supabaseUrl, env.supabaseServiceRoleKey, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-      },
-    });
+  if (!publicClient) {
+    publicClient = createClient(env.supabaseUrl, env.supabaseAnonKey, clientOptions);
   }
 
-  return client;
+  return publicClient;
+}
+
+/**
+ * Client for privileged work: verifying stores, curating the catalogue,
+ * promoting a profile to seller.
+ *
+ * The service role key bypasses RLS entirely, so this must never be used to
+ * serve an unauthenticated request and must never reach the browser.
+ */
+export function getServiceClient() {
+  if (!isServiceSupabaseConfigured) {
+    throw missing(
+      "Supabase service client is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in server/.env.",
+    );
+  }
+
+  if (!serviceClient) {
+    serviceClient = createClient(
+      env.supabaseUrl,
+      env.supabaseServiceRoleKey,
+      clientOptions,
+    );
+  }
+
+  return serviceClient;
 }
