@@ -84,7 +84,15 @@ begin
     store_id, product_id, selling_price, stock_status,
     quantity_available, discount_percentage, is_available
   )
-  select v.store_id, p.id, v.price, v.status::public.stock_status, v.qty, v.discount, true
+  -- discount_percentage is the badge a store advertises. It is derived from the
+  -- real gap to MRP rather than hardcoded, so the demo can never show "5% off"
+  -- on a store that is actually charging full price.
+  select v.store_id, p.id, v.price, v.status::public.stock_status, v.qty,
+         case
+           when p.mrp > 0 then greatest(round((p.mrp - v.price) / p.mrp * 100, 2), 0)
+           else 0
+         end,
+         true
   from (
     values
       -- product slug,                                    A,      B,      C
@@ -103,10 +111,10 @@ begin
   join public.products p on p.slug = prices.product_slug
   cross join lateral (
     values
-      (v_store_a, prices.price_a, 'in_stock',  40, 0.00),
-      (v_store_b, prices.price_b, 'in_stock',  25, 0.00),
-      (v_store_c, prices.price_c, 'low_stock',  6, 5.00)
-  ) as v (store_id, price, status, qty, discount)
+      (v_store_a, prices.price_a, 'in_stock',  40),
+      (v_store_b, prices.price_b, 'in_stock',  25),
+      (v_store_c, prices.price_c, 'low_stock',  6)
+  ) as v (store_id, price, status, qty)
   on conflict (store_id, product_id) do update
     set selling_price       = excluded.selling_price,
         stock_status        = excluded.stock_status,
