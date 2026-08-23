@@ -124,7 +124,7 @@ function SavedAddressForm({ initialValues, currentLocation, onCancel, onSubmit }
               value={values.contactName}
               onChange={update("contactName")}
               className="h-10 w-full min-w-0 rounded-control border border-line bg-surface px-3 text-meta text-ink"
-              placeholder="Ratul Kole"
+              placeholder="Enter Receiver Name"
             />
           </label>
           <label className="grid min-w-0 gap-1 text-meta font-semibold text-ink-soft">
@@ -133,7 +133,7 @@ function SavedAddressForm({ initialValues, currentLocation, onCancel, onSubmit }
               value={values.phone}
               onChange={update("phone")}
               className="h-10 w-full min-w-0 rounded-control border border-line bg-surface px-3 text-meta text-ink"
-              placeholder="Mobile number"
+              placeholder="Enter Recevier's number"
               inputMode="tel"
             />
           </label>
@@ -145,7 +145,7 @@ function SavedAddressForm({ initialValues, currentLocation, onCancel, onSubmit }
             value={values.house}
             onChange={update("house")}
             className="h-10 w-full min-w-0 rounded-control border border-line bg-surface px-3 text-meta text-ink"
-            placeholder="Flat 2B, House 14"
+            placeholder="Enter House/Flat/Floor No."
           />
         </label>
 
@@ -155,7 +155,7 @@ function SavedAddressForm({ initialValues, currentLocation, onCancel, onSubmit }
             value={values.area}
             onChange={update("area")}
             className="h-10 w-full min-w-0 rounded-control border border-line bg-surface px-3 text-meta text-ink"
-            placeholder="Singur Station Road"
+            placeholder="Enter Area/Locality"
           />
         </label>
 
@@ -165,7 +165,7 @@ function SavedAddressForm({ initialValues, currentLocation, onCancel, onSubmit }
             value={values.landmark}
             onChange={update("landmark")}
             className="h-10 w-full min-w-0 rounded-control border border-line bg-surface px-3 text-meta text-ink"
-            placeholder="Near petrol pump"
+            placeholder="Enter a landmark"
           />
         </label>
 
