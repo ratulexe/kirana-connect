@@ -63,7 +63,20 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 });
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const normalise = (value) => String(value ?? "").toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+/**
+ * Lowercase, accent-free, alphanumeric words.
+ *
+ * The NFKD pass matters: without it "Nescafé" loses its accented letter to the
+ * character filter and becomes "nescaf", which then never matches "nescafe".
+ */
+const normalise = (value) =>
+  String(value ?? "")
+    .normalize("NFKD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
 async function searchOpenFoodFacts(terms, baseUrl) {
   const url = new URL(`${baseUrl}/cgi/search.pl`);
@@ -108,9 +121,10 @@ async function searchOpenFoodFacts(terms, baseUrl) {
  */
 function pickBest(candidates, product) {
   const brand = normalise(product.brand?.name);
-  const nameWords = normalise(product.name)
-    .split(" ")
-    .filter((word) => word.length > 3 && !GENERIC_WORDS.has(word));
+  const ownWords = new Set(normalise(product.name).split(" ").filter(Boolean));
+  const distinctive = [...ownWords].filter(
+    (word) => word.length > 3 && !GENERIC_WORDS.has(word),
+  );
 
   let best = null;
   let bestScore = 0;
@@ -120,19 +134,30 @@ function pickBest(candidates, product) {
     if (!image) continue;
 
     const candidateName = normalise(candidate.product_name);
+    const candidateWords = candidateName.split(" ").filter(Boolean);
     const candidateBrand = normalise(candidate.brands);
 
-    const overlap = nameWords.filter((word) => candidateName.includes(word)).length;
+    // Must share something meaningful, not just a stray adjective.
+    const overlap = distinctive.filter((word) => candidateName.includes(word)).length;
     if (overlap === 0) continue;
 
-    const brandMatches = brand ? candidateBrand.includes(brand) || candidateName.includes(brand) : true;
+    const brandMatches = brand
+      ? candidateBrand.includes(brand) || candidateName.includes(brand)
+      : true;
     if (brand && !brandMatches) continue;
 
-    // One distinctive word alone is weak evidence. Accept it only when the
-    // brand also matches; otherwise demand two.
-    if (overlap < 2 && !brandMatches) continue;
+    // Words the candidate carries that our product does not are evidence of a
+    // different item. "Nescafe Classic Instant Coffee" matching "Nescafé
+    // classic descafeinado" is a decaf jar, and "Vim Dishwash Liquid Gel
+    // Lemon" matching "Vim All-Purpose Cleaner Lemon Fresh" is not a
+    // dishwash at all: both share a word but bring several that contradict.
+    const unmatched = candidateWords.filter(
+      (word) => word.length > 3 && !GENERIC_WORDS.has(word) && !ownWords.has(word),
+    ).length;
 
-    const score = overlap * 2 + (brandMatches ? 1 : 0);
+    const score = overlap - unmatched;
+    if (score < 1) continue;
+
     if (score > bestScore) {
       bestScore = score;
       best = { image, label: candidate.product_name, brand: candidate.brands };
@@ -169,13 +194,23 @@ async function main() {
       continue;
     }
 
-    // Full name first; if that finds nothing, retry on brand plus the two most
-    // distinctive words, which is what rescues awkward names like "Parle-G".
-    const attempts = [product.name];
-    const words = normalise(product.name).split(" ").filter((w) => w.length > 3);
-    if (words.length > 1) {
-      attempts.push([product.brand?.name, ...words.slice(0, 2)].filter(Boolean).join(" "));
-    }
+    // Progressively looser queries. Exact names often miss because these
+    // databases hold whatever a contributor typed on the packet, so the
+    // fallbacks trade precision in the query for recall, while pickBest keeps
+    // the precision requirement on the result.
+    const brand = product.brand?.name;
+    const words = normalise(product.name)
+      .split(" ")
+      .filter((w) => w.length > 3 && normalise(brand) !== w);
+
+    const attempts = [
+      product.name,
+      // Brand plus the product type, which is usually the last word.
+      words.length ? [brand, words[words.length - 1]].filter(Boolean).join(" ") : null,
+      // Brand plus the leading descriptor.
+      words.length ? [brand, words[0]].filter(Boolean).join(" ") : null,
+      brand || null,
+    ].filter(Boolean);
 
     let choice = null;
     for (const terms of attempts) {
