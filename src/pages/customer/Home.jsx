@@ -1,13 +1,22 @@
-import { Store } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import HeroSection from "../../features/home/HeroSection.jsx";
+import CategoryStrip from "../../features/home/CategoryStrip.jsx";
+import ComparisonPreview from "../../features/home/ComparisonPreview.jsx";
+import HowItWorks from "../../features/home/HowItWorks.jsx";
 
 export default function Home() {
+  const navigate = useNavigate();
+
+  const handleSearch = (term) => {
+    navigate(term ? `/search?q=${encodeURIComponent(term)}` : "/search");
+  };
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-3 px-6 text-center">
-      <Store className="h-10 w-10 text-neutral-700" aria-hidden="true" />
-      <h1 className="text-4xl font-semibold tracking-tight text-neutral-900">
-        Kirana Connect
-      </h1>
-      <p className="text-base text-neutral-600">Project setup complete.</p>
-    </main>
+    <>
+      <HeroSection onSearch={handleSearch} />
+      <CategoryStrip />
+      <ComparisonPreview />
+      <HowItWorks />
+    </>
   );
 }

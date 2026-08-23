@@ -23,7 +23,12 @@ dist-ssr
 *.sln
 *.sw?
 
-# Environment
+# Environment (frontend root and server/ - patterns match at any depth)
 .env
 .env.local
 .env.*.local
+.env.development
+.env.production
+server/.env
+!.env.example
+!server/.env.example
