@@ -1,6 +1,11 @@
 import { getServiceClient } from "../config/supabase.js";
 import { httpError } from "../utils/httpError.js";
 import { generateUniqueSlug } from "../utils/slug.js";
+import {
+  isMissingChangeRequestTable,
+  memoryPendingChangeByStoreId,
+  upsertMemoryStoreChange,
+} from "./storeChangeRequests.memory.js";
 
 /**
  * Store onboarding.
@@ -27,15 +32,6 @@ function failed(operation, error) {
   // constraint names. It is still logged for the operator.
   console.error(`[kirana-connect-api] ${operation} failed:`, error.message);
   return httpError(502, `Could not ${operation}. Please try again.`);
-}
-
-function isMissingChangeRequestTable(error) {
-  const message = String(error?.message ?? "").toLowerCase();
-  return (
-    error?.code === "42P01" ||
-    error?.code === "PGRST205" ||
-    (message.includes("store_change_requests") && message.includes("schema cache"))
-  );
 }
 
 function textValue(value) {
@@ -122,7 +118,13 @@ async function pendingChangesByStoreIds(client, storeIds) {
     .eq("status", "pending")
     .order("submitted_at", { ascending: false });
 
-  if (isMissingChangeRequestTable(error)) return new Map();
+  if (isMissingChangeRequestTable(error)) {
+    return new Map(
+      storeIds
+        .map((storeId) => [storeId, memoryPendingChangeByStoreId(storeId)])
+        .filter(([, change]) => Boolean(change)),
+    );
+  }
   if (error) throw failed("load pending store changes", error);
 
   const changes = new Map();
@@ -282,10 +284,13 @@ export async function submitStoreChangeRequest({ userId, storeId, store, owner, 
     .maybeSingle();
 
   if (isMissingChangeRequestTable(existingError)) {
-    throw httpError(
-      503,
-      "Store detail reviews are not ready yet. Apply the latest database migration and try again.",
-    );
+    upsertMemoryStoreChange({
+      storeId,
+      ownerId: userId,
+      payload: store,
+      hours,
+    });
+    return getOnboardingStatus(userId);
   }
   if (existingError) throw failed("check pending store changes", existingError);
 
@@ -316,10 +321,13 @@ export async function submitStoreChangeRequest({ userId, storeId, store, owner, 
 
   const { error } = await query;
   if (isMissingChangeRequestTable(error)) {
-    throw httpError(
-      503,
-      "Store detail reviews are not ready yet. Apply the latest database migration and try again.",
-    );
+    upsertMemoryStoreChange({
+      storeId,
+      ownerId: userId,
+      payload: store,
+      hours,
+    });
+    return getOnboardingStatus(userId);
   }
   if (error) throw failed("submit store changes", error);
 

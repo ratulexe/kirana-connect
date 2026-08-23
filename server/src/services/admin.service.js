@@ -2,6 +2,14 @@ import { getServiceClient } from "../config/supabase.js";
 import { httpError, notFoundError } from "../utils/httpError.js";
 import { escapeLikePattern } from "../utils/queryParams.js";
 import { generateUniqueSlug } from "../utils/slug.js";
+import {
+  isMissingChangeRequestTable,
+  markMemoryStoreChangeReviewed,
+  memoryPendingChangeById,
+  memoryPendingChangeByStoreId,
+  memoryPendingChangeCount,
+  memoryPendingChanges,
+} from "./storeChangeRequests.memory.js";
 
 const STORE_FIELDS = `
   id, owner_id, name, slug, description, phone,
@@ -31,15 +39,6 @@ function failed(operation, error) {
   return httpError(502, `Could not ${operation}. Please try again.`);
 }
 
-function isMissingChangeRequestTable(error) {
-  const message = String(error?.message ?? "").toLowerCase();
-  return (
-    error?.code === "42P01" ||
-    error?.code === "PGRST205" ||
-    (message.includes("store_change_requests") && message.includes("schema cache"))
-  );
-}
-
 function textValue(value) {
   const text = typeof value === "string" ? value.trim() : "";
   return text || null;
@@ -55,7 +54,7 @@ async function countRows(table, apply = (query) => query) {
 async function countOptionalRows(table, apply = (query) => query) {
   const query = apply(getServiceClient().from(table).select("id", { count: "exact", head: true }));
   const { error, count } = await query;
-  if (isMissingChangeRequestTable(error)) return 0;
+  if (isMissingChangeRequestTable(error)) return memoryPendingChangeCount();
   if (error) throw failed(`count ${table}`, error);
   return count ?? 0;
 }
@@ -161,7 +160,7 @@ async function pendingChangeByStoreId(storeId) {
     .eq("status", "pending")
     .maybeSingle();
 
-  if (isMissingChangeRequestTable(error)) return null;
+  if (isMissingChangeRequestTable(error)) return memoryPendingChangeByStoreId(storeId);
   if (error) throw failed("load pending store change", error);
   return data ?? null;
 }
@@ -249,10 +248,25 @@ export async function listPendingStoreChanges({ limit, offset }) {
     .order("submitted_at", { ascending: true })
     .range(offset, offset + limit - 1);
 
-  if (isMissingChangeRequestTable(error)) return { changes: [], total: 0 };
+  const isMemory = isMissingChangeRequestTable(error);
+  const changes = isMemory ? memoryPendingChanges({ limit, offset }) : (data ?? []);
+  const total = isMemory ? memoryPendingChangeCount() : (count ?? 0);
+  if (isMemory) {
+    return {
+      changes: await withStoresForChanges(changes),
+      total,
+    };
+  }
   if (error) throw failed("load pending store changes", error);
 
-  const storeIds = (data ?? []).map((change) => change.store_id);
+  return {
+    changes: await withStoresForChanges(changes),
+    total,
+  };
+}
+
+async function withStoresForChanges(changes) {
+  const storeIds = changes.map((change) => change.store_id);
   const { data: stores, error: storesError } = storeIds.length
     ? await getServiceClient()
         .from("stores")
@@ -266,13 +280,10 @@ export async function listPendingStoreChanges({ limit, offset }) {
     (await withOwners(stores ?? [])).map((store) => [store.id, store]),
   );
 
-  return {
-    changes: (data ?? []).map((change) => ({
-      ...change,
-      store: storesById.get(change.store_id) ?? null,
-    })),
-    total: count ?? 0,
-  };
+  return changes.map((change) => ({
+    ...change,
+    store: storesById.get(change.store_id) ?? null,
+  }));
 }
 
 function applyStoreFilters(query, { search, verified, active }) {
@@ -372,19 +383,22 @@ export async function approveStoreChange(changeId, adminId) {
     .eq("status", "pending")
     .maybeSingle();
 
-  if (readError) throw failed("load store change for approval", readError);
-  if (!change) throw notFoundError("Store change request not found.");
+  const isMemory = isMissingChangeRequestTable(readError);
+  const pendingChange = isMemory ? memoryPendingChangeById(changeId) : change;
+
+  if (readError && !isMemory) throw failed("load store change for approval", readError);
+  if (!pendingChange) throw notFoundError("Store change request not found.");
 
   const { data: current, error: storeReadError } = await client
     .from("stores")
     .select("id, name")
-    .eq("id", change.store_id)
+    .eq("id", pendingChange.store_id)
     .maybeSingle();
 
   if (storeReadError) throw failed("load store for change approval", storeReadError);
   if (!current) throw notFoundError("Store not found.");
 
-  const patch = { ...change.payload };
+  const patch = { ...pendingChange.payload };
   if (patch.name && patch.name !== current.name) {
     patch.slug = await slugFor("stores", patch.name, current.id);
   }
@@ -403,12 +417,17 @@ export async function approveStoreChange(changeId, adminId) {
 
   if (deleteHoursError) throw failed("replace store hours", deleteHoursError);
 
-  if ((change.hours ?? []).length > 0) {
+  if ((pendingChange.hours ?? []).length > 0) {
     const { error: insertHoursError } = await client
       .from("store_hours")
-      .insert(change.hours.map((hour) => ({ ...hour, store_id: current.id })));
+      .insert(pendingChange.hours.map((hour) => ({ ...hour, store_id: current.id })));
 
     if (insertHoursError) throw failed("save store hours", insertHoursError);
+  }
+
+  if (isMemory) {
+    markMemoryStoreChangeReviewed(changeId, { status: "approved", adminId });
+    return getStoreDetail(current.id);
   }
 
   const { error: reviewError } = await client
@@ -418,7 +437,7 @@ export async function approveStoreChange(changeId, adminId) {
       reviewed_at: new Date().toISOString(),
       reviewed_by: adminId,
     })
-    .eq("id", change.id);
+    .eq("id", pendingChange.id);
 
   if (reviewError) throw failed("mark store change approved", reviewError);
 
@@ -437,6 +456,12 @@ export async function rejectStoreChange(changeId, adminId) {
     .eq("status", "pending")
     .select(CHANGE_REQUEST_FIELDS)
     .maybeSingle();
+
+  if (isMissingChangeRequestTable(error)) {
+    const rejected = markMemoryStoreChangeReviewed(changeId, { status: "rejected", adminId });
+    if (!rejected) throw notFoundError("Store change request not found.");
+    return rejected;
+  }
 
   if (error) throw failed("reject store change", error);
   if (!data) throw notFoundError("Store change request not found.");
