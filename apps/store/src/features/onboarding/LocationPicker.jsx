@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-leaflet";
+import { useEffect, useId, useRef, useState } from "react";
+import { Circle, MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import { LocateFixed } from "lucide-react";
 import Button from "../../components/Button.jsx";
@@ -16,52 +16,81 @@ const markerIcon = L.divIcon({
   iconAnchor: [9, 9],
 });
 
-// Central Mumbai, only used before the owner picks a point.
-const FALLBACK_CENTER = { lat: 19.076, lng: 72.8777 };
+// Only used before the owner picks a point.
+const FALLBACK_CENTER = { lat: 22.5726, lng: 88.3639 };
+
+// Beyond this, a browser fix is too coarse to place a shop front.
+const COARSE_ACCURACY_M = 500;
+
+const round6 = (value) => Math.round(value * 1e6) / 1e6;
 
 function ClickHandler({ onPick }) {
   useMapEvents({
     click(event) {
-      onPick(event.latlng.lat, event.latlng.lng);
+      onPick(round6(event.latlng.lat), round6(event.latlng.lng));
     },
   });
   return null;
 }
 
-function Recenter({ position }) {
+/**
+ * Recentres when the position changes, choosing a zoom that matches how much
+ * we actually know. Zooming to street level on a 5 km estimate would imply a
+ * precision the fix does not have.
+ */
+function Recenter({ position, accuracy }) {
   const map = useMap();
   const lastKey = useRef("");
 
   useEffect(() => {
     if (!position) return;
-    const key = `${position.lat},${position.lng}`;
+    const key = `${position.lat},${position.lng},${accuracy ?? ""}`;
     if (key === lastKey.current) return;
     lastKey.current = key;
-    map.setView(position, Math.max(map.getZoom(), 16));
-  }, [map, position]);
+
+    if (accuracy && accuracy > COARSE_ACCURACY_M) {
+      map.fitBounds(L.latLng(position.lat, position.lng).toBounds(accuracy * 2));
+    } else {
+      map.setView(position, Math.max(map.getZoom(), 17));
+    }
+  }, [map, position, accuracy]);
 
   return null;
+}
+
+function describeAccuracy(metres) {
+  if (metres < 1000) return `${Math.round(metres)} m`;
+  return `${(metres / 1000).toFixed(1)} km`;
 }
 
 /**
  * Store location picker.
  *
- * Geolocation is offered but never required: permission can be denied for good
- * reasons, and the owner can always drop the pin by hand. The coordinates are
- * also shown as text next to the map, so the value is available to anyone who
- * cannot use a drag-and-click interface.
+ * Three ways to set the pin, because no single one is reliable:
+ *   - the browser's own location, which on a desktop has no GPS and is
+ *     estimated from IP and nearby WiFi, so it can be kilometres out,
+ *   - tapping or dragging on the map,
+ *   - typing coordinates directly, which also gives keyboard and screen
+ *     reader users a route that does not depend on the map at all.
+ *
+ * When the browser fix is coarse we say so and show the uncertainty as a
+ * circle, rather than dropping a confident-looking pin on a guess.
  */
 export default function LocationPicker({ latitude, longitude, onChange, error }) {
+  const latId = useId();
+  const lngId = useId();
+
   const hasPosition = Number.isFinite(latitude) && Number.isFinite(longitude);
   const position = hasPosition ? { lat: latitude, lng: longitude } : null;
 
   const [geoState, setGeoState] = useState("idle");
   const [geoMessage, setGeoMessage] = useState("");
+  const [accuracy, setAccuracy] = useState(null);
 
   const useCurrentLocation = () => {
     if (!navigator.geolocation) {
       setGeoState("error");
-      setGeoMessage("This browser cannot share your location. Pick the spot on the map instead.");
+      setGeoMessage("This browser cannot share your location. Place the pin on the map instead.");
       return;
     }
 
@@ -70,23 +99,33 @@ export default function LocationPicker({ latitude, longitude, onChange, error })
 
     navigator.geolocation.getCurrentPosition(
       (result) => {
-        setGeoState("idle");
-        onChange(
-          Math.round(result.coords.latitude * 1e6) / 1e6,
-          Math.round(result.coords.longitude * 1e6) / 1e6,
-        );
+        setGeoState("located");
+        setAccuracy(result.coords.accuracy ?? null);
+        onChange(round6(result.coords.latitude), round6(result.coords.longitude));
       },
       (geoError) => {
         setGeoState("error");
+        setAccuracy(null);
         setGeoMessage(
           geoError.code === geoError.PERMISSION_DENIED
-            ? "Location permission was declined. Tap the map to place your store instead."
-            : "Your location could not be determined. Tap the map to place your store instead.",
+            ? "Location permission was declined. Place the pin on the map instead."
+            : "Your location could not be determined. Place the pin on the map instead.",
         );
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
     );
   };
+
+  // A manual edit supersedes whatever the browser guessed.
+  const handleManual = (field, raw) => {
+    const value = Number(raw);
+    if (!Number.isFinite(value)) return;
+    setAccuracy(null);
+    if (field === "lat") onChange(round6(value), hasPosition ? longitude : 0);
+    else onChange(hasPosition ? latitude : 0, round6(value));
+  };
+
+  const isCoarse = accuracy !== null && accuracy > COARSE_ACCURACY_M;
 
   return (
     <div className="flex flex-col gap-3">
@@ -108,6 +147,7 @@ export default function LocationPicker({ latitude, longitude, onChange, error })
               <span className="font-semibold text-ink tabular-nums">
                 {latitude.toFixed(5)}, {longitude.toFixed(5)}
               </span>
+              {accuracy !== null ? ` (within ${describeAccuracy(accuracy)})` : null}
             </>
           ) : (
             "No location set yet"
@@ -117,16 +157,24 @@ export default function LocationPicker({ latitude, longitude, onChange, error })
 
       {geoState === "error" ? <Alert tone="warning">{geoMessage}</Alert> : null}
 
+      {isCoarse ? (
+        <Alert tone="warning" title="That location is only approximate">
+          Your browser placed you within about {describeAccuracy(accuracy)}. Desktop
+          computers have no GPS, so the position is estimated from your internet
+          connection. Drag the pin onto your shop, or type the exact coordinates below.
+        </Alert>
+      ) : null}
+
       <div
         className="h-64 overflow-hidden rounded-card border border-line sm:h-72"
-        // The map is a supplementary control: the authoritative value is the
-        // coordinate text above, which is why the map itself is hidden from
+        // The map is a supplementary control. The authoritative values are the
+        // coordinate fields below, which is why the map itself is hidden from
         // assistive tech rather than exposed as an unusable widget.
         aria-hidden="true"
       >
         <MapContainer
           center={position ?? FALLBACK_CENTER}
-          zoom={position ? 16 : 12}
+          zoom={position ? 16 : 11}
           scrollWheelZoom={false}
           style={{ height: "100%", width: "100%" }}
         >
@@ -135,7 +183,16 @@ export default function LocationPicker({ latitude, longitude, onChange, error })
             url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           <ClickHandler onPick={onChange} />
-          <Recenter position={position} />
+          <Recenter position={position} accuracy={accuracy} />
+
+          {position && isCoarse ? (
+            <Circle
+              center={position}
+              radius={accuracy}
+              pathOptions={{ color: "#925708", fillColor: "#e0a018", fillOpacity: 0.12, weight: 1 }}
+            />
+          ) : null}
+
           {position ? (
             <Marker
               position={position}
@@ -144,7 +201,8 @@ export default function LocationPicker({ latitude, longitude, onChange, error })
               eventHandlers={{
                 dragend(event) {
                   const { lat, lng } = event.target.getLatLng();
-                  onChange(Math.round(lat * 1e6) / 1e6, Math.round(lng * 1e6) / 1e6);
+                  setAccuracy(null);
+                  onChange(round6(lat), round6(lng));
                 },
               }}
             />
@@ -153,9 +211,48 @@ export default function LocationPicker({ latitude, longitude, onChange, error })
       </div>
 
       <p className="text-meta text-ink-muted">
-        Tap the map to place your store, or drag the pin to fine-tune it. This is what
-        decides which nearby customers can find you.
+        Tap the map to place your store, or drag the pin to fine-tune it. This decides
+        which nearby customers can find you, so it is worth getting right.
       </p>
+
+      {/* Typed entry: accessible without the map, and the reliable way to use
+          coordinates copied from another maps app. */}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor={latId} className="text-meta font-semibold text-ink-soft">
+            Latitude
+          </label>
+          <input
+            id={latId}
+            type="number"
+            step="0.000001"
+            min={-90}
+            max={90}
+            inputMode="decimal"
+            value={hasPosition ? latitude : ""}
+            onChange={(event) => handleManual("lat", event.target.value)}
+            placeholder="22.810600"
+            className="w-full rounded-control border border-line bg-surface px-3.5 py-2.5 text-[0.9375rem] text-ink tabular-nums focus:border-primary focus:outline-none"
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor={lngId} className="text-meta font-semibold text-ink-soft">
+            Longitude
+          </label>
+          <input
+            id={lngId}
+            type="number"
+            step="0.000001"
+            min={-180}
+            max={180}
+            inputMode="decimal"
+            value={hasPosition ? longitude : ""}
+            onChange={(event) => handleManual("lng", event.target.value)}
+            placeholder="88.230600"
+            className="w-full rounded-control border border-line bg-surface px-3.5 py-2.5 text-[0.9375rem] text-ink tabular-nums focus:border-primary focus:outline-none"
+          />
+        </div>
+      </div>
 
       {error ? (
         <p role="alert" className="text-meta font-medium text-danger">
