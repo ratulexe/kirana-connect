@@ -174,6 +174,21 @@ async function storeWithDetails(store) {
   };
 }
 
+function storePatchFromPayload(payload) {
+  const { owner_full_name: _ownerFullName, owner_phone: _ownerPhone, ...storePatch } = payload ?? {};
+  return storePatch;
+}
+
+function ownerPatchFromPayload(payload) {
+  const patch = {};
+  const fullName = textValue(payload?.owner_full_name);
+  const phone = textValue(payload?.owner_phone);
+
+  if (fullName) patch.full_name = fullName;
+  if (phone) patch.phone = phone;
+  return patch;
+}
+
 async function slugFor(table, name, currentId) {
   const isTaken = async (candidate) => {
     let query = getServiceClient().from(table).select("id").eq("slug", candidate).limit(1);
@@ -391,14 +406,14 @@ export async function approveStoreChange(changeId, adminId) {
 
   const { data: current, error: storeReadError } = await client
     .from("stores")
-    .select("id, name")
+    .select("id, name, owner_id")
     .eq("id", pendingChange.store_id)
     .maybeSingle();
 
   if (storeReadError) throw failed("load store for change approval", storeReadError);
   if (!current) throw notFoundError("Store not found.");
 
-  const patch = { ...pendingChange.payload };
+  const patch = storePatchFromPayload(pendingChange.payload);
   if (patch.name && patch.name !== current.name) {
     patch.slug = await slugFor("stores", patch.name, current.id);
   }
@@ -423,6 +438,16 @@ export async function approveStoreChange(changeId, adminId) {
       .insert(pendingChange.hours.map((hour) => ({ ...hour, store_id: current.id })));
 
     if (insertHoursError) throw failed("save store hours", insertHoursError);
+  }
+
+  const ownerPatch = ownerPatchFromPayload(pendingChange.payload);
+  if (Object.keys(ownerPatch).length > 0) {
+    const { error: ownerError } = await client
+      .from("profiles")
+      .update(ownerPatch)
+      .eq("id", current.owner_id);
+
+    if (ownerError) throw failed("apply owner changes", ownerError);
   }
 
   if (isMemory) {

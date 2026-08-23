@@ -21,6 +21,26 @@ function ownerLabel(store) {
   return store.owner?.full_name || "No owner name";
 }
 
+function ownerPhone(store) {
+  return store.owner?.phone || "Not set";
+}
+
+function submittedOwnerLabel(payload, store) {
+  return payload?.owner_full_name || ownerLabel(store);
+}
+
+function submittedOwnerPhoneLabel(payload, store) {
+  return payload?.owner_phone || ownerPhone(store);
+}
+
+function isChanged(current, submitted) {
+  return String(current ?? "").trim() !== String(submitted ?? "").trim();
+}
+
+function changeClass(current, submitted) {
+  return isChanged(current, submitted) ? "rounded-control bg-warning-soft/70 px-2 py-1 -mx-2" : "";
+}
+
 function addressLine(data) {
   return `${data.address_line_1}${data.address_line_2 ? `, ${data.address_line_2}` : ""}, ${data.locality}, ${data.city}, ${data.state} ${data.postal_code}`;
 }
@@ -50,6 +70,10 @@ export default function StoreDetail() {
   const data = store.data;
   const pendingChange = data.pending_change;
   const changePayload = pendingChange?.payload ?? null;
+  const currentAddress = addressLine(data);
+  const submittedAddress = changePayload ? addressLine(changePayload) : "";
+  const submittedOwnerName = submittedOwnerLabel(changePayload, data);
+  const submittedOwnerPhone = submittedOwnerPhoneLabel(changePayload, data);
 
   return (
     <div className="max-w-5xl">
@@ -116,7 +140,7 @@ export default function StoreDetail() {
           <dl className="mt-4 space-y-3 text-body">
             <div>
               <dt className="text-meta font-semibold text-ink-muted">Address</dt>
-              <dd className="text-ink">{addressLine(data)}</dd>
+              <dd className="text-ink">{currentAddress}</dd>
             </div>
             <div>
               <dt className="text-meta font-semibold text-ink-muted">Coordinates</dt>
@@ -185,8 +209,16 @@ export default function StoreDetail() {
                   <dd className="text-ink">{data.name}</dd>
                 </div>
                 <div>
+                  <dt className="font-semibold text-ink-soft">Owner name</dt>
+                  <dd className="text-ink">{ownerLabel(data)}</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-ink-soft">Owner phone</dt>
+                  <dd className="text-ink">{ownerPhone(data)}</dd>
+                </div>
+                <div>
                   <dt className="font-semibold text-ink-soft">Address</dt>
-                  <dd className="text-ink">{addressLine(data)}</dd>
+                  <dd className="text-ink">{currentAddress}</dd>
                 </div>
                 <div>
                   <dt className="font-semibold text-ink-soft">Phone</dt>
@@ -198,15 +230,23 @@ export default function StoreDetail() {
             <div className="rounded-control border border-warning/30 bg-warning-soft/40 p-4">
               <p className="text-meta font-semibold text-warning">Submitted update</p>
               <dl className="mt-3 space-y-2 text-meta">
-                <div>
+                <div className={changeClass(data.name, changePayload.name)}>
                   <dt className="font-semibold text-ink-soft">Name</dt>
                   <dd className="text-ink">{changePayload.name}</dd>
                 </div>
-                <div>
-                  <dt className="font-semibold text-ink-soft">Address</dt>
-                  <dd className="text-ink">{addressLine(changePayload)}</dd>
+                <div className={changeClass(ownerLabel(data), submittedOwnerName)}>
+                  <dt className="font-semibold text-ink-soft">Owner name</dt>
+                  <dd className="text-ink">{submittedOwnerName}</dd>
                 </div>
-                <div>
+                <div className={changeClass(ownerPhone(data), submittedOwnerPhone)}>
+                  <dt className="font-semibold text-ink-soft">Owner phone</dt>
+                  <dd className="text-ink">{submittedOwnerPhone}</dd>
+                </div>
+                <div className={changeClass(currentAddress, submittedAddress)}>
+                  <dt className="font-semibold text-ink-soft">Address</dt>
+                  <dd className="text-ink">{submittedAddress}</dd>
+                </div>
+                <div className={changeClass(data.phone || "Not set", changePayload.phone || "Not set")}>
                   <dt className="font-semibold text-ink-soft">Phone</dt>
                   <dd className="text-ink">{changePayload.phone || "Not set"}</dd>
                 </div>

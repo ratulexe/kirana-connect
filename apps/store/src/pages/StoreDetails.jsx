@@ -54,8 +54,8 @@ function draftsFrom(store, pendingChange, profile) {
   const source = pendingChange?.payload ?? store;
   return {
     owner: {
-      full_name: profile?.full_name ?? "",
-      phone: profile?.phone ?? "",
+      full_name: source.owner_full_name ?? profile?.full_name ?? "",
+      phone: source.owner_phone ?? profile?.phone ?? "",
     },
     store: {
       name: source.name ?? "",

@@ -274,7 +274,11 @@ export async function submitStoreChangeRequest({ userId, storeId, store, owner, 
     throw httpError(409, "Your store is already under review.");
   }
 
-  await updateOwnerProfile(client, userId, owner);
+  const payload = {
+    ...store,
+    owner_full_name: owner.full_name,
+    owner_phone: owner.phone,
+  };
 
   const { data: existing, error: existingError } = await client
     .from("store_change_requests")
@@ -287,7 +291,7 @@ export async function submitStoreChangeRequest({ userId, storeId, store, owner, 
     upsertMemoryStoreChange({
       storeId,
       ownerId: userId,
-      payload: store,
+      payload,
       hours,
     });
     return getOnboardingStatus(userId);
@@ -297,7 +301,7 @@ export async function submitStoreChangeRequest({ userId, storeId, store, owner, 
   const body = {
     store_id: storeId,
     owner_id: userId,
-    payload: store,
+    payload,
     hours,
     status: "pending",
     submitted_at: new Date().toISOString(),
@@ -324,7 +328,7 @@ export async function submitStoreChangeRequest({ userId, storeId, store, owner, 
     upsertMemoryStoreChange({
       storeId,
       ownerId: userId,
-      payload: store,
+      payload,
       hours,
     });
     return getOnboardingStatus(userId);
