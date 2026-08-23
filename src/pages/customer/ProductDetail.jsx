@@ -1,5 +1,6 @@
+import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, LocateFixed, Store as StoreIcon } from "lucide-react";
+import { ArrowLeft, LocateFixed, Search, Store as StoreIcon } from "lucide-react";
 import Container from "../../components/common/Container.jsx";
 import Skeleton from "../../components/common/Skeleton.jsx";
 import EmptyState from "../../components/common/EmptyState.jsx";
@@ -11,6 +12,16 @@ import { useLocationStore } from "../../store/locationStore.js";
 import { formatPrice } from "../../utils/format.js";
 
 const RADIUS_OPTIONS = [2, 5, 10, 25];
+const STOCK_OPTIONS = [
+  { value: "all", label: "All stock" },
+  { value: "in_stock", label: "In stock" },
+  { value: "low_stock", label: "Low stock" },
+];
+const EMPTY_OFFERS = [];
+
+function normalize(value) {
+  return String(value ?? "").trim().toLowerCase();
+}
 
 function OffersSkeleton() {
   return (
@@ -25,9 +36,37 @@ function OffersSkeleton() {
 export default function ProductDetail() {
   const { slug } = useParams();
   const { location, status, detect, radiusKm, sort, setRadius, setSort } = useLocationStore();
+  const [shopSearch, setShopSearch] = useState("");
+  const [stockFilter, setStockFilter] = useState("all");
+  const [dealsOnly, setDealsOnly] = useState(false);
 
   const product = useProduct(slug);
   const offers = useProductOffers({ slug, location, radiusKm, sort });
+  const list = offers.data?.offers ?? EMPTY_OFFERS;
+  const filteredOffers = useMemo(() => {
+    const query = normalize(shopSearch);
+
+    return list.filter((offer) => {
+      const store = offer.store;
+      const matchesSearch =
+        !query ||
+        [store.name, store.locality, store.city, store.address_line_1]
+          .map(normalize)
+          .some((value) => value.includes(query));
+      const matchesStock = stockFilter === "all" || offer.stock_status === stockFilter;
+      const matchesDeal = !dealsOnly || Number(offer.savings ?? 0) > 0;
+
+      return matchesSearch && matchesStock && matchesDeal;
+    });
+  }, [dealsOnly, list, shopSearch, stockFilter]);
+  const filteredPriceRange = useMemo(() => {
+    if (filteredOffers.length === 0) return null;
+    const prices = filteredOffers.map((offer) => Number(offer.selling_price));
+    return {
+      lowest: Math.min(...prices),
+      highest: Math.max(...prices),
+    };
+  }, [filteredOffers]);
 
   if (product.isPending) {
     return (
@@ -59,8 +98,13 @@ export default function ProductDetail() {
   }
 
   const item = product.data;
-  const list = offers.data?.offers ?? [];
   const summary = offers.data?.meta;
+
+  const clearOfferFilters = () => {
+    setShopSearch("");
+    setStockFilter("all");
+    setDealsOnly(false);
+  };
 
   return (
     <Container className="py-8 sm:py-10">
@@ -112,41 +156,86 @@ export default function ProductDetail() {
             </p>
           </div>
 
-          {location ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <label className="text-meta text-ink-muted">
-                <span className="sr-only">Search radius</span>
-                <select
-                  value={radiusKm}
-                  onChange={(event) => setRadius(Number(event.target.value))}
-                  className="rounded-control border border-line bg-surface px-2.5 py-1.5 text-meta font-semibold text-ink focus:border-primary focus:outline-none"
-                >
-                  {RADIUS_OPTIONS.map((km) => (
-                    <option key={km} value={km}>
-                      Within {km} km
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="text-meta text-ink-muted">
-                <span className="sr-only">Sort offers by</span>
-                <select
-                  value={sort}
-                  onChange={(event) => setSort(event.target.value)}
-                  className="rounded-control border border-line bg-surface px-2.5 py-1.5 text-meta font-semibold text-ink focus:border-primary focus:outline-none"
-                >
-                  <option value="price">Cheapest first</option>
-                  <option value="distance">Nearest first</option>
-                </select>
-              </label>
-            </div>
-          ) : (
+          {!location ? (
             <Button variant="secondary" size="sm" onClick={detect} isLoading={status === "locating"}>
               <LocateFixed className="size-4" aria-hidden="true" />
-              {status === "locating" ? "Finding you..." : "Show distances"}
+              {status === "locating" ? "Finding you..." : "Nearest stores"}
             </Button>
-          )}
+          ) : null}
+        </div>
+
+        <div className="mt-5 grid gap-3 rounded-panel border border-line bg-surface p-4 sm:grid-cols-[minmax(14rem,1fr)_auto_auto] sm:items-end">
+          <label className="min-w-0">
+            <span className="text-meta font-semibold text-ink-soft">Search shops</span>
+            <span className="mt-1 flex h-10 items-center gap-2 rounded-control border border-line bg-canvas px-3 focus-within:border-primary">
+              <Search className="size-4 shrink-0 text-ink-muted" aria-hidden="true" />
+              <input
+                type="search"
+                value={shopSearch}
+                onChange={(event) => setShopSearch(event.target.value)}
+                placeholder="Store name or locality"
+                className="min-w-0 flex-1 bg-transparent text-meta text-ink outline-none placeholder:text-ink-muted"
+              />
+            </span>
+          </label>
+
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:items-end">
+            {location ? (
+              <>
+                <label>
+                  <span className="text-meta font-semibold text-ink-soft">Distance</span>
+                  <select
+                    value={radiusKm}
+                    onChange={(event) => setRadius(Number(event.target.value))}
+                    className="mt-1 h-10 rounded-control border border-line bg-surface px-2.5 text-meta font-semibold text-ink focus:border-primary focus:outline-none"
+                  >
+                    {RADIUS_OPTIONS.map((km) => (
+                      <option key={km} value={km}>
+                        Within {km} km
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label>
+                  <span className="text-meta font-semibold text-ink-soft">Sort</span>
+                  <select
+                    value={sort}
+                    onChange={(event) => setSort(event.target.value)}
+                    className="mt-1 h-10 rounded-control border border-line bg-surface px-2.5 text-meta font-semibold text-ink focus:border-primary focus:outline-none"
+                  >
+                    <option value="distance">Nearest first</option>
+                    <option value="price">Cheapest first</option>
+                  </select>
+                </label>
+              </>
+            ) : null}
+
+            <label>
+              <span className="text-meta font-semibold text-ink-soft">Stock</span>
+              <select
+                value={stockFilter}
+                onChange={(event) => setStockFilter(event.target.value)}
+                className="mt-1 h-10 rounded-control border border-line bg-surface px-2.5 text-meta font-semibold text-ink focus:border-primary focus:outline-none"
+              >
+                {STOCK_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <label className="inline-flex h-10 items-center gap-2 rounded-control border border-line bg-canvas px-3 text-meta font-semibold text-ink-soft">
+            <input
+              type="checkbox"
+              checked={dealsOnly}
+              onChange={(event) => setDealsOnly(event.target.checked)}
+              className="size-4 accent-primary"
+            />
+            Deals only
+          </label>
         </div>
 
         <div className="mt-5" aria-busy={offers.isPending}>
@@ -180,23 +269,36 @@ export default function ProductDetail() {
             />
           ) : null}
 
-          {list.length > 0 ? (
+          {!offers.isPending && !offers.isError && list.length > 0 && filteredOffers.length === 0 ? (
+            <EmptyState
+              icon={StoreIcon}
+              title="No shops match those filters"
+              description="Clear the shop search, stock, or deal filters to see all available stores."
+              action={
+                <Button variant="secondary" onClick={clearOfferFilters}>
+                  Clear filters
+                </Button>
+              }
+            />
+          ) : null}
+
+          {filteredOffers.length > 0 ? (
             <>
-              {summary?.lowest_price != null && summary.store_count > 1 ? (
+              {filteredPriceRange && summary?.store_count > 1 ? (
                 <p className="mb-3 text-meta text-ink-soft">
-                  {summary.store_count} shops, from{" "}
+                  Showing {filteredOffers.length} of {summary.store_count} shops, from{" "}
                   <span className="font-semibold tabular-nums">
-                    {formatPrice(summary.lowest_price)}
+                    {formatPrice(filteredPriceRange.lowest)}
                   </span>{" "}
                   to{" "}
                   <span className="font-semibold tabular-nums">
-                    {formatPrice(summary.highest_price)}
+                    {formatPrice(filteredPriceRange.highest)}
                   </span>
                 </p>
               ) : null}
 
               <ul className="divide-y divide-line-soft overflow-hidden rounded-panel border border-line bg-surface">
-                {list.map((offer) => (
+                {filteredOffers.map((offer) => (
                   <StoreOffer key={offer.store.id} offer={offer} mrp={item.mrp} />
                 ))}
               </ul>

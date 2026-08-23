@@ -1,6 +1,5 @@
 import { IndianRupee, MapPin, Store } from "lucide-react";
 import Container from "../../components/common/Container.jsx";
-import SearchBar from "../../components/common/SearchBar.jsx";
 import { useEntranceAnimation } from "../../animations/useEntranceAnimation.js";
 
 const PROMISES = [
@@ -9,7 +8,7 @@ const PROMISES = [
   { icon: MapPin, label: "Walking distance" },
 ];
 
-export default function HeroSection({ onSearch }) {
+export default function HeroSection() {
   const heroRef = useEntranceAnimation();
 
   return (
@@ -20,7 +19,7 @@ export default function HeroSection({ onSearch }) {
         className="pointer-events-none absolute inset-x-0 -top-40 h-80 bg-primary-soft/60 blur-3xl"
       />
 
-      <Container className="relative py-14 sm:py-20 lg:py-24">
+      <Container className="relative py-12 sm:py-16 lg:py-20">
         <div ref={heroRef} className="mx-auto max-w-3xl text-center">
           <p
             data-animate
@@ -42,14 +41,6 @@ export default function HeroSection({ onSearch }) {
             Search any everyday item and see which kirana stores near you actually stock it
             today, with each shop&apos;s own price side by side. Then simply walk in.
           </p>
-
-          <div data-animate className="mx-auto mt-8 max-w-2xl">
-            <SearchBar
-              size="lg"
-              onSubmit={onSearch}
-              placeholder="Try milk, atta, tea, detergent"
-            />
-          </div>
 
           <ul
             data-animate

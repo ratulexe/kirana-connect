@@ -1,13 +1,14 @@
 import { useSearchParams } from "react-router-dom";
-import { PackageSearch, SearchX } from "lucide-react";
+import { LocateFixed, MapPin, PackageSearch, SearchX, Store } from "lucide-react";
 import Container from "../../components/common/Container.jsx";
-import SearchBar from "../../components/common/SearchBar.jsx";
 import Skeleton from "../../components/common/Skeleton.jsx";
 import EmptyState from "../../components/common/EmptyState.jsx";
 import Button from "../../components/common/Button.jsx";
 import ProductCard from "../../components/products/ProductCard.jsx";
-import { useProductSearch } from "../../hooks/useDiscovery.js";
+import { useNearbyStores, useProductSearch } from "../../hooks/useDiscovery.js";
 import { useCategories } from "../../hooks/useCategories.js";
+import { useLocationStore } from "../../store/locationStore.js";
+import { formatDistance } from "../../utils/format.js";
 
 const PAGE_SIZE = 24;
 
@@ -64,17 +65,108 @@ function CategoryFilter({ active, onSelect }) {
   );
 }
 
+function StoreFilter({ activeStoreId, onSelect, onClear }) {
+  const { location, status, detect, radiusKm } = useLocationStore();
+  const stores = useNearbyStores({ location, radiusKm, limit: 10 });
+  const list = stores.data?.stores ?? [];
+
+  return (
+    <section aria-labelledby="store-filter-heading" className="rounded-panel border border-line bg-surface p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 id="store-filter-heading" className="text-card text-ink">
+            Shop by store
+          </h2>
+          <p className="mt-0.5 text-meta text-ink-muted">
+            {location ? `Nearest stores within ${radiusKm} km` : "Choose a location to see nearest stores"}
+          </p>
+        </div>
+
+        {!location ? (
+          <Button variant="secondary" size="sm" onClick={detect} isLoading={status === "locating"}>
+            <LocateFixed className="size-4" aria-hidden="true" />
+            {status === "locating" ? "Finding you..." : "Use location"}
+          </Button>
+        ) : activeStoreId ? (
+          <Button variant="ghost" size="sm" onClick={onClear}>
+            All stores
+          </Button>
+        ) : null}
+      </div>
+
+      {location ? (
+        <div className="mt-3" aria-busy={stores.isPending}>
+          {stores.isPending ? (
+            <div className="flex gap-2 overflow-hidden">
+              {[0, 1, 2].map((index) => (
+                <Skeleton key={index} className="h-16 min-w-52 rounded-card" />
+              ))}
+            </div>
+          ) : null}
+
+          {stores.isError ? (
+            <p className="text-meta text-danger">
+              Could not load nearby stores. Please try again.
+            </p>
+          ) : null}
+
+          {!stores.isPending && !stores.isError && list.length === 0 ? (
+            <p className="text-meta text-ink-muted">No verified stores found nearby yet.</p>
+          ) : null}
+
+          {list.length > 0 ? (
+            <ul className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 no-scrollbar sm:mx-0 sm:flex-wrap sm:px-0">
+              {list.map((store) => {
+                const selected = activeStoreId === store.id;
+                return (
+                  <li key={store.id}>
+                    <button
+                      type="button"
+                      onClick={() => onSelect(store.id)}
+                      aria-pressed={selected}
+                      className={`min-w-52 rounded-card border px-3 py-2 text-left transition-colors ${
+                        selected
+                          ? "border-primary bg-primary text-primary-fg"
+                          : "border-line bg-canvas text-ink hover:border-primary/40"
+                      }`}
+                    >
+                      <span className="flex items-center gap-1.5 text-meta font-semibold">
+                        <Store className="size-3.5" aria-hidden="true" />
+                        {store.name}
+                      </span>
+                      <span
+                        className={`mt-1 flex items-center gap-1.5 text-meta ${
+                          selected ? "text-primary-fg/80" : "text-ink-muted"
+                        }`}
+                      >
+                        <MapPin className="size-3.5" aria-hidden="true" />
+                        {store.distance_km !== null ? `${formatDistance(store.distance_km)} away` : store.locality}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 export default function SearchResults() {
   const [params, setParams] = useSearchParams();
 
   const search = params.get("q") ?? "";
   const category = params.get("category") ?? "";
+  const storeId = params.get("store_id") ?? "";
   const page = Math.max(1, Number(params.get("page") ?? 1));
   const offset = (page - 1) * PAGE_SIZE;
 
   const { data, isPending, isError, error, isPlaceholderData } = useProductSearch({
     search,
     category,
+    storeId,
     limit: PAGE_SIZE,
     offset,
   });
@@ -97,14 +189,11 @@ export default function SearchResults() {
 
   return (
     <Container className="py-8 sm:py-12">
-      <div className="mx-auto max-w-2xl">
-        <SearchBar
-          size="lg"
-          defaultValue={search}
-          onSubmit={(term) => update({ q: term })}
-          placeholder="Search milk, atta, tea, detergent"
-        />
-      </div>
+      <StoreFilter
+        activeStoreId={storeId}
+        onSelect={(id) => update({ store_id: id })}
+        onClear={() => update({ store_id: null })}
+      />
 
       <div className="mt-6">
         <CategoryFilter active={category} onSelect={(slug) => update({ category: slug })} />
@@ -112,7 +201,13 @@ export default function SearchResults() {
 
       <div className="mt-6" aria-busy={isPending}>
         <h1 className="text-section text-ink">
-          {search ? `Results for "${search}"` : category ? "Browse products" : "All products"}
+          {search
+            ? `Results for "${search}"`
+            : storeId
+              ? "Products from this store"
+              : category
+                ? "Browse products"
+                : "All products"}
         </h1>
         {!isPending && !isError ? (
           <p className="mt-1 text-meta text-ink-muted">
