@@ -75,6 +75,8 @@ async function request(path, { method = "GET", body, signal, auth = true, params
 
 export const api = {
   getOnboardingStatus: (options) => request("/store-onboarding/status", options),
+  geocodeStoreAddress: ({ q, signal }) =>
+    request("/store-onboarding/geocode", { params: { q }, signal }),
   submitStore: (body) => request("/store-onboarding", { method: "POST", body }),
 
   getInventory: (options) => request("/store-inventory", options),

@@ -2,10 +2,23 @@ import {
   getOnboardingStatus,
   createStoreApplication,
 } from "../services/storeOnboarding.service.js";
+import { geocodeIndianAddress } from "../services/geocoding.service.js";
 import { validateStoreRegistration } from "../utils/validateStoreRegistration.js";
+import { optionalString } from "../utils/queryParams.js";
 
 export async function getStatus(req, res) {
   const data = await getOnboardingStatus(req.user.id);
+  res.status(200).json({ success: true, data });
+}
+
+export async function geocodeStoreAddress(req, res) {
+  const query = optionalString(req.query.q, { field: "q", maxLength: 300 });
+  if (!query) {
+    res.status(200).json({ success: true, data: null });
+    return;
+  }
+
+  const data = await geocodeIndianAddress(query);
   res.status(200).json({ success: true, data });
 }
 

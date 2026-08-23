@@ -1,0 +1,95 @@
+@import "tailwindcss" source("../src");
+
+@theme {
+  --font-sans: "Parkinsans", system-ui, sans-serif;
+
+  --color-canvas: #f7f6f2;
+  --color-surface: #ffffff;
+  --color-surface-sunken: #efede7;
+
+  --color-ink: #15171b;
+  --color-ink-soft: #454a52;
+  --color-ink-muted: #69707a;
+
+  --color-primary: #0c6b4f;
+  --color-primary-hover: #0a5942;
+  --color-primary-fg: #ffffff;
+  --color-primary-soft: #e5f1ec;
+
+  --color-accent: #b77911;
+  --color-accent-soft: #fbf0d9;
+
+  --color-line: #dfddd6;
+  --color-line-soft: #ece9e2;
+
+  --color-success: #187048;
+  --color-success-soft: #e6f4ee;
+  --color-warning: #925708;
+  --color-warning-soft: #fcf1e0;
+  --color-danger: #b23b30;
+  --color-danger-soft: #fbeceb;
+
+  --radius-control: 0.5rem;
+  --radius-card: 0.75rem;
+  --radius-panel: 1rem;
+  --radius-pill: 62.4375rem;
+
+  --shadow-subtle: 0 1px 2px rgba(21, 23, 27, 0.04);
+  --shadow-float: 0 18px 50px rgba(21, 23, 27, 0.12);
+
+  --container-content: 74rem;
+  --ease-brand: cubic-bezier(0.22, 0.61, 0.36, 1);
+
+  --text-heading: 1.75rem;
+  --text-heading--line-height: 1.15;
+  --text-heading--letter-spacing: 0;
+  --text-heading--font-weight: 700;
+
+  --text-section: 1.25rem;
+  --text-section--line-height: 1.25;
+  --text-section--letter-spacing: 0;
+  --text-section--font-weight: 700;
+
+  --text-card: 1rem;
+  --text-card--line-height: 1.35;
+  --text-card--letter-spacing: 0;
+  --text-card--font-weight: 700;
+
+  --text-body: 0.9375rem;
+  --text-body--line-height: 1.55;
+
+  --text-meta: 0.8125rem;
+  --text-meta--line-height: 1.45;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

@@ -19,10 +19,17 @@ const parseOrigins = (value, fallback) =>
     .map((origin) => origin.trim())
     .filter(Boolean);
 
+const nodeEnv = process.env.NODE_ENV ?? "development";
+const localClientUrls = ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175"];
+const configuredClientUrls = parseOrigins(process.env.CLIENT_URL, localClientUrls.join(","));
+
 export const env = {
-  nodeEnv: process.env.NODE_ENV ?? "development",
+  nodeEnv,
   port: parsePort(process.env.PORT, 5000),
-  clientUrls: parseOrigins(process.env.CLIENT_URL, "http://localhost:5173"),
+  clientUrls:
+    nodeEnv === "development"
+      ? [...new Set([...configuredClientUrls, ...localClientUrls])]
+      : configuredClientUrls,
   supabaseUrl: process.env.SUPABASE_URL ?? "",
   supabaseAnonKey: process.env.SUPABASE_ANON_KEY ?? "",
   supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",

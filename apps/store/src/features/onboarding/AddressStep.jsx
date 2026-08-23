@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import Field, { TextInput } from "../../components/Field.jsx";
 import Button from "../../components/Button.jsx";
@@ -15,14 +15,39 @@ export default function AddressStep({ defaultValues, onNext, onBack }) {
     register,
     handleSubmit,
     setValue,
-    watch,
+    control,
     formState: { errors },
   } = useForm({ resolver: zodResolver(addressSchema), defaultValues });
 
   // Coordinates come from the map rather than a text field, so they are held in
   // form state directly and validated by the same schema as everything else.
-  const latitude = watch("latitude");
-  const longitude = watch("longitude");
+  const [
+    latitude,
+    longitude,
+    addressLine1,
+    addressLine2,
+    locality,
+    city,
+    state,
+    postalCode,
+  ] = useWatch({
+    control,
+    name: [
+      "latitude",
+      "longitude",
+      "address_line_1",
+      "address_line_2",
+      "locality",
+      "city",
+      "state",
+      "postal_code",
+    ],
+  });
+  const addressParts = [addressLine1, addressLine2, locality, city, state, postalCode];
+  const addressQuery = [...addressParts, "India"]
+    .map((part) => (typeof part === "string" ? part.trim() : ""))
+    .filter(Boolean)
+    .join(", ");
 
   const handlePick = (lat, lng) => {
     setValue("latitude", lat, { shouldValidate: true, shouldDirty: true });
@@ -126,6 +151,7 @@ export default function AddressStep({ defaultValues, onNext, onBack }) {
           <LocationPicker
             latitude={latitude}
             longitude={longitude}
+            addressQuery={addressQuery}
             onChange={handlePick}
             error={errors.latitude?.message ?? errors.longitude?.message}
           />

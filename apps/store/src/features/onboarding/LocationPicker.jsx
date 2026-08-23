@@ -1,9 +1,10 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Circle, MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
-import { LocateFixed } from "lucide-react";
+import { LocateFixed, MapPin } from "lucide-react";
 import Button from "../../components/Button.jsx";
 import Alert from "../../components/Alert.jsx";
+import { api, ApiError } from "../../lib/api.js";
 import "leaflet/dist/leaflet.css";
 
 // Leaflet's default marker icon resolves its own image URLs, which a bundler
@@ -76,7 +77,7 @@ function describeAccuracy(metres) {
  * When the browser fix is coarse we say so and show the uncertainty as a
  * circle, rather than dropping a confident-looking pin on a guess.
  */
-export default function LocationPicker({ latitude, longitude, onChange, error }) {
+export default function LocationPicker({ latitude, longitude, addressQuery, onChange, error }) {
   const latId = useId();
   const lngId = useId();
 
@@ -86,6 +87,8 @@ export default function LocationPicker({ latitude, longitude, onChange, error })
   const [geoState, setGeoState] = useState("idle");
   const [geoMessage, setGeoMessage] = useState("");
   const [accuracy, setAccuracy] = useState(null);
+  const [lookupState, setLookupState] = useState("idle");
+  const [lookupMessage, setLookupMessage] = useState("");
 
   const useCurrentLocation = () => {
     if (!navigator.geolocation) {
@@ -116,6 +119,38 @@ export default function LocationPicker({ latitude, longitude, onChange, error })
     );
   };
 
+  const findFromAddress = async () => {
+    if (!addressQuery) {
+      setLookupState("error");
+      setLookupMessage("Enter the store address first.");
+      return;
+    }
+
+    setLookupState("locating");
+    setLookupMessage("");
+
+    try {
+      const result = await api.geocodeStoreAddress({ q: addressQuery });
+      if (!result) {
+        setLookupState("error");
+        setLookupMessage("No matching location was found. Place the pin on the map instead.");
+        return;
+      }
+
+      setLookupState("located");
+      setAccuracy(null);
+      setLookupMessage(result.label ? `Matched ${result.label}` : "Matched the address.");
+      onChange(result.lat, result.lng);
+    } catch (lookupError) {
+      setLookupState("error");
+      setLookupMessage(
+        lookupError instanceof ApiError
+          ? lookupError.message
+          : "The address could not be looked up. Place the pin on the map instead.",
+      );
+    }
+  };
+
   // A manual edit supersedes whatever the browser guessed.
   const handleManual = (field, raw) => {
     const value = Number(raw);
@@ -130,15 +165,27 @@ export default function LocationPicker({ latitude, longitude, onChange, error })
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={useCurrentLocation}
-          isLoading={geoState === "locating"}
-        >
-          <LocateFixed className="size-4" aria-hidden="true" />
-          {geoState === "locating" ? "Finding you..." : "Use my current location"}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={findFromAddress}
+            isLoading={lookupState === "locating"}
+          >
+            <MapPin className="size-4" aria-hidden="true" />
+            {lookupState === "locating" ? "Finding address..." : "Find from address"}
+          </Button>
+
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={useCurrentLocation}
+            isLoading={geoState === "locating"}
+          >
+            <LocateFixed className="size-4" aria-hidden="true" />
+            {geoState === "locating" ? "Finding you..." : "Use my current location"}
+          </Button>
+        </div>
 
         <p className="text-meta text-ink-muted" aria-live="polite">
           {hasPosition ? (
@@ -156,6 +203,9 @@ export default function LocationPicker({ latitude, longitude, onChange, error })
       </div>
 
       {geoState === "error" ? <Alert tone="warning">{geoMessage}</Alert> : null}
+      {lookupMessage ? (
+        <Alert tone={lookupState === "error" ? "warning" : "info"}>{lookupMessage}</Alert>
+      ) : null}
 
       {isCoarse ? (
         <Alert tone="warning" title="That location is only approximate">
