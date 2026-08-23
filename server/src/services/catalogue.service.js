@@ -12,6 +12,11 @@ const PRODUCT_FIELDS = `
   brand:brands (id, name, slug, logo_url)
 `;
 
+const PRODUCT_WITH_AVAILABLE_INVENTORY_FIELDS = `
+  ${PRODUCT_FIELDS},
+  store_products!inner (id)
+`;
+
 function failed(operation, error) {
   return httpError(502, `Supabase ${operation} failed: ${error.message}`);
 }
@@ -50,8 +55,9 @@ function applyProductFilters(query, { search, categorySlug, brandSlug }) {
 }
 
 async function countProducts(filters) {
+  const fields = filters.availableOnly ? PRODUCT_WITH_AVAILABLE_INVENTORY_FIELDS : PRODUCT_FIELDS;
   const query = applyProductFilters(
-    getPublicClient().from("products").select(PRODUCT_FIELDS, { count: "exact", head: true }),
+    getPublicClient().from("products").select(fields, { count: "exact", head: true }),
     filters,
   );
 
@@ -67,10 +73,18 @@ async function countProducts(filters) {
  * index, so `ilike '%term%'` stays index-assisted; description has no such
  * index and would force a sequential scan.
  */
-export async function listProducts({ search, categorySlug, brandSlug, limit, offset }) {
+export async function listProducts({
+  search,
+  categorySlug,
+  brandSlug,
+  limit,
+  offset,
+  availableOnly = false,
+}) {
+  const fields = availableOnly ? PRODUCT_WITH_AVAILABLE_INVENTORY_FIELDS : PRODUCT_FIELDS;
   const query = applyProductFilters(
-    getPublicClient().from("products").select(PRODUCT_FIELDS, { count: "exact" }),
-    { search, categorySlug, brandSlug },
+    getPublicClient().from("products").select(fields, { count: "exact" }),
+    { search, categorySlug, brandSlug, availableOnly },
   );
 
   const { data, error, count } = await query
@@ -82,12 +96,17 @@ export async function listProducts({ search, categorySlug, brandSlug, limit, off
     // request for a page beyond the end, not a failure, so report an empty page
     // with the real total rather than a 502.
     if (error.code === "PGRST103") {
-      return { products: [], total: await countProducts({ search, categorySlug, brandSlug }) };
+      return {
+        products: [],
+        total: await countProducts({ search, categorySlug, brandSlug, availableOnly }),
+      };
     }
     throw failed("product search", error);
   }
 
-  return { products: data, total: count ?? 0 };
+  const products = (data ?? []).map(({ store_products: _storeProducts, ...product }) => product);
+
+  return { products, total: count ?? 0 };
 }
 
 export async function getProductBySlug(slug) {

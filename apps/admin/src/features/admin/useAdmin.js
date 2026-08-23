@@ -66,10 +66,11 @@ export function useSellers() {
   });
 }
 
-export function useProducts(params) {
+export function useProducts(params, options = {}) {
   return useQuery({
     queryKey: adminKeys.products(params),
     queryFn: ({ signal }) => api.products({ ...params, signal }).then((r) => r.data),
+    ...options,
   });
 }
 
@@ -148,6 +149,11 @@ export const useUpdateProduct = () =>
     adminKeys.dashboard,
     ["admin", "products"],
   ]);
+
+export const useUploadProductImage = () =>
+  useMutation({
+    mutationFn: (file) => api.uploadProductImage(file).then((r) => r.data),
+  });
 
 export const useCreateCategory = () =>
   useAdminMutation((body) => api.createCategory(body), [adminKeys.categories]);

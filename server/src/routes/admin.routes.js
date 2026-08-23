@@ -1,4 +1,4 @@
-import { Router } from "express";
+import express, { Router } from "express";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireAdmin } from "../middleware/requireAdmin.js";
 import {
@@ -21,6 +21,7 @@ import {
   postApproveStoreChange,
   postBrand,
   postCategory,
+  postProductImage,
   postProduct,
   postRejectStore,
   postRejectStoreChange,
@@ -48,6 +49,11 @@ router.post("/store-changes/:changeId/reject", asyncHandler(postRejectStoreChang
 router.get("/sellers", asyncHandler(getSellers));
 
 router.get("/products", asyncHandler(getProducts));
+router.post(
+  "/product-images",
+  express.raw({ type: "*/*", limit: "2mb" }),
+  asyncHandler(postProductImage),
+);
 router.post("/products", asyncHandler(postProduct));
 router.get("/products/:productId", asyncHandler(getProduct));
 router.patch("/products/:productId", asyncHandler(patchProduct));

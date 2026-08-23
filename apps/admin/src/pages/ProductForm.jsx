@@ -1,6 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Image as ImageIcon, Upload } from "lucide-react";
 import { useForm } from "react-hook-form";
 import Alert from "../components/Alert.jsx";
 import Button from "../components/Button.jsx";
@@ -12,7 +12,9 @@ import {
   useCategories,
   useCreateProduct,
   useProduct,
+  useProducts,
   useUpdateProduct,
+  useUploadProductImage,
 } from "../features/admin/useAdmin.js";
 import { productSchema } from "../features/admin/schemas.js";
 import { zodResolver } from "../lib/zodResolver.js";
@@ -28,6 +30,13 @@ const DEFAULTS = {
   mrp: 0,
   is_active: true,
 };
+
+const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const IMAGE_MAX_BYTES = 2 * 1024 * 1024;
+
+function normalize(value) {
+  return String(value ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+}
 
 function toPayload(values) {
   return {
@@ -48,13 +57,70 @@ export default function ProductForm({ mode }) {
   const brands = useBrands();
   const create = useCreateProduct();
   const update = useUpdateProduct();
+  const uploadImage = useUploadProductImage();
+  const [uploadError, setUploadError] = useState("");
+  const [localPreview, setLocalPreview] = useState("");
 
   const {
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm({ resolver: zodResolver(productSchema), defaultValues: DEFAULTS });
+
+  const watchedName = watch("name");
+  const watchedCategory = watch("category_id");
+  const watchedUnit = watch("unit_label");
+  const watchedBarcode = watch("barcode");
+  const imageUrl = watch("image_url");
+  const duplicateNameSearch = normalize(watchedName);
+  const duplicateBarcodeSearch = normalize(watchedBarcode);
+  const duplicateNameProducts = useProducts(
+    { q: duplicateNameSearch, limit: 8 },
+    { enabled: duplicateNameSearch.length >= 2 },
+  );
+  const duplicateBarcodeProducts = useProducts(
+    { q: duplicateBarcodeSearch, limit: 8 },
+    { enabled: duplicateBarcodeSearch.length >= 2 },
+  );
+
+  const duplicateMatches = useMemo(() => {
+    const name = normalize(watchedName);
+    const unit = normalize(watchedUnit);
+    const barcode = normalize(watchedBarcode);
+
+    if (!name) return [];
+
+    const candidates = new Map(
+      [...(duplicateNameProducts.data ?? []), ...(duplicateBarcodeProducts.data ?? [])].map(
+        (candidate) => [candidate.id, candidate],
+      ),
+    );
+
+    return [...candidates.values()].filter((candidate) => {
+      if (candidate.id === productId) return false;
+      const sameCore =
+        normalize(candidate.name) === name &&
+        candidate.category_id === watchedCategory &&
+        normalize(candidate.unit_label) === unit;
+      const sameBarcode = barcode && normalize(candidate.barcode) === barcode;
+      return sameCore || sameBarcode;
+    });
+  }, [
+    duplicateBarcodeProducts.data,
+    duplicateNameProducts.data,
+    productId,
+    watchedBarcode,
+    watchedCategory,
+    watchedName,
+    watchedUnit,
+  ]);
+
+  useEffect(() => () => {
+    if (localPreview) URL.revokeObjectURL(localPreview);
+  }, [localPreview]);
 
   useEffect(() => {
     if (!product.data) return;
@@ -82,6 +148,36 @@ export default function ProductForm({ mode }) {
 
   const mutation = isEdit ? update : create;
 
+  const handleImageFile = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    if (!IMAGE_TYPES.includes(file.type)) {
+      setUploadError("Upload a JPG, PNG, or WebP image.");
+      return;
+    }
+    if (file.size > IMAGE_MAX_BYTES) {
+      setUploadError("Product images must be 2 MB or smaller.");
+      return;
+    }
+
+    setUploadError("");
+    const previewUrl = URL.createObjectURL(file);
+    setLocalPreview((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return previewUrl;
+    });
+
+    try {
+      const uploaded = await uploadImage.mutateAsync(file);
+      setValue("image_url", uploaded.public_url, { shouldDirty: true, shouldValidate: true });
+      setLocalPreview("");
+    } catch (error) {
+      setUploadError(error?.message ?? "Could not upload image.");
+    }
+  };
+
   const onSubmit = async (values) => {
     const body = toPayload(values);
     if (isEdit) await update.mutateAsync({ id: productId, body });
@@ -108,6 +204,20 @@ export default function ProductForm({ mode }) {
           {mutation.isError ? (
             <div className="sm:col-span-2">
               <Alert tone="error">{mutation.error?.message ?? "Could not save product."}</Alert>
+            </div>
+          ) : null}
+
+          {duplicateMatches.length > 0 ? (
+            <div className="sm:col-span-2">
+              <Alert tone="warning" title="Possible duplicate product">
+                <span className="block">
+                  Similar product already exists:{" "}
+                  {duplicateMatches.slice(0, 2).map((item) => item.name).join(", ")}.
+                </span>
+                <span className="mt-1 block">
+                  Check the existing catalogue before saving another canonical product.
+                </span>
+              </Alert>
             </div>
           ) : null}
 
@@ -161,9 +271,77 @@ export default function ProductForm({ mode }) {
             {(field) => <TextInput {...field} {...register("barcode")} invalid={Boolean(errors.barcode)} />}
           </Field>
 
-          <Field label="Image URL" error={errors.image_url?.message}>
-            {(field) => <TextInput {...field} {...register("image_url")} invalid={Boolean(errors.image_url)} />}
-          </Field>
+          <div className="sm:col-span-2">
+            <div className="grid gap-4 rounded-card border border-line-soft bg-surface-sunken p-4 sm:grid-cols-[12rem_1fr]">
+              <div className="flex h-40 items-center justify-center overflow-hidden rounded-card border border-line bg-surface">
+                {localPreview || imageUrl ? (
+                  <img
+                    src={localPreview || imageUrl}
+                    alt=""
+                    className="size-full object-contain p-2"
+                    onError={(event) => {
+                      event.currentTarget.style.display = "none";
+                    }}
+                  />
+                ) : (
+                  <div className="grid justify-items-center gap-2 text-center text-meta text-ink-muted">
+                    <ImageIcon className="size-8" aria-hidden="true" />
+                    Product image
+                  </div>
+                )}
+              </div>
+
+              <div className="min-w-0">
+                <p className="text-card text-ink">Product image</p>
+                <p className="mt-1 text-meta text-ink-muted">
+                  Upload JPG, PNG, or WebP up to 2 MB. The saved URL remains editable for imported images.
+                </p>
+
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <label className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-control bg-primary px-3.5 text-meta font-semibold text-primary-fg transition-colors hover:bg-primary-hover">
+                    <Upload className="size-3.5" aria-hidden="true" />
+                    {uploadImage.isPending ? "Uploading..." : "Upload image"}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={handleImageFile}
+                      disabled={uploadImage.isPending}
+                      className="sr-only"
+                    />
+                  </label>
+                  {imageUrl ? (
+                    <button
+                      type="button"
+                      onClick={() => setValue("image_url", "", { shouldDirty: true, shouldValidate: true })}
+                      className="inline-flex h-9 items-center rounded-control px-3 text-meta font-semibold text-ink-soft hover:bg-surface hover:text-ink"
+                    >
+                      Remove image
+                    </button>
+                  ) : null}
+                </div>
+
+                {uploadError ? (
+                  <p role="alert" className="mt-2 flex items-center gap-1.5 text-meta font-medium text-danger">
+                    <AlertTriangle className="size-3.5" aria-hidden="true" />
+                    {uploadError}
+                  </p>
+                ) : null}
+
+                <div className="mt-4">
+                  <Field label="Image URL fallback" error={errors.image_url?.message}>
+                    {(field) => (
+                      <TextInput
+                        {...field}
+                        {...register("image_url")}
+                        invalid={Boolean(errors.image_url)}
+                        placeholder="https://..."
+                      />
+                    )}
+                  </Field>
+                </div>
+              </div>
+            </div>
+          </div>
 
           <div className="sm:col-span-2">
             <Field label="Description" error={errors.description?.message}>

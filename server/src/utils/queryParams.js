@@ -61,6 +61,19 @@ export function optionalInteger(value, { field, min, max, fallback }) {
   return parsed;
 }
 
+export function optionalBoolean(value, { field, fallback = false } = {}) {
+  if (value === undefined || value === null || value === "") return fallback;
+  if (typeof value !== "string") {
+    throw badRequest(`${field} must be true or false`);
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "true") return true;
+  if (normalized === "false") return false;
+
+  throw badRequest(`${field} must be true or false`);
+}
+
 /**
  * limit / offset shared by every list endpoint.
  */

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { getServiceClient } from "../config/supabase.js";
 import { httpError, notFoundError } from "../utils/httpError.js";
 import { escapeLikePattern } from "../utils/queryParams.js";
@@ -33,6 +34,13 @@ const PRODUCT_FIELDS = `
 
 const CATEGORY_FIELDS = "id, name, slug, description, image_url, is_active, created_at, updated_at";
 const BRAND_FIELDS = "id, name, slug, logo_url, created_at, updated_at";
+const PRODUCT_IMAGE_BUCKET = "product-images";
+const PRODUCT_IMAGE_TYPES = new Map([
+  ["image/jpeg", "jpg"],
+  ["image/png", "png"],
+  ["image/webp", "webp"],
+]);
+const PRODUCT_IMAGE_MAX_BYTES = 2 * 1024 * 1024;
 
 function failed(operation, error) {
   console.error(`[kirana-connect-api] admin ${operation} failed:`, error.message);
@@ -545,7 +553,10 @@ export async function listSellers() {
 }
 
 function applyProductFilters(query, { search, categoryId, brandId, active }) {
-  if (search) query = query.ilike("name", `%${escapeLikePattern(search)}%`);
+  if (search) {
+    const pattern = `%${escapeLikePattern(search)}%`;
+    query = query.or(`name.ilike.${pattern},barcode.ilike.${pattern}`);
+  }
   if (categoryId) query = query.eq("category_id", categoryId);
   if (brandId) query = query.eq("brand_id", brandId);
   if (active !== null) query = query.eq("is_active", active);
@@ -606,6 +617,52 @@ export async function updateProduct(productId, patch) {
   if (error) throw failed("update product", error);
   if (!data) throw notFoundError("Product not found.");
   return data;
+}
+
+async function ensureProductImageBucket(client) {
+  const { data, error } = await client.storage.getBucket(PRODUCT_IMAGE_BUCKET);
+  if (!error && data) return;
+
+  const { error: createError } = await client.storage.createBucket(PRODUCT_IMAGE_BUCKET, {
+    public: true,
+    fileSizeLimit: PRODUCT_IMAGE_MAX_BYTES,
+    allowedMimeTypes: [...PRODUCT_IMAGE_TYPES.keys()],
+  });
+
+  if (createError && !String(createError.message).toLowerCase().includes("already exists")) {
+    throw failed("prepare product image storage", createError);
+  }
+}
+
+export async function uploadProductImage({ buffer, mimeType }) {
+  if (!Buffer.isBuffer(buffer) || buffer.length === 0) {
+    throw httpError(400, "Choose an image to upload.");
+  }
+  if (buffer.length > PRODUCT_IMAGE_MAX_BYTES) {
+    throw httpError(413, "Product images must be 2 MB or smaller.");
+  }
+
+  const extension = PRODUCT_IMAGE_TYPES.get(mimeType);
+  if (!extension) {
+    throw httpError(415, "Upload a JPG, PNG, or WebP image.");
+  }
+
+  const client = getServiceClient();
+  await ensureProductImageBucket(client);
+
+  const path = `products/${new Date().toISOString().slice(0, 10)}/${randomUUID()}.${extension}`;
+  const { error } = await client.storage
+    .from(PRODUCT_IMAGE_BUCKET)
+    .upload(path, buffer, {
+      contentType: mimeType,
+      cacheControl: "31536000",
+      upsert: false,
+    });
+
+  if (error) throw failed("upload product image", error);
+
+  const { data } = client.storage.from(PRODUCT_IMAGE_BUCKET).getPublicUrl(path);
+  return { bucket: PRODUCT_IMAGE_BUCKET, path, public_url: data.publicUrl };
 }
 
 export async function listAdminCategories() {

@@ -8,11 +8,12 @@ export const discoveryKeys = {
 };
 
 export function useProductSearch({ search, category, limit, offset }) {
-  const params = { search: search || null, category: category || null, limit, offset };
+  const params = { search: search || null, category: category || null, availableOnly: true, limit, offset };
 
   return useQuery({
     queryKey: discoveryKeys.products(params),
-    queryFn: ({ signal }) => fetchProducts({ search, category, limit, offset, signal }),
+    queryFn: ({ signal }) =>
+      fetchProducts({ search, category, availableOnly: true, limit, offset, signal }),
     // Keeps the previous page visible while the next one loads, so the list
     // does not collapse to a skeleton on every keystroke.
     placeholderData: (previous) => previous,

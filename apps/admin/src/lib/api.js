@@ -57,6 +57,34 @@ async function request(path, { method = "GET", body, signal, params } = {}) {
   return { data: payload.data, meta: payload.meta };
 }
 
+async function upload(path, file) {
+  const headers = { Accept: "application/json", ...(await authHeader()) };
+  if (file?.type) headers["Content-Type"] = file.type;
+
+  let response;
+  try {
+    response = await fetch(`${BASE_URL}/api/admin${path}`, {
+      method: "POST",
+      headers,
+      body: file,
+    });
+  } catch (cause) {
+    if (cause?.name === "AbortError") throw cause;
+    throw new ApiError("Could not reach the Kirana Connect API.", 0);
+  }
+
+  const payload = await response.json().catch(() => null);
+  if (!response.ok || !payload?.success) {
+    throw new ApiError(
+      payload?.error?.message ?? "Upload failed. Please try again.",
+      response.status,
+      payload?.data,
+    );
+  }
+
+  return { data: payload.data, meta: payload.meta };
+}
+
 export const api = {
   me: (options) => request("/me", options),
   dashboard: (options) => request("/dashboard", options),
@@ -75,6 +103,7 @@ export const api = {
 
   products: ({ signal, ...params } = {}) => request("/products", { signal, params }),
   product: (id, options) => request(`/products/${id}`, options),
+  uploadProductImage: (file) => upload("/product-images", file),
   createProduct: (body) => request("/products", { method: "POST", body }),
   updateProduct: (id, body) => request(`/products/${id}`, { method: "PATCH", body }),
 

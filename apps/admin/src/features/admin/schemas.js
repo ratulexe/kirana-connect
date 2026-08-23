@@ -28,7 +28,10 @@ export const productSchema = z.object({
   image_url: optionalUrl,
   barcode: optionalText(120),
   unit_label: z.string().trim().min(1, "Enter a unit").max(60, "Unit is too long"),
-  mrp: z.coerce.number().min(0, "MRP cannot be negative"),
+  mrp: z.preprocess(
+    (value) => (value === "" || value === null ? undefined : value),
+    z.coerce.number({ error: "Enter the MRP" }).min(0, "MRP cannot be negative"),
+  ),
   is_active: z.boolean(),
 });
 

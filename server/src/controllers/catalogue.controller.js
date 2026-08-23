@@ -4,7 +4,7 @@ import {
   listProducts,
   getProductBySlug,
 } from "../services/catalogue.service.js";
-import { optionalString, parsePagination } from "../utils/queryParams.js";
+import { optionalBoolean, optionalString, parsePagination } from "../utils/queryParams.js";
 
 export async function getCategories(req, res) {
   const data = await listCategories();
@@ -23,6 +23,7 @@ export async function getProducts(req, res) {
     search: optionalString(req.query.q, { field: "q" }),
     categorySlug: optionalString(req.query.category, { field: "category" }),
     brandSlug: optionalString(req.query.brand, { field: "brand" }),
+    availableOnly: optionalBoolean(req.query.available_only, { field: "available_only" }),
     limit,
     offset,
   });

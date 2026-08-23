@@ -9,10 +9,17 @@ export async function fetchCategories({ signal } = {}) {
   return data;
 }
 
-export async function fetchProducts({ search, category, limit = 24, offset = 0, signal } = {}) {
+export async function fetchProducts({
+  search,
+  category,
+  availableOnly = false,
+  limit = 24,
+  offset = 0,
+  signal,
+} = {}) {
   const { data, meta } = await apiGet("/products", {
     signal,
-    params: { q: search, category, limit, offset },
+    params: { q: search, category, available_only: availableOnly, limit, offset },
   });
   return { products: data, meta };
 }

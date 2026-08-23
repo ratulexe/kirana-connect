@@ -21,6 +21,7 @@ import {
   updateCategory,
   updateProduct,
   updateStoreState,
+  uploadProductImage,
 } from "../services/admin.service.js";
 import {
   validateAdminStorePatch,
@@ -169,6 +170,14 @@ export async function patchProduct(req, res) {
     validateProductUpdate(req.body),
   );
   res.status(200).json({ success: true, data });
+}
+
+export async function postProductImage(req, res) {
+  const data = await uploadProductImage({
+    buffer: req.body,
+    mimeType: req.get("content-type")?.split(";")[0]?.trim().toLowerCase(),
+  });
+  res.status(201).json({ success: true, data });
 }
 
 export async function getCategories(req, res) {
