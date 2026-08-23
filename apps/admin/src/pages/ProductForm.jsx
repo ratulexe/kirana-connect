@@ -33,6 +33,63 @@ const DEFAULTS = {
 
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const IMAGE_MAX_BYTES = 2 * 1024 * 1024;
+const UNIT_OPTIONS = [
+  "1 pc",
+  "2 pcs",
+  "3 pcs",
+  "4 pcs",
+  "6 pcs",
+  "10 pcs",
+  "12 pcs",
+  "1 pair",
+  "1 set",
+  "1 pack",
+  "2 pack",
+  "3 pack",
+  "6 pack",
+  "1 box",
+  "1 pouch",
+  "1 sachet",
+  "1 bottle",
+  "1 jar",
+  "1 can",
+  "1 tube",
+  "1 bar",
+  "1 roll",
+  "1 strip",
+  "1 sheet",
+  "1 bag",
+  "50 g",
+  "100 g",
+  "150 g",
+  "200 g",
+  "250 g",
+  "500 g",
+  "750 g",
+  "1 kg",
+  "2 kg",
+  "5 kg",
+  "10 kg",
+  "25 kg",
+  "50 ml",
+  "100 ml",
+  "200 ml",
+  "250 ml",
+  "500 ml",
+  "750 ml",
+  "1 L",
+  "2 L",
+  "5 L",
+  "10 L",
+  "6 eggs",
+  "12 eggs",
+  "250 mg",
+  "500 mg",
+  "1 tablet",
+  "10 tablets",
+  "15 tablets",
+  "30 tablets",
+];
 
 function normalize(value) {
   return String(value ?? "").trim().replace(/\s+/g, " ").toLowerCase();
@@ -60,6 +117,7 @@ export default function ProductForm({ mode }) {
   const uploadImage = useUploadProductImage();
   const [uploadError, setUploadError] = useState("");
   const [localPreview, setLocalPreview] = useState("");
+  const [duplicateError, setDuplicateError] = useState(false);
 
   const {
     register,
@@ -117,6 +175,16 @@ export default function ProductForm({ mode }) {
     watchedName,
     watchedUnit,
   ]);
+  const unitOptions = useMemo(() => {
+    const current = String(watchedUnit ?? "").trim();
+    return current && !UNIT_OPTIONS.includes(current)
+      ? [current, ...UNIT_OPTIONS]
+      : UNIT_OPTIONS;
+  }, [watchedUnit]);
+
+  useEffect(() => {
+    if (duplicateMatches.length === 0) setDuplicateError(false);
+  }, [duplicateMatches.length]);
 
   useEffect(() => () => {
     if (localPreview) URL.revokeObjectURL(localPreview);
@@ -179,6 +247,11 @@ export default function ProductForm({ mode }) {
   };
 
   const onSubmit = async (values) => {
+    if (duplicateMatches.length > 0) {
+      setDuplicateError(true);
+      return;
+    }
+
     const body = toPayload(values);
     if (isEdit) await update.mutateAsync({ id: productId, body });
     else await create.mutateAsync(body);
@@ -209,13 +282,16 @@ export default function ProductForm({ mode }) {
 
           {duplicateMatches.length > 0 ? (
             <div className="sm:col-span-2">
-              <Alert tone="warning" title="Possible duplicate product">
+              <Alert
+                tone={duplicateError ? "error" : "warning"}
+                title={duplicateError ? "This product already exists" : "Possible duplicate product"}
+              >
                 <span className="block">
                   Similar product already exists:{" "}
                   {duplicateMatches.slice(0, 2).map((item) => item.name).join(", ")}.
                 </span>
                 <span className="mt-1 block">
-                  Check the existing catalogue before saving another canonical product.
+                  You cannot create the same catalogue product again. Open the existing product and edit it instead.
                 </span>
               </Alert>
             </div>
@@ -250,7 +326,16 @@ export default function ProductForm({ mode }) {
           </Field>
 
           <Field label="Unit label" required error={errors.unit_label?.message}>
-            {(field) => <TextInput {...field} {...register("unit_label")} invalid={Boolean(errors.unit_label)} placeholder="500 g" />}
+            {(field) => (
+              <SelectInput {...field} {...register("unit_label")} invalid={Boolean(errors.unit_label)}>
+                <option value="">Choose unit</option>
+                {unitOptions.map((unit) => (
+                  <option key={unit} value={unit}>
+                    {unit}
+                  </option>
+                ))}
+              </SelectInput>
+            )}
           </Field>
 
           <Field label="MRP" required error={errors.mrp?.message}>
