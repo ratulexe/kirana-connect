@@ -58,6 +58,7 @@ export default function SiteHeader() {
 
           <div className="ml-auto flex items-center gap-1 md:ml-0">
             <LocationControl className="hidden sm:block" />
+            <LocationControl compact className="sm:hidden" />
             <IconButton
               label="Search products"
               icon={Search}

@@ -1,11 +1,24 @@
 import { create } from "zustand";
 
 const STORAGE_KEY = "kc-location";
+const ADDRESS_STORAGE_KEY = "kc-saved-addresses";
 const PRECISE_CUSTOMER_ACCURACY_M = 1000;
 const LOCATION_TIMEOUT_MS = 12000;
 
 function clearStored() {
   localStorage.removeItem(STORAGE_KEY);
+}
+
+function persistLocation(location) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(location));
+}
+
+function persistAddresses(addresses) {
+  localStorage.setItem(ADDRESS_STORAGE_KEY, JSON.stringify(addresses));
+}
+
+function createId() {
+  return globalThis.crypto?.randomUUID?.() ?? `addr-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 function isUsable(position) {
@@ -18,6 +31,7 @@ function toLocation(position) {
     lat: Math.round(position.coords.latitude * 1e6) / 1e6,
     lng: Math.round(position.coords.longitude * 1e6) / 1e6,
     accuracy: position.coords.accuracy ?? null,
+    source: "browser",
   };
 }
 
@@ -38,6 +52,50 @@ function readStored() {
   }
 }
 
+function cleanText(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function readSavedAddresses() {
+  try {
+    const raw = localStorage.getItem(ADDRESS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed
+      .filter((address) => Number.isFinite(Number(address?.lat)) && Number.isFinite(Number(address?.lng)))
+      .map((address) => ({
+        id: cleanText(address.id) || createId(),
+        label: cleanText(address.label) || "Saved address",
+        contactName: cleanText(address.contactName),
+        phone: cleanText(address.phone),
+        house: cleanText(address.house),
+        area: cleanText(address.area),
+        landmark: cleanText(address.landmark),
+        note: cleanText(address.note),
+        lat: Math.round(Number(address.lat) * 1e6) / 1e6,
+        lng: Math.round(Number(address.lng) * 1e6) / 1e6,
+        createdAt: address.createdAt || new Date().toISOString(),
+        updatedAt: address.updatedAt || address.createdAt || new Date().toISOString(),
+      }));
+  } catch {
+    return [];
+  }
+}
+
+function addressLocation(address) {
+  return {
+    lat: address.lat,
+    lng: address.lng,
+    accuracy: null,
+    source: "saved_address",
+    addressId: address.id,
+    addressLabel: address.label,
+    addressLine: [address.house, address.area].filter(Boolean).join(", "),
+  };
+}
+
 /**
  * The customer's chosen location.
  *
@@ -51,6 +109,7 @@ function readStored() {
  */
 export const useLocationStore = create((set) => ({
   location: readStored(),
+  savedAddresses: readSavedAddresses(),
   status: "idle",
   error: "",
 
@@ -67,8 +126,68 @@ export const useLocationStore = create((set) => ({
   },
 
   setLocation(location) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(location));
+    persistLocation(location);
     set({ location, status: "ready", error: "" });
+  },
+
+  selectAddress(id) {
+    set((state) => {
+      const address = state.savedAddresses.find((item) => item.id === id);
+      if (!address) return { error: "That saved address is no longer available." };
+      const location = addressLocation(address);
+      persistLocation(location);
+      return { location, status: "ready", error: "" };
+    });
+  },
+
+  saveAddress(input) {
+    const now = new Date().toISOString();
+    const address = {
+      id: input.id || createId(),
+      label: cleanText(input.label) || "Saved address",
+      contactName: cleanText(input.contactName),
+      phone: cleanText(input.phone),
+      house: cleanText(input.house),
+      area: cleanText(input.area),
+      landmark: cleanText(input.landmark),
+      note: cleanText(input.note),
+      lat: Math.round(Number(input.lat) * 1e6) / 1e6,
+      lng: Math.round(Number(input.lng) * 1e6) / 1e6,
+      createdAt: input.createdAt || now,
+      updatedAt: now,
+    };
+
+    if (!Number.isFinite(address.lat) || !Number.isFinite(address.lng)) {
+      set({ error: "Enter a valid latitude and longitude for this address." });
+      return;
+    }
+
+    set((state) => {
+      const addresses = state.savedAddresses.some((item) => item.id === address.id)
+        ? state.savedAddresses.map((item) => (item.id === address.id ? address : item))
+        : [address, ...state.savedAddresses].slice(0, 8);
+      const location = addressLocation(address);
+
+      persistAddresses(addresses);
+      persistLocation(location);
+
+      return { savedAddresses: addresses, location, status: "ready", error: "" };
+    });
+  },
+
+  removeAddress(id) {
+    set((state) => {
+      const addresses = state.savedAddresses.filter((item) => item.id !== id);
+      const activeRemoved = state.location?.addressId === id;
+      persistAddresses(addresses);
+      if (activeRemoved) clearStored();
+      return {
+        savedAddresses: addresses,
+        location: activeRemoved ? null : state.location,
+        status: activeRemoved ? "idle" : state.status,
+        error: "",
+      };
+    });
   },
 
   detect() {
@@ -95,7 +214,7 @@ export const useLocationStore = create((set) => ({
 
     const savePosition = (position, message = "") => {
       const location = toLocation(position);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(location));
+      persistLocation(location);
       finish({ location, status: "ready", error: message });
     };
 
