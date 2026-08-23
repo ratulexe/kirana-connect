@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Check, Pencil, Trash2, X } from "lucide-react";
 import Button from "../../components/Button.jsx";
+import ProductImage from "../../components/ProductImage.jsx";
 import { formatPrice, formatRelativeTime } from "../../utils/format.js";
 import { useRemoveInventoryItem, useUpdateInventoryItem } from "./useInventory.js";
 
@@ -94,13 +95,16 @@ export default function InventoryRow({ item }) {
   return (
     <li className="px-4 py-4 sm:px-5">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
-        <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 items-start gap-3">
+          <ProductImage src={product.image_url} name={product.name} size="sm" />
+          <div className="min-w-0">
           <p className="text-card text-ink">{product.name}</p>
           <p className="mt-0.5 text-meta text-ink-muted">
             {product.unit_label}
             {product.brand ? ` · ${product.brand.name}` : ""}
             {` · MRP ${formatPrice(mrp)}`}
           </p>
+          </div>
         </div>
 
         {!isEditing ? (

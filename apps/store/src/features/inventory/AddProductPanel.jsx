@@ -3,6 +3,7 @@ import { Check, Plus, Search, X } from "lucide-react";
 import Button from "../../components/Button.jsx";
 import Alert from "../../components/Alert.jsx";
 import Skeleton from "../../components/Skeleton.jsx";
+import ProductImage from "../../components/ProductImage.jsx";
 import { formatPrice } from "../../utils/format.js";
 import { useAddInventoryItem, useCatalogueSearch } from "./useInventory.js";
 
@@ -127,7 +128,9 @@ export default function AddProductPanel({ existingProductIds, onClose }) {
                       key={product.id}
                       className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
                     >
-                      <div className="min-w-0">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <ProductImage src={product.image_url} name={product.name} size="sm" />
+                        <div className="min-w-0">
                         <p className="text-[0.9375rem] font-semibold text-ink">
                           {product.name}
                         </p>
@@ -136,6 +139,7 @@ export default function AddProductPanel({ existingProductIds, onClose }) {
                           {product.brand ? ` · ${product.brand.name}` : ""}
                           {` · MRP ${formatPrice(product.mrp)}`}
                         </p>
+                        </div>
                       </div>
                       {alreadyListed ? (
                         <span className="inline-flex items-center gap-1 text-meta font-semibold text-success">
@@ -157,11 +161,14 @@ export default function AddProductPanel({ existingProductIds, onClose }) {
         </div>
       ) : (
         <form onSubmit={submit} className="mt-5">
-          <div className="rounded-card border border-line bg-canvas p-4">
-            <p className="text-card text-ink">{selected.name}</p>
-            <p className="mt-0.5 text-meta text-ink-muted">
-              {selected.unit_label} · MRP {formatPrice(selected.mrp)}
-            </p>
+          <div className="flex items-center gap-3 rounded-card border border-line bg-canvas p-4">
+            <ProductImage src={selected.image_url} name={selected.name} size="md" />
+            <div>
+              <p className="text-card text-ink">{selected.name}</p>
+              <p className="mt-0.5 text-meta text-ink-muted">
+                {selected.unit_label} · MRP {formatPrice(selected.mrp)}
+              </p>
+            </div>
           </div>
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
