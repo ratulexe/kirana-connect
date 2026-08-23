@@ -62,10 +62,13 @@ export const api = {
   dashboard: (options) => request("/dashboard", options),
 
   pendingStores: (options) => request("/stores/pending", options),
+  pendingStoreChanges: (options) => request("/store-changes/pending", options),
   stores: ({ signal, ...params } = {}) => request("/stores", { signal, params }),
   store: (id, options) => request(`/stores/${id}`, options),
   approveStore: (id) => request(`/stores/${id}/approve`, { method: "POST" }),
   rejectStore: (id) => request(`/stores/${id}/reject`, { method: "POST" }),
+  approveStoreChange: (id) => request(`/store-changes/${id}/approve`, { method: "POST" }),
+  rejectStoreChange: (id) => request(`/store-changes/${id}/reject`, { method: "POST" }),
   updateStore: (id, body) => request(`/stores/${id}`, { method: "PATCH", body }),
 
   sellers: (options) => request("/sellers", options),

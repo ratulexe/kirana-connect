@@ -23,3 +23,12 @@ export function useSubmitStore() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: onboardingKeys.status }),
   });
 }
+
+export function useSubmitStoreChange() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ storeId, payload }) => api.submitStoreChange(storeId, payload),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: onboardingKeys.status }),
+  });
+}

@@ -25,13 +25,24 @@ function Row({ icon: Icon, title, children, onEdit, editLabel }) {
  * Submission lives only here: earlier steps advance with their own buttons and
  * never post, so an accidental Enter keypress mid-wizard cannot register a store.
  */
-export default function ReviewStep({ values, onBack, onEditStep, onSubmit, isSubmitting, error }) {
+export default function ReviewStep({
+  values,
+  onBack,
+  onEditStep,
+  onSubmit,
+  isSubmitting,
+  error,
+  errorTitle = "Could not submit your store",
+  infoText = "Submitting sends your store for verification. It stays hidden from customers until it is approved.",
+  submitLabel = "Submit store for verification",
+  submittingLabel = "Submitting...",
+}) {
   const { store, address, hours } = values;
   const openDays = hours.filter((day) => !day.is_closed);
 
   return (
     <div className="flex flex-col gap-5">
-      {error ? <Alert tone="error" title="Could not submit your store">{error}</Alert> : null}
+      {error ? <Alert tone="error" title={errorTitle}>{error}</Alert> : null}
 
       <div className="divide-y divide-line-soft rounded-card border border-line bg-surface">
         <Row icon={StoreIcon} title="Store" onEdit={() => onEditStep(0)} editLabel="Edit store details">
@@ -77,10 +88,7 @@ export default function ReviewStep({ values, onBack, onEditStep, onSubmit, isSub
         </Row>
       </div>
 
-      <Alert tone="info">
-        Submitting sends your store for verification. It stays hidden from customers
-        until it is approved.
-      </Alert>
+      <Alert tone="info">{infoText}</Alert>
 
       <div className="flex flex-wrap justify-between gap-3">
         <Button type="button" variant="ghost" onClick={onBack}>
@@ -88,7 +96,7 @@ export default function ReviewStep({ values, onBack, onEditStep, onSubmit, isSub
           Back
         </Button>
         <Button type="button" onClick={onSubmit} isLoading={isSubmitting} size="lg">
-          {isSubmitting ? "Submitting..." : "Submit store for verification"}
+          {isSubmitting ? submittingLabel : submitLabel}
         </Button>
       </div>
     </div>

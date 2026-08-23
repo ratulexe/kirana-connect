@@ -11,6 +11,11 @@ const STORE_FIELDS = `
 
 const HOURS_FIELDS = "day_of_week, opens_at, closes_at, is_closed";
 
+const CHANGE_REQUEST_FIELDS = `
+  id, store_id, owner_id, payload, hours, status, submitted_at,
+  reviewed_at, reviewed_by, admin_note
+`;
+
 const PRODUCT_FIELDS = `
   id, category_id, brand_id, name, slug, description, image_url, barcode,
   unit_label, mrp, is_active, created_at, updated_at,
@@ -131,10 +136,25 @@ async function withHours(stores) {
   return stores.map((store) => ({ ...store, hours: hours.get(store.id) ?? [] }));
 }
 
+async function pendingChangeByStoreId(storeId) {
+  const { data, error } = await getServiceClient()
+    .from("store_change_requests")
+    .select(CHANGE_REQUEST_FIELDS)
+    .eq("store_id", storeId)
+    .eq("status", "pending")
+    .maybeSingle();
+
+  if (error) throw failed("load pending store change", error);
+  return data ?? null;
+}
+
 async function storeWithDetails(store) {
   const [owned] = await withOwners([store]);
   const [detailed] = await withHours([owned]);
-  return detailed;
+  return {
+    ...detailed,
+    pending_change: await pendingChangeByStoreId(store.id),
+  };
 }
 
 async function slugFor(table, name, currentId) {
@@ -159,6 +179,7 @@ export async function getAdminProfile(user) {
 export async function dashboardMetrics() {
   const [
     pendingStores,
+    pendingStoreChanges,
     verifiedStores,
     activeStores,
     sellers,
@@ -166,6 +187,7 @@ export async function dashboardMetrics() {
     inventoryLines,
   ] = await Promise.all([
     countRows("stores", (query) => query.eq("is_verified", false)),
+    countRows("store_change_requests", (query) => query.eq("status", "pending")),
     countRows("stores", (query) => query.eq("is_verified", true)),
     countRows("stores", (query) => query.eq("is_active", true)),
     countRows("profiles", (query) => query.eq("role", "seller")),
@@ -176,7 +198,14 @@ export async function dashboardMetrics() {
   const latestPending = await listPendingStores({ limit: 5, offset: 0 });
 
   return {
-    metrics: { pendingStores, verifiedStores, activeStores, sellers, products, inventoryLines },
+    metrics: {
+      pendingStores: pendingStores + pendingStoreChanges,
+      verifiedStores,
+      activeStores,
+      sellers,
+      products,
+      inventoryLines,
+    },
     latest_pending_stores: latestPending.stores,
   };
 }
@@ -192,6 +221,39 @@ export async function listPendingStores({ limit, offset }) {
   if (error) throw failed("load pending stores", error);
   const stores = await withHours(await withOwners(data ?? []));
   return { stores, total: count ?? 0 };
+}
+
+export async function listPendingStoreChanges({ limit, offset }) {
+  const { data, error, count } = await getServiceClient()
+    .from("store_change_requests")
+    .select(CHANGE_REQUEST_FIELDS, { count: "exact" })
+    .eq("status", "pending")
+    .order("submitted_at", { ascending: true })
+    .range(offset, offset + limit - 1);
+
+  if (error) throw failed("load pending store changes", error);
+
+  const storeIds = (data ?? []).map((change) => change.store_id);
+  const { data: stores, error: storesError } = storeIds.length
+    ? await getServiceClient()
+        .from("stores")
+        .select(STORE_FIELDS)
+        .in("id", storeIds)
+    : { data: [], error: null };
+
+  if (storesError) throw failed("load stores for pending changes", storesError);
+
+  const storesById = new Map(
+    (await withOwners(stores ?? [])).map((store) => [store.id, store]),
+  );
+
+  return {
+    changes: (data ?? []).map((change) => ({
+      ...change,
+      store: storesById.get(change.store_id) ?? null,
+    })),
+    total: count ?? 0,
+  };
 }
 
 function applyStoreFilters(query, { search, verified, active }) {
@@ -280,6 +342,87 @@ export async function rejectStore(storeId) {
   if (error) throw failed("reject store application", error);
 
   return { id: store.id, name: store.name, rejected: true };
+}
+
+export async function approveStoreChange(changeId, adminId) {
+  const client = getServiceClient();
+  const { data: change, error: readError } = await client
+    .from("store_change_requests")
+    .select(CHANGE_REQUEST_FIELDS)
+    .eq("id", changeId)
+    .eq("status", "pending")
+    .maybeSingle();
+
+  if (readError) throw failed("load store change for approval", readError);
+  if (!change) throw notFoundError("Store change request not found.");
+
+  const { data: current, error: storeReadError } = await client
+    .from("stores")
+    .select("id, name")
+    .eq("id", change.store_id)
+    .maybeSingle();
+
+  if (storeReadError) throw failed("load store for change approval", storeReadError);
+  if (!current) throw notFoundError("Store not found.");
+
+  const patch = { ...change.payload };
+  if (patch.name && patch.name !== current.name) {
+    patch.slug = await slugFor("stores", patch.name, current.id);
+  }
+
+  const { error: storeError } = await client
+    .from("stores")
+    .update(patch)
+    .eq("id", current.id);
+
+  if (storeError) throw failed("apply store changes", storeError);
+
+  const { error: deleteHoursError } = await client
+    .from("store_hours")
+    .delete()
+    .eq("store_id", current.id);
+
+  if (deleteHoursError) throw failed("replace store hours", deleteHoursError);
+
+  if ((change.hours ?? []).length > 0) {
+    const { error: insertHoursError } = await client
+      .from("store_hours")
+      .insert(change.hours.map((hour) => ({ ...hour, store_id: current.id })));
+
+    if (insertHoursError) throw failed("save store hours", insertHoursError);
+  }
+
+  const { error: reviewError } = await client
+    .from("store_change_requests")
+    .update({
+      status: "approved",
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: adminId,
+    })
+    .eq("id", change.id);
+
+  if (reviewError) throw failed("mark store change approved", reviewError);
+
+  return getStoreDetail(current.id);
+}
+
+export async function rejectStoreChange(changeId, adminId) {
+  const { data, error } = await getServiceClient()
+    .from("store_change_requests")
+    .update({
+      status: "rejected",
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: adminId,
+    })
+    .eq("id", changeId)
+    .eq("status", "pending")
+    .select(CHANGE_REQUEST_FIELDS)
+    .maybeSingle();
+
+  if (error) throw failed("reject store change", error);
+  if (!data) throw notFoundError("Store change request not found.");
+
+  return data;
 }
 
 export async function updateStoreState(storeId, patch) {

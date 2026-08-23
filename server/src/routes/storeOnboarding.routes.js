@@ -3,6 +3,7 @@ import { requireAuth } from "../middleware/requireAuth.js";
 import {
   geocodeStoreAddress,
   getStatus,
+  submitStoreChange,
   submitStore,
 } from "../controllers/storeOnboarding.controller.js";
 import { asyncHandler } from "../utils/httpError.js";
@@ -15,5 +16,6 @@ router.use(requireAuth);
 router.get("/geocode", asyncHandler(geocodeStoreAddress));
 router.get("/status", asyncHandler(getStatus));
 router.post("/", asyncHandler(submitStore));
+router.post("/stores/:storeId/changes", asyncHandler(submitStoreChange));
 
 export default router;

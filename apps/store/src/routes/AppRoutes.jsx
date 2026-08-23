@@ -6,6 +6,7 @@ import Login from "../pages/Login.jsx";
 import Register from "../pages/Register.jsx";
 import Onboarding from "../pages/Onboarding.jsx";
 import Status from "../pages/Status.jsx";
+import StoreDetails from "../pages/StoreDetails.jsx";
 import Inventory from "../pages/Inventory.jsx";
 import NotFound from "../pages/NotFound.jsx";
 
@@ -21,6 +22,7 @@ export default function AppRoutes() {
         <Route element={<RequireAuth />}>
           <Route path="onboarding" element={<Onboarding />} />
           <Route path="status" element={<Status />} />
+          <Route path="store-details" element={<StoreDetails />} />
           <Route path="inventory" element={<Inventory />} />
         </Route>
 

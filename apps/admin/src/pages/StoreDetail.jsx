@@ -6,7 +6,9 @@ import Card from "../components/Card.jsx";
 import Skeleton from "../components/Skeleton.jsx";
 import StatusPill from "../components/StatusPill.jsx";
 import {
+  useApproveStoreChange,
   useApproveStore,
+  useRejectStoreChange,
   useRejectStore,
   useStore,
   useUpdateStore,
@@ -19,12 +21,22 @@ function ownerLabel(store) {
   return store.owner?.full_name || "No owner name";
 }
 
+function addressLine(data) {
+  return `${data.address_line_1}${data.address_line_2 ? `, ${data.address_line_2}` : ""}, ${data.locality}, ${data.city}, ${data.state} ${data.postal_code}`;
+}
+
+function hoursLabel(hour) {
+  return hour.is_closed ? "Closed" : `${hour.opens_at} - ${hour.closes_at}`;
+}
+
 export default function StoreDetail() {
   const { storeId } = useParams();
   const store = useStore(storeId);
   const approve = useApproveStore();
   const reject = useRejectStore();
   const update = useUpdateStore();
+  const approveChange = useApproveStoreChange();
+  const rejectChange = useRejectStoreChange();
 
   if (store.isPending) return <Skeleton className="h-96" />;
   if (store.isError) {
@@ -36,6 +48,8 @@ export default function StoreDetail() {
   }
 
   const data = store.data;
+  const pendingChange = data.pending_change;
+  const changePayload = pendingChange?.payload ?? null;
 
   return (
     <div className="max-w-5xl">
@@ -86,9 +100,13 @@ export default function StoreDetail() {
         </div>
       </div>
 
-      {(approve.isError || reject.isError || update.isError) ? (
+      {(approve.isError || reject.isError || update.isError || approveChange.isError || rejectChange.isError) ? (
         <Alert tone="error" className="mt-4">
-          {approve.error?.message || reject.error?.message || update.error?.message}
+          {approve.error?.message ||
+            reject.error?.message ||
+            update.error?.message ||
+            approveChange.error?.message ||
+            rejectChange.error?.message}
         </Alert>
       ) : null}
 
@@ -98,10 +116,7 @@ export default function StoreDetail() {
           <dl className="mt-4 space-y-3 text-body">
             <div>
               <dt className="text-meta font-semibold text-ink-muted">Address</dt>
-              <dd className="text-ink">
-                {data.address_line_1}
-                {data.address_line_2 ? `, ${data.address_line_2}` : ""}, {data.locality}, {data.city}, {data.state} {data.postal_code}
-              </dd>
+              <dd className="text-ink">{addressLine(data)}</dd>
             </div>
             <div>
               <dt className="text-meta font-semibold text-ink-muted">Coordinates</dt>
@@ -142,12 +157,93 @@ export default function StoreDetail() {
             <div key={hour.day_of_week} className="rounded-control border border-line-soft px-3 py-2 text-meta">
               <p className="font-semibold text-ink">{DAY[hour.day_of_week]}</p>
               <p className="text-ink-muted">
-                {hour.is_closed ? "Closed" : `${hour.opens_at} - ${hour.closes_at}`}
+                {hoursLabel(hour)}
               </p>
             </div>
           ))}
         </div>
       </Card>
+
+      {pendingChange ? (
+        <Card className="mt-4 p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-section text-ink">Pending details update</h2>
+              <p className="mt-1 text-meta text-ink-muted">
+                Submitted {formatDate(pendingChange.submitted_at)}
+              </p>
+            </div>
+            <StatusPill tone="warning">Needs review</StatusPill>
+          </div>
+
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <div className="rounded-control border border-line-soft p-4">
+              <p className="text-meta font-semibold text-ink-muted">Current details</p>
+              <dl className="mt-3 space-y-2 text-meta">
+                <div>
+                  <dt className="font-semibold text-ink-soft">Name</dt>
+                  <dd className="text-ink">{data.name}</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-ink-soft">Address</dt>
+                  <dd className="text-ink">{addressLine(data)}</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-ink-soft">Phone</dt>
+                  <dd className="text-ink">{data.phone || "Not set"}</dd>
+                </div>
+              </dl>
+            </div>
+
+            <div className="rounded-control border border-warning/30 bg-warning-soft/40 p-4">
+              <p className="text-meta font-semibold text-warning">Submitted update</p>
+              <dl className="mt-3 space-y-2 text-meta">
+                <div>
+                  <dt className="font-semibold text-ink-soft">Name</dt>
+                  <dd className="text-ink">{changePayload.name}</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-ink-soft">Address</dt>
+                  <dd className="text-ink">{addressLine(changePayload)}</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-ink-soft">Phone</dt>
+                  <dd className="text-ink">{changePayload.phone || "Not set"}</dd>
+                </div>
+              </dl>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {(pendingChange.hours ?? []).map((hour) => (
+              <div key={hour.day_of_week} className="rounded-control border border-line-soft px-3 py-2 text-meta">
+                <p className="font-semibold text-ink">{DAY[hour.day_of_week]}</p>
+                <p className="text-ink-muted">{hoursLabel(hour)}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Button
+              onClick={() => approveChange.mutate(pendingChange.id)}
+              isLoading={approveChange.isPending}
+            >
+              Approve update
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => {
+                if (window.confirm("Reject this submitted store details update?")) {
+                  rejectChange.mutate(pendingChange.id);
+                }
+              }}
+              isLoading={rejectChange.isPending}
+            >
+              Reject update
+            </Button>
+          </div>
+        </Card>
+      ) : null}
     </div>
   );
 }

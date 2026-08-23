@@ -1,5 +1,6 @@
 import {
   approveStore,
+  approveStoreChange,
   createBrand,
   createCategory,
   createProduct,
@@ -11,9 +12,11 @@ import {
   listAdminCategories,
   listAdminProducts,
   listPendingStores,
+  listPendingStoreChanges,
   listSellers,
   listStores,
   rejectStore,
+  rejectStoreChange,
   updateBrand,
   updateCategory,
   updateProduct,
@@ -59,6 +62,16 @@ export async function getPendingStores(req, res) {
   });
 }
 
+export async function getPendingStoreChanges(req, res) {
+  const { limit, offset } = parsePagination(req.query);
+  const { changes, total } = await listPendingStoreChanges({ limit, offset });
+  res.status(200).json({
+    success: true,
+    data: changes,
+    meta: { total, limit, offset, returned: changes.length },
+  });
+}
+
 export async function getStores(req, res) {
   const { limit, offset } = parsePagination(req.query);
   const { stores, total } = await listStores({
@@ -88,6 +101,22 @@ export async function postApproveStore(req, res) {
 
 export async function postRejectStore(req, res) {
   const data = await rejectStore(uuidField(req.params.storeId, "Store"));
+  res.status(200).json({ success: true, data });
+}
+
+export async function postApproveStoreChange(req, res) {
+  const data = await approveStoreChange(
+    uuidField(req.params.changeId, "Store change"),
+    req.user.id,
+  );
+  res.status(200).json({ success: true, data });
+}
+
+export async function postRejectStoreChange(req, res) {
+  const data = await rejectStoreChange(
+    uuidField(req.params.changeId, "Store change"),
+    req.user.id,
+  );
   res.status(200).json({ success: true, data });
 }
 

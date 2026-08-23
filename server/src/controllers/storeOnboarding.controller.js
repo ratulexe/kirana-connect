@@ -1,10 +1,12 @@
 import {
   getOnboardingStatus,
   createStoreApplication,
+  submitStoreChangeRequest,
 } from "../services/storeOnboarding.service.js";
 import { geocodeIndianAddress } from "../services/geocoding.service.js";
 import { validateStoreRegistration } from "../utils/validateStoreRegistration.js";
 import { optionalString } from "../utils/queryParams.js";
+import { uuidField } from "../utils/validateInventory.js";
 
 export async function getStatus(req, res) {
   const data = await getOnboardingStatus(req.user.id);
@@ -36,4 +38,17 @@ export async function submitStore(req, res) {
   });
 
   res.status(201).json({ success: true, data });
+}
+
+export async function submitStoreChange(req, res) {
+  const { store, hours } = validateStoreRegistration(req.body);
+
+  const data = await submitStoreChangeRequest({
+    userId: req.user.id,
+    storeId: uuidField(req.params.storeId, "Store"),
+    store,
+    hours,
+  });
+
+  res.status(202).json({ success: true, data });
 }

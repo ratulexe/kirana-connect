@@ -15,7 +15,11 @@ import { generateUniqueSlug } from "../utils/slug.js";
 const STORE_FIELDS = `
   id, name, slug, description, phone,
   address_line_1, address_line_2, locality, city, state, postal_code,
-  latitude, longitude, is_active, is_verified, created_at
+  latitude, longitude, is_active, is_verified, created_at, updated_at
+`;
+
+const CHANGE_REQUEST_FIELDS = `
+  id, store_id, owner_id, payload, hours, status, submitted_at, reviewed_at, admin_note
 `;
 
 function failed(operation, error) {
@@ -28,6 +32,38 @@ function failed(operation, error) {
 function toStatus(stores) {
   if (stores.length === 0) return "no_application";
   return stores.some((store) => store.is_verified) ? "approved" : "pending";
+}
+
+async function pendingChangesByStoreIds(client, storeIds) {
+  if (storeIds.length === 0) return new Map();
+
+  const { data, error } = await client
+    .from("store_change_requests")
+    .select(CHANGE_REQUEST_FIELDS)
+    .in("store_id", storeIds)
+    .eq("status", "pending")
+    .order("submitted_at", { ascending: false });
+
+  if (error) throw failed("load pending store changes", error);
+
+  const changes = new Map();
+  for (const change of data ?? []) {
+    if (!changes.has(change.store_id)) changes.set(change.store_id, change);
+  }
+  return changes;
+}
+
+async function withStoreReviewState(client, stores) {
+  const [hours, pendingChanges] = await Promise.all([
+    Promise.all((stores ?? []).map((store) => fetchStoreHours(client, store.id))),
+    pendingChangesByStoreIds(client, (stores ?? []).map((store) => store.id)),
+  ]);
+
+  return (stores ?? []).map((store, index) => ({
+    ...store,
+    hours: hours[index] ?? [],
+    pending_change: pendingChanges.get(store.id) ?? null,
+  }));
 }
 
 /**
@@ -52,9 +88,11 @@ export async function getOnboardingStatus(userId) {
 
   if (profileError) throw failed("load your profile", profileError);
 
+  const storesWithReviewState = await withStoreReviewState(client, stores ?? []);
+
   return {
     status: toStatus(stores ?? []),
-    stores: stores ?? [],
+    stores: storesWithReviewState,
     profile: profile ?? null,
   };
 }
@@ -157,4 +195,60 @@ export async function createStoreApplication({ userId, store, owner, hours }) {
     store: created,
     hours: await fetchStoreHours(client, created.id),
   };
+}
+
+export async function submitStoreChangeRequest({ userId, storeId, store, hours }) {
+  const client = getServiceClient();
+
+  const { data: current, error: storeError } = await client
+    .from("stores")
+    .select("id, owner_id, is_verified")
+    .eq("id", storeId)
+    .eq("owner_id", userId)
+    .maybeSingle();
+
+  if (storeError) throw failed("load your store", storeError);
+  if (!current) throw httpError(404, "Store not found.");
+  if (!current.is_verified) {
+    throw httpError(409, "Your store is already under review.");
+  }
+
+  const { data: existing, error: existingError } = await client
+    .from("store_change_requests")
+    .select("id")
+    .eq("store_id", storeId)
+    .eq("status", "pending")
+    .maybeSingle();
+
+  if (existingError) throw failed("check pending store changes", existingError);
+
+  const body = {
+    store_id: storeId,
+    owner_id: userId,
+    payload: store,
+    hours,
+    status: "pending",
+    submitted_at: new Date().toISOString(),
+    reviewed_at: null,
+    reviewed_by: null,
+    admin_note: null,
+  };
+
+  const query = existing
+    ? client
+        .from("store_change_requests")
+        .update(body)
+        .eq("id", existing.id)
+        .select(CHANGE_REQUEST_FIELDS)
+        .single()
+    : client
+        .from("store_change_requests")
+        .insert(body)
+        .select(CHANGE_REQUEST_FIELDS)
+        .single();
+
+  const { error } = await query;
+  if (error) throw failed("submit store changes", error);
+
+  return getOnboardingStatus(userId);
 }

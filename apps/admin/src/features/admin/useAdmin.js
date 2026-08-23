@@ -5,6 +5,7 @@ export const adminKeys = {
   me: ["admin", "me"],
   dashboard: ["admin", "dashboard"],
   pendingStores: ["admin", "stores", "pending"],
+  pendingStoreChanges: ["admin", "store-changes", "pending"],
   stores: (params = {}) => ["admin", "stores", params],
   store: (id) => ["admin", "stores", id],
   sellers: ["admin", "sellers"],
@@ -33,6 +34,13 @@ export function usePendingStores() {
   return useQuery({
     queryKey: adminKeys.pendingStores,
     queryFn: ({ signal }) => api.pendingStores({ signal }).then((r) => r.data),
+  });
+}
+
+export function usePendingStoreChanges() {
+  return useQuery({
+    queryKey: adminKeys.pendingStoreChanges,
+    queryFn: ({ signal }) => api.pendingStoreChanges({ signal }).then((r) => r.data),
   });
 }
 
@@ -109,6 +117,20 @@ export const useRejectStore = () =>
   useAdminMutation((id) => api.rejectStore(id), [
     adminKeys.dashboard,
     adminKeys.pendingStores,
+    ["admin", "stores"],
+  ]);
+
+export const useApproveStoreChange = () =>
+  useAdminMutation((id) => api.approveStoreChange(id), [
+    adminKeys.dashboard,
+    adminKeys.pendingStoreChanges,
+    ["admin", "stores"],
+  ]);
+
+export const useRejectStoreChange = () =>
+  useAdminMutation((id) => api.rejectStoreChange(id), [
+    adminKeys.dashboard,
+    adminKeys.pendingStoreChanges,
     ["admin", "stores"],
   ]);
 

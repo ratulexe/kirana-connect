@@ -1,10 +1,24 @@
-import { Link, Outlet, useNavigate } from "react-router-dom";
-import { CircleCheck, Clock, LogOut, MapPin, Store as StoreIcon } from "lucide-react";
+import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
+import {
+  Boxes,
+  CircleCheck,
+  Clock,
+  LayoutDashboard,
+  LogOut,
+  MapPin,
+  Store as StoreIcon,
+} from "lucide-react";
 import Container from "../components/Container.jsx";
 import Button from "../components/Button.jsx";
 import Logo from "../components/Logo.jsx";
 import { useAuth } from "../auth/useAuth.js";
 import { useOnboardingStatus } from "../features/onboarding/useOnboarding.js";
+
+const STORE_NAV = [
+  { to: "/status", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/store-details", label: "Store details", icon: StoreIcon },
+  { to: "/inventory", label: "Products", icon: Boxes },
+];
 
 export default function PortalLayout() {
   const { isAuthenticated, user, signOut } = useAuth();
@@ -46,39 +60,60 @@ export default function PortalLayout() {
           </div>
 
           {store ? (
-            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-line-soft py-2">
-              <Link
-                to="/status"
-                className="group flex min-w-0 items-center gap-3 rounded-control py-1 pr-2 transition-colors hover:text-primary"
-              >
-                <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-pill bg-surface-sunken text-primary">
-                  <StoreIcon className="size-4" aria-hidden="true" />
-                </span>
-                <span className="min-w-0">
-                  <span className="block truncate text-card text-ink group-hover:text-primary">
-                    {store.name}
+            <div className="border-t border-line-soft py-2">
+              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                <Link
+                  to="/store-details"
+                  className="group flex min-w-0 items-center gap-3 rounded-control py-1 pr-2 transition-colors hover:text-primary"
+                >
+                  <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-pill bg-surface-sunken text-primary">
+                    <StoreIcon className="size-4" aria-hidden="true" />
                   </span>
-                  <span className="mt-0.5 flex min-w-0 items-center gap-1 text-meta text-ink-muted">
-                    <MapPin className="size-3.5 shrink-0" aria-hidden="true" />
-                    <span className="truncate">
-                      {store.locality}, {store.city}, {store.state} {store.postal_code}
+                  <span className="min-w-0">
+                    <span className="block truncate text-card text-ink group-hover:text-primary">
+                      {store.name}
+                    </span>
+                    <span className="mt-0.5 flex min-w-0 items-center gap-1 text-meta text-ink-muted">
+                      <MapPin className="size-3.5 shrink-0" aria-hidden="true" />
+                      <span className="truncate">
+                        {store.locality}, {store.city}, {store.state} {store.postal_code}
+                      </span>
                     </span>
                   </span>
-                </span>
-              </Link>
+                </Link>
 
-              <span
-                className={`inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-meta font-semibold ${
-                  isApproved ? "bg-success-soft text-success" : "bg-warning-soft text-warning"
-                }`}
-              >
-                {isApproved ? (
-                  <CircleCheck className="size-3.5" aria-hidden="true" />
-                ) : (
-                  <Clock className="size-3.5" aria-hidden="true" />
-                )}
-                {isApproved ? "Approved" : "Pending"}
-              </span>
+                <span
+                  className={`inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-meta font-semibold ${
+                    isApproved ? "bg-success-soft text-success" : "bg-warning-soft text-warning"
+                  }`}
+                >
+                  {isApproved ? (
+                    <CircleCheck className="size-3.5" aria-hidden="true" />
+                  ) : (
+                    <Clock className="size-3.5" aria-hidden="true" />
+                  )}
+                  {isApproved ? "Approved" : "Pending"}
+                </span>
+              </div>
+
+              <nav aria-label="Store portal navigation" className="mt-2 flex flex-wrap gap-1">
+                {STORE_NAV.map(({ to, label, icon: Icon }) => (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    className={({ isActive }) =>
+                      `inline-flex h-9 items-center gap-1.5 rounded-control px-3 text-meta font-semibold transition-colors ${
+                        isActive
+                          ? "bg-primary text-primary-fg"
+                          : "text-ink-soft hover:bg-surface-sunken hover:text-ink"
+                      }`
+                    }
+                  >
+                    <Icon className="size-4" aria-hidden="true" />
+                    {label}
+                  </NavLink>
+                ))}
+              </nav>
             </div>
           ) : null}
         </Container>

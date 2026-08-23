@@ -7,6 +7,7 @@ import {
   getDashboard,
   getMe,
   getPendingStores,
+  getPendingStoreChanges,
   getProduct,
   getProducts,
   getSellers,
@@ -17,10 +18,12 @@ import {
   patchProduct,
   patchStore,
   postApproveStore,
+  postApproveStoreChange,
   postBrand,
   postCategory,
   postProduct,
   postRejectStore,
+  postRejectStoreChange,
 } from "../controllers/admin.controller.js";
 import { asyncHandler } from "../utils/httpError.js";
 
@@ -33,11 +36,14 @@ router.get("/me", asyncHandler(getMe));
 router.get("/dashboard", asyncHandler(getDashboard));
 
 router.get("/stores/pending", asyncHandler(getPendingStores));
+router.get("/store-changes/pending", asyncHandler(getPendingStoreChanges));
 router.get("/stores", asyncHandler(getStores));
 router.get("/stores/:storeId", asyncHandler(getStore));
 router.patch("/stores/:storeId", asyncHandler(patchStore));
 router.post("/stores/:storeId/approve", asyncHandler(postApproveStore));
 router.post("/stores/:storeId/reject", asyncHandler(postRejectStore));
+router.post("/store-changes/:changeId/approve", asyncHandler(postApproveStoreChange));
+router.post("/store-changes/:changeId/reject", asyncHandler(postRejectStoreChange));
 
 router.get("/sellers", asyncHandler(getSellers));
 

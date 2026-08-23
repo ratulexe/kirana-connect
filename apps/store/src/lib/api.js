@@ -78,6 +78,8 @@ export const api = {
   geocodeStoreAddress: ({ q, signal }) =>
     request("/store-onboarding/geocode", { params: { q }, signal }),
   submitStore: (body) => request("/store-onboarding", { method: "POST", body }),
+  submitStoreChange: (storeId, body) =>
+    request(`/store-onboarding/stores/${storeId}/changes`, { method: "POST", body }),
 
   getInventory: (options) => request("/store-inventory", options),
   addInventoryItem: (body) => request("/store-inventory", { method: "POST", body }),
