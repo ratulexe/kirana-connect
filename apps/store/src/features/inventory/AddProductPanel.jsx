@@ -26,7 +26,7 @@ export default function AddProductPanel({ existingProductIds, onClose }) {
   });
 
   const add = useAddInventoryItem();
-  const { data, isFetching } = useCatalogueSearch(debounced);
+  const { data, isFetching, isError, isSuccess, error } = useCatalogueSearch(debounced);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(term), 300);
@@ -108,7 +108,19 @@ export default function AddProductPanel({ existingProductIds, onClose }) {
               <p className="text-meta text-ink-muted">
                 Type at least two characters to search.
               </p>
-            ) : isFetching ? (
+            ) : isError ? (
+              /* A failed search is not an empty catalogue. Saying "nothing
+                 matches" when the request never succeeded sends the owner off
+                 to look for a product that is sitting right there. */
+              <Alert tone="error" title="Could not search the catalogue">
+                {error?.status === 0
+                  ? "Kirana Connect could not be reached. Check that the API is running, then try again."
+                  : (error?.message ?? "Please try again in a moment.")}
+              </Alert>
+            ) : !isSuccess || isFetching ? (
+              /* Anything that is not a settled success shows as loading. The
+                 empty message is gated on isSuccess so it can never stand in
+                 for a request that failed, was cancelled, or never ran. */
               <div className="space-y-2">
                 {[0, 1, 2].map((i) => (
                   <Skeleton key={i} className="h-14 rounded-card" />
@@ -131,14 +143,14 @@ export default function AddProductPanel({ existingProductIds, onClose }) {
                       <div className="flex min-w-0 items-center gap-3">
                         <ProductImage src={product.image_url} name={product.name} size="sm" />
                         <div className="min-w-0">
-                        <p className="text-[0.9375rem] font-semibold text-ink">
-                          {product.name}
-                        </p>
-                        <p className="text-meta text-ink-muted">
-                          {product.unit_label}
-                          {product.brand ? ` · ${product.brand.name}` : ""}
-                          {` · MRP ${formatPrice(product.mrp)}`}
-                        </p>
+                          <p className="text-[0.9375rem] font-semibold text-ink">
+                            {product.name}
+                          </p>
+                          <p className="text-meta text-ink-muted">
+                            {product.unit_label}
+                            {product.brand ? ` · ${product.brand.name}` : ""}
+                            {` · MRP ${formatPrice(product.mrp)}`}
+                          </p>
                         </div>
                       </div>
                       {alreadyListed ? (
