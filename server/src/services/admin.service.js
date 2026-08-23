@@ -31,6 +31,15 @@ function failed(operation, error) {
   return httpError(502, `Could not ${operation}. Please try again.`);
 }
 
+function isMissingChangeRequestTable(error) {
+  const message = String(error?.message ?? "").toLowerCase();
+  return (
+    error?.code === "42P01" ||
+    error?.code === "PGRST205" ||
+    (message.includes("store_change_requests") && message.includes("schema cache"))
+  );
+}
+
 function textValue(value) {
   const text = typeof value === "string" ? value.trim() : "";
   return text || null;
@@ -39,6 +48,14 @@ function textValue(value) {
 async function countRows(table, apply = (query) => query) {
   const query = apply(getServiceClient().from(table).select("id", { count: "exact", head: true }));
   const { error, count } = await query;
+  if (error) throw failed(`count ${table}`, error);
+  return count ?? 0;
+}
+
+async function countOptionalRows(table, apply = (query) => query) {
+  const query = apply(getServiceClient().from(table).select("id", { count: "exact", head: true }));
+  const { error, count } = await query;
+  if (isMissingChangeRequestTable(error)) return 0;
   if (error) throw failed(`count ${table}`, error);
   return count ?? 0;
 }
@@ -144,6 +161,7 @@ async function pendingChangeByStoreId(storeId) {
     .eq("status", "pending")
     .maybeSingle();
 
+  if (isMissingChangeRequestTable(error)) return null;
   if (error) throw failed("load pending store change", error);
   return data ?? null;
 }
@@ -187,7 +205,7 @@ export async function dashboardMetrics() {
     inventoryLines,
   ] = await Promise.all([
     countRows("stores", (query) => query.eq("is_verified", false)),
-    countRows("store_change_requests", (query) => query.eq("status", "pending")),
+    countOptionalRows("store_change_requests", (query) => query.eq("status", "pending")),
     countRows("stores", (query) => query.eq("is_verified", true)),
     countRows("stores", (query) => query.eq("is_active", true)),
     countRows("profiles", (query) => query.eq("role", "seller")),
@@ -231,6 +249,7 @@ export async function listPendingStoreChanges({ limit, offset }) {
     .order("submitted_at", { ascending: true })
     .range(offset, offset + limit - 1);
 
+  if (isMissingChangeRequestTable(error)) return { changes: [], total: 0 };
   if (error) throw failed("load pending store changes", error);
 
   const storeIds = (data ?? []).map((change) => change.store_id);

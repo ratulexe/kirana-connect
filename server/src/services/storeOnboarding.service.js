@@ -29,6 +29,15 @@ function failed(operation, error) {
   return httpError(502, `Could not ${operation}. Please try again.`);
 }
 
+function isMissingChangeRequestTable(error) {
+  const message = String(error?.message ?? "").toLowerCase();
+  return (
+    error?.code === "42P01" ||
+    error?.code === "PGRST205" ||
+    (message.includes("store_change_requests") && message.includes("schema cache"))
+  );
+}
+
 function toStatus(stores) {
   if (stores.length === 0) return "no_application";
   return stores.some((store) => store.is_verified) ? "approved" : "pending";
@@ -44,6 +53,7 @@ async function pendingChangesByStoreIds(client, storeIds) {
     .eq("status", "pending")
     .order("submitted_at", { ascending: false });
 
+  if (isMissingChangeRequestTable(error)) return new Map();
   if (error) throw failed("load pending store changes", error);
 
   const changes = new Map();
@@ -220,6 +230,12 @@ export async function submitStoreChangeRequest({ userId, storeId, store, hours }
     .eq("status", "pending")
     .maybeSingle();
 
+  if (isMissingChangeRequestTable(existingError)) {
+    throw httpError(
+      503,
+      "Store detail reviews are not ready yet. Apply the latest database migration and try again.",
+    );
+  }
   if (existingError) throw failed("check pending store changes", existingError);
 
   const body = {
@@ -248,6 +264,12 @@ export async function submitStoreChangeRequest({ userId, storeId, store, hours }
         .single();
 
   const { error } = await query;
+  if (isMissingChangeRequestTable(error)) {
+    throw httpError(
+      503,
+      "Store detail reviews are not ready yet. Apply the latest database migration and try again.",
+    );
+  }
   if (error) throw failed("submit store changes", error);
 
   return getOnboardingStatus(userId);
