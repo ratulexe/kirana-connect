@@ -55,6 +55,14 @@ export const storeDetailsSchema = z.object({
   phone: phoneRule.optional().or(z.literal("")),
 });
 
+export const ownerDetailsSchema = z.object({
+  full_name: z
+    .string()
+    .transform(trimmed)
+    .pipe(z.string().min(2, "Enter the owner name").max(120, "Name is too long")),
+  phone: phoneRule.optional().or(z.literal("")),
+});
+
 export const addressSchema = z.object({
   address_line_1: z
     .string()

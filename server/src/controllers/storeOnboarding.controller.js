@@ -41,12 +41,13 @@ export async function submitStore(req, res) {
 }
 
 export async function submitStoreChange(req, res) {
-  const { store, hours } = validateStoreRegistration(req.body);
+  const { store, owner, hours } = validateStoreRegistration(req.body);
 
   const data = await submitStoreChangeRequest({
     userId: req.user.id,
     storeId: uuidField(req.params.storeId, "Store"),
     store,
+    owner,
     hours,
   });
 

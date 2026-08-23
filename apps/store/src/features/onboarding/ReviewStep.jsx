@@ -1,4 +1,12 @@
-import { ArrowLeft, Check, MapPin, Pencil, Phone, Store as StoreIcon } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  MapPin,
+  Pencil,
+  Phone,
+  Store as StoreIcon,
+  UserRound,
+} from "lucide-react";
 import Button from "../../components/Button.jsx";
 import Alert from "../../components/Alert.jsx";
 import { DAY_LABELS } from "./schema.js";
@@ -36,8 +44,9 @@ export default function ReviewStep({
   infoText = "Submitting sends your store for verification. It stays hidden from customers until it is approved.",
   submitLabel = "Submit store for verification",
   submittingLabel = "Submitting...",
+  onEditOwner,
 }) {
-  const { store, address, hours } = values;
+  const { owner, store, address, hours } = values;
   const openDays = hours.filter((day) => !day.is_closed);
 
   return (
@@ -45,6 +54,15 @@ export default function ReviewStep({
       {error ? <Alert tone="error" title={errorTitle}>{error}</Alert> : null}
 
       <div className="divide-y divide-line-soft rounded-card border border-line bg-surface">
+        {owner ? (
+          <Row icon={UserRound} title="Owner" onEdit={onEditOwner} editLabel="Edit owner details">
+            <p className="font-semibold">{owner.full_name}</p>
+            {owner.phone ? (
+              <p className="mt-0.5 text-meta text-ink-muted tabular-nums">{owner.phone}</p>
+            ) : null}
+          </Row>
+        ) : null}
+
         <Row icon={StoreIcon} title="Store" onEdit={() => onEditStep(0)} editLabel="Edit store details">
           <p className="font-semibold">{store.name}</p>
           {store.description ? (

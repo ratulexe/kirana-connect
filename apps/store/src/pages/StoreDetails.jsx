@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { Link, Navigate } from "react-router-dom";
-import { CircleCheck, Clock, MapPin, Pencil, Phone, Store as StoreIcon } from "lucide-react";
+import {
+  CircleCheck,
+  Clock,
+  MapPin,
+  Pencil,
+  Phone,
+  Store as StoreIcon,
+  UserRound,
+} from "lucide-react";
 import Alert from "../components/Alert.jsx";
 import Button from "../components/Button.jsx";
 import Card from "../components/Card.jsx";
@@ -9,6 +17,7 @@ import PageLoader from "../components/PageLoader.jsx";
 import Stepper from "../components/Stepper.jsx";
 import AddressStep from "../features/onboarding/AddressStep.jsx";
 import HoursStep from "../features/onboarding/HoursStep.jsx";
+import OwnerDetailsStep from "../features/onboarding/OwnerDetailsStep.jsx";
 import ReviewStep from "../features/onboarding/ReviewStep.jsx";
 import StoreDetailsStep from "../features/onboarding/StoreDetailsStep.jsx";
 import { DAY_LABELS, defaultHours } from "../features/onboarding/schema.js";
@@ -17,7 +26,7 @@ import {
   useSubmitStoreChange,
 } from "../features/onboarding/useOnboarding.js";
 
-const EDIT_STEPS = ["Store", "Address", "Hours", "Review"];
+const EDIT_STEPS = ["Owner", "Store", "Address", "Hours", "Review"];
 
 function timeValue(value) {
   return typeof value === "string" ? value.slice(0, 5) : "";
@@ -41,9 +50,13 @@ function hoursFromStore(hours = []) {
   return next;
 }
 
-function draftsFrom(store, pendingChange) {
+function draftsFrom(store, pendingChange, profile) {
   const source = pendingChange?.payload ?? store;
   return {
+    owner: {
+      full_name: profile?.full_name ?? "",
+      phone: profile?.phone ?? "",
+    },
     store: {
       name: source.name ?? "",
       description: source.description ?? "",
@@ -88,11 +101,13 @@ export default function StoreDetails() {
   const submitChange = useSubmitStoreChange();
   const [isEditing, setIsEditing] = useState(false);
   const [step, setStep] = useState(0);
+  const [ownerDraft, setOwnerDraft] = useState(null);
   const [storeDraft, setStoreDraft] = useState(null);
   const [addressDraft, setAddressDraft] = useState(null);
   const [hoursDraft, setHoursDraft] = useState(defaultHours);
 
   const store = data?.stores?.[0] ?? null;
+  const profile = data?.profile ?? null;
   const pendingChange = store?.pending_change ?? null;
   const isApproved = data?.status === "approved";
   if (isPending) return <PageLoader label="Loading store details" />;
@@ -110,7 +125,8 @@ export default function StoreDetails() {
   if (data.status === "no_application") return <Navigate to="/onboarding" replace />;
 
   const startEditing = () => {
-    const drafts = draftsFrom(store, pendingChange);
+    const drafts = draftsFrom(store, pendingChange, profile);
+    setOwnerDraft(drafts.owner);
     setStoreDraft(drafts.store);
     setAddressDraft(drafts.address);
     setHoursDraft(drafts.hours);
@@ -131,6 +147,8 @@ export default function StoreDetails() {
         payload: {
           ...storeDraft,
           ...addressDraft,
+          owner_full_name: ownerDraft.full_name,
+          owner_phone: ownerDraft.phone,
           hours: hoursDraft.map((day) => ({
             day_of_week: day.day_of_week,
             is_closed: day.is_closed,
@@ -148,7 +166,7 @@ export default function StoreDetails() {
     );
   };
 
-  if (isEditing && storeDraft && addressDraft) {
+  if (isEditing && ownerDraft && storeDraft && addressDraft) {
     return (
       <Container className="py-10 sm:py-12">
         <div className="mx-auto max-w-2xl">
@@ -168,42 +186,53 @@ export default function StoreDetails() {
 
           <Card className="mt-6 p-5 sm:p-6">
             {step === 0 ? (
-              <StoreDetailsStep
-                defaultValues={storeDraft}
+              <OwnerDetailsStep
+                defaultValues={ownerDraft}
                 onNext={(values) => {
-                  setStoreDraft(values);
+                  setOwnerDraft(values);
                   setStep(1);
                 }}
               />
             ) : null}
 
             {step === 1 ? (
-              <AddressStep
-                defaultValues={addressDraft}
-                onBack={() => setStep(0)}
+              <StoreDetailsStep
+                defaultValues={storeDraft}
                 onNext={(values) => {
-                  setAddressDraft(values);
+                  setStoreDraft(values);
                   setStep(2);
                 }}
               />
             ) : null}
 
             {step === 2 ? (
-              <HoursStep
-                defaultValues={{ hours: hoursDraft }}
+              <AddressStep
+                defaultValues={addressDraft}
                 onBack={() => setStep(1)}
                 onNext={(values) => {
-                  setHoursDraft(values.hours);
+                  setAddressDraft(values);
                   setStep(3);
                 }}
               />
             ) : null}
 
             {step === 3 ? (
-              <ReviewStep
-                values={{ store: storeDraft, address: addressDraft, hours: hoursDraft }}
+              <HoursStep
+                defaultValues={{ hours: hoursDraft }}
                 onBack={() => setStep(2)}
-                onEditStep={setStep}
+                onNext={(values) => {
+                  setHoursDraft(values.hours);
+                  setStep(4);
+                }}
+              />
+            ) : null}
+
+            {step === 4 ? (
+              <ReviewStep
+                values={{ owner: ownerDraft, store: storeDraft, address: addressDraft, hours: hoursDraft }}
+                onBack={() => setStep(3)}
+                onEditOwner={() => setStep(0)}
+                onEditStep={(reviewStep) => setStep(reviewStep + 1)}
                 onSubmit={handleSubmit}
                 isSubmitting={submitChange.isPending}
                 error={
@@ -257,6 +286,13 @@ export default function StoreDetails() {
         <div className="mt-6 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
           <Card className="overflow-hidden">
             <div className="divide-y divide-line-soft">
+              <DetailRow icon={UserRound} title="Owner">
+                <p className="font-semibold">{profile?.full_name || "No owner name saved"}</p>
+                <p className="mt-0.5 text-meta text-ink-muted">
+                  {profile?.phone || "No owner phone saved"}
+                </p>
+              </DetailRow>
+
               <DetailRow icon={StoreIcon} title="Store">
                 <p className="font-semibold">{store.name}</p>
                 {store.description ? (

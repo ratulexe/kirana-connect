@@ -30,11 +30,8 @@ function friendlyMessage(error) {
 /**
  * Step 1 of registration: the account itself.
  *
- * The owner's name and phone are collected here but deliberately not sent as
- * Supabase signup metadata. They are saved later through the authenticated
- * onboarding endpoint, which keeps the browser out of anything the database
- * treats as privileged. Every new account is a customer until an admin
- * promotes it.
+ * The owner's name and phone are saved as normal profile metadata. Role is not:
+ * every new account is a customer until an admin promotes it.
  */
 export default function Register() {
   const { signUp, isAuthenticated, isConfigured } = useAuth();
@@ -60,6 +57,8 @@ export default function Register() {
       const { needsEmailConfirmation } = await signUp({
         email: values.email,
         password: values.password,
+        fullName: values.fullName,
+        phone: values.phone,
       });
 
       // Carry the owner details forward so the wizard can prefill them without

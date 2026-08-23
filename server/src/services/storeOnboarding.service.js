@@ -38,6 +38,75 @@ function isMissingChangeRequestTable(error) {
   );
 }
 
+function textValue(value) {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text || null;
+}
+
+function authOwnerDetails(user) {
+  return {
+    full_name:
+      textValue(user?.user_metadata?.full_name) ||
+      textValue(user?.user_metadata?.name) ||
+      textValue(user?.raw_user_meta_data?.full_name) ||
+      textValue(user?.raw_user_meta_data?.name),
+    phone:
+      textValue(user?.user_metadata?.phone) ||
+      textValue(user?.raw_user_meta_data?.phone),
+  };
+}
+
+async function ownerProfile(client, userId) {
+  const { data: profile, error: profileError } = await client
+    .from("profiles")
+    .select("full_name, phone, role")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (profileError) throw failed("load your profile", profileError);
+
+  if (textValue(profile?.full_name) && textValue(profile?.phone)) {
+    return profile;
+  }
+
+  const { data: authUser, error: authError } = await client.auth.admin.getUserById(userId);
+  if (authError) {
+    console.error("[kirana-connect-api] owner auth metadata lookup failed:", authError.message);
+    return profile ?? null;
+  }
+
+  const authOwner = authOwnerDetails(authUser?.user);
+  const hydrated = {
+    ...(profile ?? {}),
+    full_name: textValue(profile?.full_name) || authOwner.full_name || null,
+    phone: textValue(profile?.phone) || authOwner.phone || null,
+  };
+
+  const patch = {};
+  if (!textValue(profile?.full_name) && hydrated.full_name) patch.full_name = hydrated.full_name;
+  if (!textValue(profile?.phone) && hydrated.phone) patch.phone = hydrated.phone;
+
+  if (Object.keys(patch).length > 0) {
+    const { error } = await client.from("profiles").update(patch).eq("id", userId);
+    if (error) {
+      console.error("[kirana-connect-api] owner profile hydration failed:", error.message);
+    }
+  }
+
+  return hydrated;
+}
+
+async function updateOwnerProfile(client, userId, owner) {
+  const profilePatch = {};
+  if (owner.full_name) profilePatch.full_name = owner.full_name;
+  if (owner.phone) profilePatch.phone = owner.phone;
+
+  if (Object.keys(profilePatch).length === 0) return;
+
+  const { error } = await client.from("profiles").update(profilePatch).eq("id", userId);
+  if (error) throw failed("update owner profile", error);
+}
+
 function toStatus(stores) {
   if (stores.length === 0) return "no_application";
   return stores.some((store) => store.is_verified) ? "approved" : "pending";
@@ -90,20 +159,14 @@ export async function getOnboardingStatus(userId) {
 
   if (error) throw failed("load your store application", error);
 
-  const { data: profile, error: profileError } = await client
-    .from("profiles")
-    .select("full_name, phone, role")
-    .eq("id", userId)
-    .maybeSingle();
-
-  if (profileError) throw failed("load your profile", profileError);
+  const profile = await ownerProfile(client, userId);
 
   const storesWithReviewState = await withStoreReviewState(client, stores ?? []);
 
   return {
     status: toStatus(stores ?? []),
     stores: storesWithReviewState,
-    profile: profile ?? null,
+    profile,
   };
 }
 
@@ -179,25 +242,11 @@ export async function createStoreApplication({ userId, store, owner, hours }) {
     }
   }
 
-  // Only ever the safe columns. role is never written here: promotion to seller
-  // is an admin decision, not a side effect of filling in a form.
-  const profilePatch = {};
-  if (owner.full_name) profilePatch.full_name = owner.full_name;
-  if (owner.phone) profilePatch.phone = owner.phone;
-
-  if (Object.keys(profilePatch).length > 0) {
-    const { error: profileError } = await client
-      .from("profiles")
-      .update(profilePatch)
-      .eq("id", userId);
-
+  try {
+    await updateOwnerProfile(client, userId, owner);
+  } catch (profileError) {
     // A failed profile touch-up must not discard a valid store submission.
-    if (profileError) {
-      console.error(
-        "[kirana-connect-api] profile details could not be updated:",
-        profileError.message,
-      );
-    }
+    console.error("[kirana-connect-api] profile details could not be updated:", profileError.message);
   }
 
   return {
@@ -207,7 +256,7 @@ export async function createStoreApplication({ userId, store, owner, hours }) {
   };
 }
 
-export async function submitStoreChangeRequest({ userId, storeId, store, hours }) {
+export async function submitStoreChangeRequest({ userId, storeId, store, owner, hours }) {
   const client = getServiceClient();
 
   const { data: current, error: storeError } = await client
@@ -222,6 +271,8 @@ export async function submitStoreChangeRequest({ userId, storeId, store, hours }
   if (!current.is_verified) {
     throw httpError(409, "Your store is already under review.");
   }
+
+  await updateOwnerProfile(client, userId, owner);
 
   const { data: existing, error: existingError } = await client
     .from("store_change_requests")

@@ -53,15 +53,21 @@ export function AuthProvider({ children }) {
        * project requires email confirmation, so both outcomes are reported
        * rather than assumed.
        */
-      async signUp({ email, password }) {
-        // Signup metadata is intentionally empty. Role must never travel from
-        // the browser: every new account stays a customer until an admin
-        // promotes it. The owner's name and phone are saved later through the
-        // authenticated onboarding endpoint instead.
+      async signUp({ email, password, fullName, phone }) {
+        // Role must never travel from the browser: every new account stays a
+        // customer until an admin promotes it. Name and phone are safe profile
+        // fields, and the database trigger copies them into public.profiles.
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: authRedirectUrl },
+          options: {
+            emailRedirectTo: authRedirectUrl,
+            data: {
+              full_name: fullName,
+              name: fullName,
+              phone,
+            },
+          },
         });
 
         if (error) throw error;
