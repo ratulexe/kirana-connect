@@ -107,7 +107,7 @@ export default function PortalLayout() {
                   ({ to, label, icon: Icon }) => (
                     <NavLink
                       key={to}
-                      to={to === "/status" ? to : `${to}${storeQuery}`}
+                      to={`${to}${storeQuery}`}
                       className={({ isActive }) =>
                         `inline-flex h-9 items-center gap-1.5 rounded-control px-3 text-meta font-semibold transition-colors ${
                           isActive

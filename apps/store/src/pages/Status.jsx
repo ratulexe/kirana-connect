@@ -1,12 +1,11 @@
-import { Link } from "react-router-dom";
-import { Boxes, CircleCheck, Clock, Store as StoreIcon } from "lucide-react";
+import { Link, useSearchParams } from "react-router-dom";
+import { CircleCheck, Clock, Store as StoreIcon } from "lucide-react";
 import Container from "../components/Container.jsx";
 import Card from "../components/Card.jsx";
 import Button from "../components/Button.jsx";
 import Alert from "../components/Alert.jsx";
 import PageLoader from "../components/PageLoader.jsx";
 import { useOnboardingStatus } from "../features/onboarding/useOnboarding.js";
-import InventoryManager from "../features/inventory/InventoryManager.jsx";
 import { useEntranceAnimation } from "../animations/useEntranceAnimation.js";
 
 function storeStatus(store) {
@@ -14,6 +13,7 @@ function storeStatus(store) {
 }
 
 export default function Status() {
+  const [searchParams] = useSearchParams();
   const { data, isPending, isError, error } = useOnboardingStatus();
   const containerRef = useEntranceAnimation(data?.status ?? "loading");
 
@@ -45,26 +45,16 @@ export default function Status() {
   }
 
   const isApproved = data.status === "approved";
-  const approvedStore = data.stores.find((store) => store.is_verified) ?? null;
+  const selectedStoreId = searchParams.get("store_id");
+  const selectedStore =
+    data.stores.find((store) => store.id === selectedStoreId) ??
+    data.stores[0] ??
+    null;
 
   return (
     <Container className="py-8 sm:py-10">
       <div ref={containerRef} className="mx-auto max-w-5xl">
-        <span
-          data-animate
-          className={`inline-flex items-center gap-2 rounded-pill px-3 py-1.5 text-meta font-semibold ${
-            isApproved ? "bg-success-soft text-success" : "bg-warning-soft text-warning"
-          }`}
-        >
-          {isApproved ? (
-            <CircleCheck className="size-4" aria-hidden="true" />
-          ) : (
-            <Clock className="size-4" aria-hidden="true" />
-          )}
-          {isApproved ? "Approved" : "Pending verification"}
-        </span>
-
-        <h1 data-animate className="mt-4 text-heading text-ink">
+        <h1 data-animate className="text-heading text-ink">
           {isApproved ? "Store dashboard" : "Store submitted"}
         </h1>
 
@@ -81,44 +71,45 @@ export default function Status() {
           </Button>
         </div>
 
-        <div data-animate className="mt-6 grid gap-3 lg:grid-cols-2">
-          {data.stores.map((store) => (
-            <Card key={store.id} className="p-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h2 className="truncate text-card text-ink">{store.name}</h2>
-                  <p className="mt-1 text-meta text-ink-muted">
-                    {store.locality}, {store.city}, {store.state} {store.postal_code}
-                  </p>
-                </div>
-                <span
-                  className={`inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-meta font-semibold ${
-                    store.is_verified ? "bg-success-soft text-success" : "bg-warning-soft text-warning"
+        {data.stores.length > 1 ? (
+          <div data-animate className="mt-6 grid gap-3 lg:grid-cols-2">
+            {data.stores.map((store) => (
+              <Link
+                key={store.id}
+                to={`/status?store_id=${store.id}`}
+                aria-current={selectedStore?.id === store.id ? "true" : undefined}
+                className="group block rounded-card focus:outline-none focus:ring-2 focus:ring-primary/40"
+              >
+                <Card
+                  className={`p-4 transition-colors group-hover:border-primary/40 ${
+                    selectedStore?.id === store.id ? "border-primary bg-primary-soft/40" : ""
                   }`}
                 >
-                  {store.is_verified ? (
-                    <CircleCheck className="size-3.5" aria-hidden="true" />
-                  ) : (
-                    <Clock className="size-3.5" aria-hidden="true" />
-                  )}
-                  {storeStatus(store)}
-                </span>
-              </div>
-
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Button as={Link} to={`/store-details?store_id=${store.id}`} variant="secondary" size="sm">
-                  Store details
-                </Button>
-                {store.is_verified ? (
-                  <Button as={Link} to={`/inventory?store_id=${store.id}`} variant="secondary" size="sm">
-                    <Boxes className="size-3.5" aria-hidden="true" />
-                    Products
-                  </Button>
-                ) : null}
-              </div>
-            </Card>
-          ))}
-        </div>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h2 className="truncate text-card text-ink">{store.name}</h2>
+                      <p className="mt-1 text-meta text-ink-muted">
+                        {store.locality}, {store.city}, {store.state} {store.postal_code}
+                      </p>
+                    </div>
+                    <span
+                      className={`inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-meta font-semibold ${
+                        store.is_verified ? "bg-success-soft text-success" : "bg-warning-soft text-warning"
+                      }`}
+                    >
+                      {store.is_verified ? (
+                        <CircleCheck className="size-3.5" aria-hidden="true" />
+                      ) : (
+                        <Clock className="size-3.5" aria-hidden="true" />
+                      )}
+                      {storeStatus(store)}
+                    </span>
+                  </div>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        ) : null}
 
         {!isApproved ? (
           <div data-animate className="mt-5 max-w-xl">
@@ -129,11 +120,6 @@ export default function Status() {
           </div>
         ) : null}
 
-        {isApproved ? (
-          <div data-animate className="mt-8">
-            <InventoryManager compact storeId={approvedStore?.id} />
-          </div>
-        ) : null}
       </div>
     </Container>
   );
