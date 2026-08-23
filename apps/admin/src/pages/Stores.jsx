@@ -11,6 +11,14 @@ function boolValue(value) {
   return value;
 }
 
+function ownerLabel(store) {
+  return store.owner?.full_name || store.owner_email || "No owner profile";
+}
+
+function ownerEmailSuffix(store) {
+  return store.owner?.full_name && store.owner_email ? ` · ${store.owner_email}` : "";
+}
+
 export default function Stores() {
   const [filters, setFilters] = useState({ q: "", verified: "any", active: "any" });
   const query = useStores({
@@ -87,7 +95,8 @@ export default function Stores() {
                     {store.locality}, {store.city}, {store.state} {store.postal_code}
                   </p>
                   <p className="mt-1 text-meta text-ink-muted">
-                    Owner: {store.owner?.full_name ?? "Unnamed"} · {store.owner_email ?? "No email"}
+                    Owner: {ownerLabel(store)}
+                    {ownerEmailSuffix(store)}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">

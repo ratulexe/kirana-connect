@@ -15,6 +15,10 @@ import { formatDate } from "../utils/format.js";
 
 const DAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+function ownerLabel(store) {
+  return store.owner?.full_name || store.owner_email || "No owner profile";
+}
+
 export default function StoreDetail() {
   const { storeId } = useParams();
   const store = useStore(storeId);
@@ -117,7 +121,7 @@ export default function StoreDetail() {
           <dl className="mt-4 space-y-3 text-body">
             <div>
               <dt className="text-meta font-semibold text-ink-muted">Name</dt>
-              <dd className="text-ink">{data.owner?.full_name ?? "Unnamed"}</dd>
+              <dd className="text-ink">{ownerLabel(data)}</dd>
             </div>
             <div>
               <dt className="text-meta font-semibold text-ink-muted">Email</dt>

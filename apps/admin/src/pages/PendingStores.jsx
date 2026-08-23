@@ -6,6 +6,14 @@ import StatusPill from "../components/StatusPill.jsx";
 import { usePendingStores } from "../features/admin/useAdmin.js";
 import { formatDate } from "../utils/format.js";
 
+function ownerLabel(store) {
+  return store.owner?.full_name || store.owner_email || "No owner profile";
+}
+
+function ownerEmailSuffix(store) {
+  return store.owner?.full_name && store.owner_email ? ` · ${store.owner_email}` : "";
+}
+
 export default function PendingStores() {
   const { data, isPending, isError, error } = usePendingStores();
 
@@ -49,7 +57,8 @@ export default function PendingStores() {
                   {store.address_line_1}, {store.locality}, {store.city}, {store.state} {store.postal_code}
                 </p>
                 <p className="mt-1 text-meta text-ink-muted">
-                  Owner: {store.owner?.full_name ?? "Unnamed"} · {store.owner_email ?? "No email"} · submitted {formatDate(store.created_at)}
+                  Owner: {ownerLabel(store)}
+                  {ownerEmailSuffix(store)} · submitted {formatDate(store.created_at)}
                 </p>
               </div>
               <Button as={Link} to={`/stores/${store.id}`} variant="secondary" size="sm">

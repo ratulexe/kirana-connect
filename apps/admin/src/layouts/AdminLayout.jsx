@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   BadgeCheck,
   Boxes,
@@ -29,28 +29,45 @@ const NAV = [
   { to: "/brands", label: "Brands", icon: Tags },
 ];
 
+function isActivePath(pathname, item) {
+  if (item.to === "/") return pathname === "/";
+  if (item.to === "/stores/pending") return pathname === "/stores/pending";
+  if (item.to === "/stores") {
+    return (
+      pathname === "/stores" ||
+      (pathname.startsWith("/stores/") && pathname !== "/stores/pending")
+    );
+  }
+  return pathname === item.to || pathname.startsWith(`${item.to}/`);
+}
+
 function NavItems({ onNavigate }) {
+  const location = useLocation();
+
   return (
     <nav aria-label="Admin navigation" className="flex flex-col gap-1">
-      {NAV.map(({ to, label, icon: Icon, end }) => (
-        <NavLink
-          key={to}
-          to={to}
-          end={end}
-          onClick={onNavigate}
-          className={({ isActive }) =>
-            cn(
+      {NAV.map((item) => {
+        const Icon = item.icon;
+        const active = isActivePath(location.pathname, item);
+
+        return (
+          <Link
+            key={item.to}
+            to={item.to}
+            onClick={onNavigate}
+            aria-current={active ? "page" : undefined}
+            className={cn(
               "flex items-center gap-2 rounded-control px-3 py-2 text-meta font-semibold transition-colors",
-              isActive
+              active
                 ? "bg-primary text-primary-fg"
                 : "text-ink-soft hover:bg-surface-sunken hover:text-ink",
-            )
-          }
-        >
-          <Icon className="size-4" aria-hidden="true" />
-          {label}
-        </NavLink>
-      ))}
+            )}
+          >
+            <Icon className="size-4" aria-hidden="true" />
+            {item.label}
+          </Link>
+        );
+      })}
     </nav>
   );
 }
