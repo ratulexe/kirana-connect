@@ -4,7 +4,7 @@ import { cn } from "../../lib/cn.js";
 const SIZES = {
   sm: "size-12 text-[0.8125rem]",
   md: "size-16 text-[0.9375rem]",
-  lg: "h-32 w-full text-[1.25rem]",
+  lg: "h-40 w-full text-[1.25rem]",
   xl: "h-48 w-full text-[1.5rem]",
 };
 
@@ -31,7 +31,7 @@ export default function ProductImage({ src, name, size = "md", className }) {
   return (
     <div
       className={cn(
-        "flex shrink-0 items-center justify-center overflow-hidden rounded-card border border-line-soft bg-surface-sunken",
+        "flex shrink-0 items-center justify-center overflow-hidden rounded-card border border-line-soft bg-surface",
         SIZES[size],
         className,
       )}
@@ -47,7 +47,7 @@ export default function ProductImage({ src, name, size = "md", className }) {
           loading="lazy"
           decoding="async"
           onError={() => setFailed(true)}
-          className="size-full object-contain p-1.5"
+          className="size-full object-contain p-1"
         />
       )}
     </div>
