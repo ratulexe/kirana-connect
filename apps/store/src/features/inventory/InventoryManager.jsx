@@ -32,9 +32,9 @@ function Summary({ items }) {
   );
 }
 
-export default function InventoryManager({ compact = false }) {
+export default function InventoryManager({ compact = false, storeId }) {
   const [isAdding, setIsAdding] = useState(false);
-  const { data, isPending, isError, error } = useInventory();
+  const { data, isPending, isError, error } = useInventory(storeId);
 
   const existingProductIds = useMemo(
     () => new Set((data?.items ?? []).map((item) => item.product.id)),
@@ -98,6 +98,7 @@ export default function InventoryManager({ compact = false }) {
         <div className="mt-6">
           <AddProductPanel
             existingProductIds={existingProductIds}
+            storeId={storeId}
             onClose={() => setIsAdding(false)}
           />
         </div>
@@ -109,7 +110,7 @@ export default function InventoryManager({ compact = false }) {
         ) : items.length > 0 ? (
           <ul className="divide-y divide-line-soft rounded-panel border border-line bg-surface">
             {items.map((item) => (
-              <InventoryRow key={item.id} item={item} />
+              <InventoryRow key={item.id} item={item} storeId={storeId} />
             ))}
           </ul>
         ) : null}

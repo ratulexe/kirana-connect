@@ -28,13 +28,13 @@ function StockPill({ status }) {
  * Editing is explicit rather than save-on-change: a price is commercial data,
  * and nudging a number field should not silently republish it to customers.
  */
-export default function InventoryRow({ item }) {
+export default function InventoryRow({ item, storeId }) {
   const [isEditing, setIsEditing] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [draft, setDraft] = useState(null);
 
-  const update = useUpdateInventoryItem();
-  const remove = useRemoveInventoryItem();
+  const update = useUpdateInventoryItem(storeId);
+  const remove = useRemoveInventoryItem(storeId);
 
   const { product } = item;
   const mrp = Number(product.mrp);

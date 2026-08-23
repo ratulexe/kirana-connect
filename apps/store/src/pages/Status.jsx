@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { CircleCheck, Clock } from "lucide-react";
+import { Boxes, CircleCheck, Clock, Store as StoreIcon } from "lucide-react";
 import Container from "../components/Container.jsx";
 import Card from "../components/Card.jsx";
 import Button from "../components/Button.jsx";
@@ -8,6 +8,10 @@ import PageLoader from "../components/PageLoader.jsx";
 import { useOnboardingStatus } from "../features/onboarding/useOnboarding.js";
 import InventoryManager from "../features/inventory/InventoryManager.jsx";
 import { useEntranceAnimation } from "../animations/useEntranceAnimation.js";
+
+function storeStatus(store) {
+  return store.is_verified ? "Approved" : "Pending";
+}
 
 export default function Status() {
   const { data, isPending, isError, error } = useOnboardingStatus();
@@ -41,6 +45,7 @@ export default function Status() {
   }
 
   const isApproved = data.status === "approved";
+  const approvedStore = data.stores.find((store) => store.is_verified) ?? null;
 
   return (
     <Container className="py-8 sm:py-10">
@@ -65,9 +70,55 @@ export default function Status() {
 
         <p data-animate className="mt-2 max-w-2xl text-body text-ink-muted">
           {isApproved
-            ? "Your store is verified. Manage the products customers can discover nearby."
+            ? "Manage each store separately. New stores go through admin review before customers see them."
             : "Your store is awaiting verification. We will make it discoverable to customers once it is approved."}
         </p>
+
+        <div data-animate className="mt-6 flex flex-wrap gap-2">
+          <Button as={Link} to="/onboarding?new=1">
+            <StoreIcon className="size-4" aria-hidden="true" />
+            Register another store
+          </Button>
+        </div>
+
+        <div data-animate className="mt-6 grid gap-3 lg:grid-cols-2">
+          {data.stores.map((store) => (
+            <Card key={store.id} className="p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h2 className="truncate text-card text-ink">{store.name}</h2>
+                  <p className="mt-1 text-meta text-ink-muted">
+                    {store.locality}, {store.city}, {store.state} {store.postal_code}
+                  </p>
+                </div>
+                <span
+                  className={`inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-meta font-semibold ${
+                    store.is_verified ? "bg-success-soft text-success" : "bg-warning-soft text-warning"
+                  }`}
+                >
+                  {store.is_verified ? (
+                    <CircleCheck className="size-3.5" aria-hidden="true" />
+                  ) : (
+                    <Clock className="size-3.5" aria-hidden="true" />
+                  )}
+                  {storeStatus(store)}
+                </span>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button as={Link} to={`/store-details?store_id=${store.id}`} variant="secondary" size="sm">
+                  Store details
+                </Button>
+                {store.is_verified ? (
+                  <Button as={Link} to={`/inventory?store_id=${store.id}`} variant="secondary" size="sm">
+                    <Boxes className="size-3.5" aria-hidden="true" />
+                    Products
+                  </Button>
+                ) : null}
+              </div>
+            </Card>
+          ))}
+        </div>
 
         {!isApproved ? (
           <div data-animate className="mt-5 max-w-xl">
@@ -80,7 +131,7 @@ export default function Status() {
 
         {isApproved ? (
           <div data-animate className="mt-8">
-            <InventoryManager compact />
+            <InventoryManager compact storeId={approvedStore?.id} />
           </div>
         ) : null}
       </div>

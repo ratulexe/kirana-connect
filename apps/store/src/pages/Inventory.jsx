@@ -1,10 +1,13 @@
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import Container from "../components/Container.jsx";
 import Button from "../components/Button.jsx";
 import InventoryManager from "../features/inventory/InventoryManager.jsx";
 
 export default function Inventory() {
+  const [searchParams] = useSearchParams();
+  const storeId = searchParams.get("store_id") ?? undefined;
+
   return (
     <Container className="py-10 sm:py-12">
       <div className="mb-6">
@@ -13,7 +16,7 @@ export default function Inventory() {
           Back to dashboard
         </Button>
       </div>
-      <InventoryManager compact />
+      <InventoryManager compact storeId={storeId} />
     </Container>
   );
 }

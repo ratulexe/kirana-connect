@@ -14,7 +14,7 @@ import { useAddInventoryItem, useCatalogueSearch } from "./useInventory.js";
  * what keeps one canonical product comparable across every shop. Creating new
  * catalogue entries is deliberately not possible here; that is curation.
  */
-export default function AddProductPanel({ existingProductIds, onClose }) {
+export default function AddProductPanel({ existingProductIds, storeId, onClose }) {
   const [term, setTerm] = useState("");
   const [debounced, setDebounced] = useState("");
   const [selected, setSelected] = useState(null);
@@ -25,7 +25,7 @@ export default function AddProductPanel({ existingProductIds, onClose }) {
     discount_percentage: "0",
   });
 
-  const add = useAddInventoryItem();
+  const add = useAddInventoryItem(storeId);
   const { data, isFetching, isError, isSuccess, error } = useCatalogueSearch(debounced);
 
   useEffect(() => {

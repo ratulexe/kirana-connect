@@ -81,12 +81,14 @@ export const api = {
   submitStoreChange: (storeId, body) =>
     request(`/store-onboarding/stores/${storeId}/changes`, { method: "POST", body }),
 
-  getInventory: (options) => request("/store-inventory", options),
-  addInventoryItem: (body) => request("/store-inventory", { method: "POST", body }),
-  updateInventoryItem: (itemId, body) =>
-    request(`/store-inventory/${itemId}`, { method: "PATCH", body }),
-  removeInventoryItem: (itemId) =>
-    request(`/store-inventory/${itemId}`, { method: "DELETE" }),
+  getInventory: ({ storeId, signal } = {}) =>
+    request("/store-inventory", { signal, params: { store_id: storeId } }),
+  addInventoryItem: ({ storeId, body }) =>
+    request("/store-inventory", { method: "POST", params: { store_id: storeId }, body }),
+  updateInventoryItem: ({ itemId, storeId, body }) =>
+    request(`/store-inventory/${itemId}`, { method: "PATCH", params: { store_id: storeId }, body }),
+  removeInventoryItem: ({ itemId, storeId }) =>
+    request(`/store-inventory/${itemId}`, { method: "DELETE", params: { store_id: storeId } }),
 
   // The catalogue is public, so this one deliberately carries no token.
   searchCatalogue: ({ q, limit = 12, signal }) =>

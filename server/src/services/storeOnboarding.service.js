@@ -192,16 +192,6 @@ async function fetchStoreHours(client, storeId) {
 export async function createStoreApplication({ userId, store, owner, hours }) {
   const client = getServiceClient();
 
-  // One application at a time keeps the prototype honest about duplicates. The
-  // schema still allows several stores per owner, so this is a UX rule enforced
-  // here rather than a database constraint that would block the real model.
-  const existing = await getOnboardingStatus(userId);
-  if (existing.stores.length > 0) {
-    const conflict = httpError(409, "You have already registered a store.");
-    conflict.payload = existing;
-    throw conflict;
-  }
-
   const isTaken = async (candidate) => {
     const { data, error } = await client
       .from("stores")

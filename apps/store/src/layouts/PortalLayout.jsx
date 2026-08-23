@@ -1,4 +1,4 @@
-import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
+import { Link, NavLink, Outlet, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Boxes,
   CircleCheck,
@@ -23,9 +23,15 @@ const STORE_NAV = [
 export default function PortalLayout() {
   const { isAuthenticated, user, signOut } = useAuth();
   const { data: onboarding } = useOnboardingStatus({ enabled: isAuthenticated });
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const store = onboarding?.stores?.[0] ?? null;
-  const isApproved = onboarding?.status === "approved";
+  const selectedStoreId = searchParams.get("store_id");
+  const store =
+    onboarding?.stores?.find((item) => item.id === selectedStoreId) ??
+    onboarding?.stores?.[0] ??
+    null;
+  const isApproved = Boolean(store?.is_verified);
+  const storeQuery = store ? `?store_id=${store.id}` : "";
 
   const handleSignOut = async () => {
     await signOut();
@@ -63,7 +69,7 @@ export default function PortalLayout() {
             <div className="border-t border-line-soft py-2">
               <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
                 <Link
-                  to="/store-details"
+                  to={`/store-details${storeQuery}`}
                   className="group flex min-w-0 items-center gap-3 rounded-control py-1 pr-2 transition-colors hover:text-primary"
                 >
                   <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-pill bg-surface-sunken text-primary">
@@ -97,22 +103,24 @@ export default function PortalLayout() {
               </div>
 
               <nav aria-label="Store portal navigation" className="mt-2 flex flex-wrap gap-1">
-                {STORE_NAV.map(({ to, label, icon: Icon }) => (
-                  <NavLink
-                    key={to}
-                    to={to}
-                    className={({ isActive }) =>
-                      `inline-flex h-9 items-center gap-1.5 rounded-control px-3 text-meta font-semibold transition-colors ${
-                        isActive
-                          ? "bg-primary text-primary-fg"
-                          : "text-ink-soft hover:bg-surface-sunken hover:text-ink"
-                      }`
-                    }
-                  >
-                    <Icon className="size-4" aria-hidden="true" />
-                    {label}
-                  </NavLink>
-                ))}
+                {STORE_NAV.filter(({ to }) => to !== "/inventory" || isApproved).map(
+                  ({ to, label, icon: Icon }) => (
+                    <NavLink
+                      key={to}
+                      to={to === "/status" ? to : `${to}${storeQuery}`}
+                      className={({ isActive }) =>
+                        `inline-flex h-9 items-center gap-1.5 rounded-control px-3 text-meta font-semibold transition-colors ${
+                          isActive
+                            ? "bg-primary text-primary-fg"
+                            : "text-ink-soft hover:bg-surface-sunken hover:text-ink"
+                        }`
+                      }
+                    >
+                      <Icon className="size-4" aria-hidden="true" />
+                      {label}
+                    </NavLink>
+                  ),
+                )}
               </nav>
             </div>
           ) : null}

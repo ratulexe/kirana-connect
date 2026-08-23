@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Link, Navigate, useSearchParams } from "react-router-dom";
 import {
   CircleCheck,
   Clock,
@@ -97,6 +97,7 @@ function DetailRow({ icon: Icon, title, children }) {
 }
 
 export default function StoreDetails() {
+  const [searchParams] = useSearchParams();
   const { data, isPending, isError, error } = useOnboardingStatus();
   const submitChange = useSubmitStoreChange();
   const [isEditing, setIsEditing] = useState(false);
@@ -106,10 +107,14 @@ export default function StoreDetails() {
   const [addressDraft, setAddressDraft] = useState(null);
   const [hoursDraft, setHoursDraft] = useState(defaultHours);
 
-  const store = data?.stores?.[0] ?? null;
+  const selectedStoreId = searchParams.get("store_id");
+  const store =
+    data?.stores?.find((item) => item.id === selectedStoreId) ??
+    data?.stores?.[0] ??
+    null;
   const profile = data?.profile ?? null;
   const pendingChange = store?.pending_change ?? null;
-  const isApproved = data?.status === "approved";
+  const isApproved = Boolean(store?.is_verified);
   if (isPending) return <PageLoader label="Loading store details" />;
 
   if (isError) {

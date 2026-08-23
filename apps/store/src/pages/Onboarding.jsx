@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useSearchParams } from "react-router-dom";
 import Container from "../components/Container.jsx";
 import Card from "../components/Card.jsx";
 import Stepper from "../components/Stepper.jsx";
@@ -31,6 +31,8 @@ function readOwnerDraft() {
 }
 
 export default function Onboarding() {
+  const [searchParams] = useSearchParams();
+  const isAddingStore = searchParams.get("new") === "1";
   const [step, setStep] = useState(0);
   const [store, setStore] = useState({ name: "", description: "", phone: "" });
   const [address, setAddress] = useState({
@@ -68,8 +70,9 @@ export default function Onboarding() {
     );
   }
 
-  // Already applied: the status screen owns that story.
-  if (status.status !== "no_application") return <Navigate to="/status" replace />;
+  if (status.status !== "no_application" && !isAddingStore) {
+    return <Navigate to="/status" replace />;
+  }
 
   const handleSubmit = () => {
     submitStore.mutate({
@@ -97,7 +100,7 @@ export default function Onboarding() {
 
         <div ref={containerRef}>
           <h1 data-animate className="mt-5 text-heading text-ink">
-            {heading.title}
+            {isAddingStore ? `Add another store: ${heading.title}` : heading.title}
           </h1>
           <p data-animate className="mt-2 text-body text-ink-muted">
             {heading.subtitle}
