@@ -30,14 +30,24 @@ async function authHeader() {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-async function request(path, { method = "GET", body, signal, auth = true } = {}) {
+function withParams(path, params) {
+  if (!params) return path;
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== "") search.set(key, String(value));
+  }
+  const query = search.toString();
+  return query ? `${path}?${query}` : path;
+}
+
+async function request(path, { method = "GET", body, signal, auth = true, params } = {}) {
   const headers = { Accept: "application/json" };
   if (body !== undefined) headers["Content-Type"] = "application/json";
   if (auth) Object.assign(headers, await authHeader());
 
   let response;
   try {
-    response = await fetch(`${BASE_URL}/api${path}`, {
+    response = await fetch(`${BASE_URL}/api${withParams(path, params)}`, {
       method,
       headers,
       signal,
@@ -66,4 +76,15 @@ async function request(path, { method = "GET", body, signal, auth = true } = {})
 export const api = {
   getOnboardingStatus: (options) => request("/store-onboarding/status", options),
   submitStore: (body) => request("/store-onboarding", { method: "POST", body }),
+
+  getInventory: (options) => request("/store-inventory", options),
+  addInventoryItem: (body) => request("/store-inventory", { method: "POST", body }),
+  updateInventoryItem: (itemId, body) =>
+    request(`/store-inventory/${itemId}`, { method: "PATCH", body }),
+  removeInventoryItem: (itemId) =>
+    request(`/store-inventory/${itemId}`, { method: "DELETE" }),
+
+  // The catalogue is public, so this one deliberately carries no token.
+  searchCatalogue: ({ q, limit = 12, signal }) =>
+    request("/products", { auth: false, signal, params: { q, limit } }),
 };

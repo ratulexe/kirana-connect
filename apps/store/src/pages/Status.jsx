@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { CircleCheck, Clock, MapPin, Store as StoreIcon } from "lucide-react";
+import { CircleCheck, Clock, MapPin, PackageSearch, Store as StoreIcon } from "lucide-react";
 import Container from "../components/Container.jsx";
 import Card from "../components/Card.jsx";
 import Button from "../components/Button.jsx";
@@ -104,9 +104,9 @@ export default function Status() {
 
         <div data-animate className="mt-5">
           {isApproved ? (
-            <Alert tone="info" title="Store management is coming next">
-              Adding products, setting your prices and updating stock will arrive in the
-              next release.
+            <Alert tone="success" title="You can list your products">
+              Add the items you stock and set your own price for each, so nearby
+              customers searching for them find your shop.
             </Alert>
           ) : (
             <Alert tone="info">
@@ -116,7 +116,13 @@ export default function Status() {
           )}
         </div>
 
-        <div data-animate className="mt-6">
+        <div data-animate className="mt-6 flex flex-wrap gap-3">
+          {isApproved ? (
+            <Button as={Link} to="/inventory">
+              <PackageSearch className="size-4" aria-hidden="true" />
+              Manage products
+            </Button>
+          ) : null}
           <Button variant="secondary" onClick={signOut}>
             Sign out
           </Button>
