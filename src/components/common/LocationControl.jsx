@@ -104,12 +104,12 @@ function SavedAddressForm({ initialValues, currentLocation, onCancel, onSubmit }
   return (
     <form onSubmit={submit} className="mt-4 rounded-card border border-line bg-canvas p-3">
       <div className="grid gap-3">
-        <label className="grid gap-1 text-meta font-semibold text-ink-soft">
+        <label className="grid min-w-0 gap-1 text-meta font-semibold text-ink-soft">
           Label
           <select
             value={values.label}
             onChange={update("label")}
-            className="h-10 rounded-control border border-line bg-surface px-3 text-meta font-semibold text-ink"
+            className="h-10 w-full min-w-0 rounded-control border border-line bg-surface px-3 text-meta font-semibold text-ink"
           >
             <option>Home</option>
             <option>Work</option>
@@ -117,85 +117,85 @@ function SavedAddressForm({ initialValues, currentLocation, onCancel, onSubmit }
           </select>
         </label>
 
-        <div className="grid gap-2 sm:grid-cols-2">
-          <label className="grid gap-1 text-meta font-semibold text-ink-soft">
+        <div className="grid gap-3">
+          <label className="grid min-w-0 gap-1 text-meta font-semibold text-ink-soft">
             Receiver name
             <input
               value={values.contactName}
               onChange={update("contactName")}
-              className="h-10 rounded-control border border-line bg-surface px-3 text-meta text-ink"
+              className="h-10 w-full min-w-0 rounded-control border border-line bg-surface px-3 text-meta text-ink"
               placeholder="Ratul Kole"
             />
           </label>
-          <label className="grid gap-1 text-meta font-semibold text-ink-soft">
+          <label className="grid min-w-0 gap-1 text-meta font-semibold text-ink-soft">
             Phone
             <input
               value={values.phone}
               onChange={update("phone")}
-              className="h-10 rounded-control border border-line bg-surface px-3 text-meta text-ink"
+              className="h-10 w-full min-w-0 rounded-control border border-line bg-surface px-3 text-meta text-ink"
               placeholder="Mobile number"
               inputMode="tel"
             />
           </label>
         </div>
 
-        <label className="grid gap-1 text-meta font-semibold text-ink-soft">
+        <label className="grid min-w-0 gap-1 text-meta font-semibold text-ink-soft">
           House / flat / floor
           <input
             value={values.house}
             onChange={update("house")}
-            className="h-10 rounded-control border border-line bg-surface px-3 text-meta text-ink"
+            className="h-10 w-full min-w-0 rounded-control border border-line bg-surface px-3 text-meta text-ink"
             placeholder="Flat 2B, House 14"
           />
         </label>
 
-        <label className="grid gap-1 text-meta font-semibold text-ink-soft">
+        <label className="grid min-w-0 gap-1 text-meta font-semibold text-ink-soft">
           Area / street
           <input
             value={values.area}
             onChange={update("area")}
-            className="h-10 rounded-control border border-line bg-surface px-3 text-meta text-ink"
+            className="h-10 w-full min-w-0 rounded-control border border-line bg-surface px-3 text-meta text-ink"
             placeholder="Singur Station Road"
           />
         </label>
 
-        <label className="grid gap-1 text-meta font-semibold text-ink-soft">
+        <label className="grid min-w-0 gap-1 text-meta font-semibold text-ink-soft">
           Nearby landmark
           <input
             value={values.landmark}
             onChange={update("landmark")}
-            className="h-10 rounded-control border border-line bg-surface px-3 text-meta text-ink"
+            className="h-10 w-full min-w-0 rounded-control border border-line bg-surface px-3 text-meta text-ink"
             placeholder="Near petrol pump"
           />
         </label>
 
-        <label className="grid gap-1 text-meta font-semibold text-ink-soft">
+        <label className="grid min-w-0 gap-1 text-meta font-semibold text-ink-soft">
           Delivery note
           <input
             value={values.note}
             onChange={update("note")}
-            className="h-10 rounded-control border border-line bg-surface px-3 text-meta text-ink"
+            className="h-10 w-full min-w-0 rounded-control border border-line bg-surface px-3 text-meta text-ink"
             placeholder="Call before arriving"
           />
         </label>
 
-        <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
-          <label className="grid gap-1 text-meta font-semibold text-ink-soft">
+        <div className="grid gap-3">
+          <label className="grid min-w-0 gap-1 text-meta font-semibold text-ink-soft">
             Latitude
             <input
               value={values.lat}
               onChange={update("lat")}
-              className="h-10 rounded-control border border-line bg-surface px-3 text-meta text-ink tabular-nums"
+              className="h-10 w-full min-w-0 rounded-control border border-line bg-surface px-3 text-meta text-ink tabular-nums"
               placeholder="22.590500"
               inputMode="decimal"
             />
           </label>
-          <label className="grid gap-1 text-meta font-semibold text-ink-soft">
+          <label className="grid min-w-0 gap-1 text-meta font-semibold text-ink-soft">
             Longitude
             <input
               value={values.lng}
               onChange={update("lng")}
-              className="h-10 rounded-control border border-line bg-surface px-3 text-meta text-ink tabular-nums"
+              className="h-10 w-full min-w-0 rounded-control border border-line bg-surface px-3 text-meta text-ink tabular-nums"
               placeholder="88.363500"
               inputMode="decimal"
             />
@@ -203,7 +203,7 @@ function SavedAddressForm({ initialValues, currentLocation, onCancel, onSubmit }
           <button
             type="button"
             onClick={useCurrentPin}
-            className="self-end rounded-control px-3 py-2 text-meta font-semibold text-primary hover:bg-primary-soft"
+            className="justify-self-start rounded-control px-3 py-2 text-meta font-semibold text-primary hover:bg-primary-soft"
           >
             Use pin
           </button>
@@ -216,17 +216,17 @@ function SavedAddressForm({ initialValues, currentLocation, onCancel, onSubmit }
         </p>
       ) : null}
 
-      <div className="mt-4 flex flex-wrap justify-end gap-2">
+      <div className="mt-4 grid gap-2 sm:grid-cols-2">
         <button
           type="button"
           onClick={onCancel}
-          className="inline-flex h-9 items-center rounded-control px-3 text-meta font-semibold text-ink-soft hover:bg-surface-sunken hover:text-ink"
+          className="inline-flex h-9 items-center justify-center rounded-control px-3 text-meta font-semibold text-ink-soft hover:bg-surface-sunken hover:text-ink"
         >
           Cancel
         </button>
         <button
           type="submit"
-          className="inline-flex h-9 items-center gap-1.5 rounded-control bg-primary px-3.5 text-meta font-semibold text-primary-fg hover:bg-primary-hover"
+          className="inline-flex h-9 items-center justify-center gap-1.5 rounded-control bg-primary px-3.5 text-meta font-semibold text-primary-fg hover:bg-primary-hover"
         >
           <Check className="size-3.5" aria-hidden="true" />
           Save address
@@ -313,7 +313,14 @@ export default function LocationControl({ className, compact = false }) {
       </button>
 
       {isOpen ? (
-        <div className="absolute right-0 z-50 mt-2 max-h-[80dvh] w-[min(24rem,calc(100vw-2rem))] overflow-y-auto rounded-card border border-line bg-surface p-4 shadow-float">
+        <div
+          className={cn(
+            "z-50 max-h-[80dvh] overflow-y-auto overflow-x-hidden rounded-card border border-line bg-surface p-4 shadow-float",
+            compact
+              ? "fixed top-16 right-3 left-3"
+              : "absolute right-0 mt-2 w-[min(24rem,calc(100vw-2rem))]",
+          )}
+        >
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-card text-ink">Delivery address</p>
