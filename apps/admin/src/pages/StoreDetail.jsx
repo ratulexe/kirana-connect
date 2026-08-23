@@ -16,7 +16,7 @@ import { formatDate } from "../utils/format.js";
 const DAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function ownerLabel(store) {
-  return store.owner?.full_name || store.owner_email || "No owner profile";
+  return store.owner?.full_name || "No owner name";
 }
 
 export default function StoreDetail() {

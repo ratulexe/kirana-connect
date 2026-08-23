@@ -40,7 +40,7 @@ export default function Sellers() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <h2 className="text-card text-ink">
-                    {seller.full_name || seller.email || "No profile name"}
+                    {seller.full_name || "No seller name"}
                   </h2>
                   <p className="mt-1 text-meta text-ink-muted">{seller.email ?? "No email available"}</p>
                   <p className="mt-1 text-meta text-ink-muted">{seller.phone ?? "No phone"}</p>

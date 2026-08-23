@@ -12,11 +12,7 @@ function boolValue(value) {
 }
 
 function ownerLabel(store) {
-  return store.owner?.full_name || store.owner_email || "No owner profile";
-}
-
-function ownerEmailSuffix(store) {
-  return store.owner?.full_name && store.owner_email ? ` · ${store.owner_email}` : "";
+  return store.owner?.full_name || "No owner name";
 }
 
 export default function Stores() {
@@ -96,7 +92,6 @@ export default function Stores() {
                   </p>
                   <p className="mt-1 text-meta text-ink-muted">
                     Owner: {ownerLabel(store)}
-                    {ownerEmailSuffix(store)}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">

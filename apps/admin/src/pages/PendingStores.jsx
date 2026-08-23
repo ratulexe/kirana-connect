@@ -7,11 +7,7 @@ import { usePendingStores } from "../features/admin/useAdmin.js";
 import { formatDate } from "../utils/format.js";
 
 function ownerLabel(store) {
-  return store.owner?.full_name || store.owner_email || "No owner profile";
-}
-
-function ownerEmailSuffix(store) {
-  return store.owner?.full_name && store.owner_email ? ` · ${store.owner_email}` : "";
+  return store.owner?.full_name || "No owner name";
 }
 
 export default function PendingStores() {
@@ -57,8 +53,7 @@ export default function PendingStores() {
                   {store.address_line_1}, {store.locality}, {store.city}, {store.state} {store.postal_code}
                 </p>
                 <p className="mt-1 text-meta text-ink-muted">
-                  Owner: {ownerLabel(store)}
-                  {ownerEmailSuffix(store)} · submitted {formatDate(store.created_at)}
+                  Owner: {ownerLabel(store)} · submitted {formatDate(store.created_at)}
                 </p>
               </div>
               <Button as={Link} to={`/stores/${store.id}`} variant="secondary" size="sm">

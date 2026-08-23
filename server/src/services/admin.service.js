@@ -26,6 +26,11 @@ function failed(operation, error) {
   return httpError(502, `Could not ${operation}. Please try again.`);
 }
 
+function textValue(value) {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text || null;
+}
+
 async function countRows(table, apply = (query) => query) {
   const query = apply(getServiceClient().from(table).select("id", { count: "exact", head: true }));
   const { error, count } = await query;
@@ -33,19 +38,32 @@ async function countRows(table, apply = (query) => query) {
   return count ?? 0;
 }
 
-async function authEmail(userId) {
+function authFullName(user) {
+  return (
+    textValue(user?.user_metadata?.full_name) ||
+    textValue(user?.user_metadata?.name) ||
+    textValue(user?.raw_user_meta_data?.full_name) ||
+    textValue(user?.raw_user_meta_data?.name) ||
+    null
+  );
+}
+
+async function authUserSummary(userId) {
   if (!userId) return null;
   const { data, error } = await getServiceClient().auth.admin.getUserById(userId);
   if (error) {
     console.error("[kirana-connect-api] admin auth user lookup failed:", error.message);
     return null;
   }
-  return data?.user?.email ?? null;
+  return {
+    email: data?.user?.email ?? null,
+    full_name: authFullName(data?.user),
+  };
 }
 
-async function authEmailMap(userIds) {
+async function authUserMap(userIds) {
   const entries = await Promise.all(
-    [...new Set(userIds.filter(Boolean))].map(async (id) => [id, await authEmail(id)]),
+    [...new Set(userIds.filter(Boolean))].map(async (id) => [id, await authUserSummary(id)]),
   );
   return new Map(entries);
 }
@@ -64,16 +82,24 @@ async function profilesById(userIds) {
 }
 
 async function withOwners(stores) {
-  const [profiles, emails] = await Promise.all([
+  const [profiles, authUsers] = await Promise.all([
     profilesById(stores.map((store) => store.owner_id)),
-    authEmailMap(stores.map((store) => store.owner_id)),
+    authUserMap(stores.map((store) => store.owner_id)),
   ]);
 
-  return stores.map((store) => ({
-    ...store,
-    owner: profiles.get(store.owner_id) ?? null,
-    owner_email: emails.get(store.owner_id) ?? null,
-  }));
+  return stores.map((store) => {
+    const profile = profiles.get(store.owner_id) ?? {};
+    const authUser = authUsers.get(store.owner_id);
+
+    return {
+      ...store,
+      owner: {
+        ...profile,
+        full_name: textValue(profile.full_name) || authUser?.full_name || null,
+      },
+      owner_email: authUser?.email ?? null,
+    };
+  });
 }
 
 async function hoursByStoreIds(storeIds) {
@@ -279,8 +305,8 @@ export async function listSellers() {
   if (error) throw failed("load sellers", error);
 
   const ids = (profiles ?? []).map((profile) => profile.id);
-  const [emails, storesResult] = await Promise.all([
-    authEmailMap(ids),
+  const [authUsers, storesResult] = await Promise.all([
+    authUserMap(ids),
     ids.length
       ? getServiceClient()
           .from("stores")
@@ -300,7 +326,8 @@ export async function listSellers() {
 
   return (profiles ?? []).map((profile) => ({
     ...profile,
-    email: emails.get(profile.id) ?? null,
+    full_name: textValue(profile.full_name) || authUsers.get(profile.id)?.full_name || null,
+    email: authUsers.get(profile.id)?.email ?? null,
     stores: storesByOwner.get(profile.id) ?? [],
   }));
 }
