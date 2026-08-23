@@ -26,8 +26,8 @@ export default function LiveProductShelf() {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <SectionHeader
             id="live-products-heading"
-            title="Available from local stores"
-            description="Products shown here come from visible store inventory, not sample data."
+            title="Products in the catalogue"
+            description="Live catalogue entries from Admin, ready for stores to list with their own price."
           />
           <Button as={Link} to="/search" variant="secondary" size="sm">
             Browse all
@@ -57,8 +57,8 @@ export default function LiveProductShelf() {
           {!isPending && !isError && products.length === 0 ? (
             <EmptyState
               icon={PackageSearch}
-              title="No live products yet"
-              description="Once an approved store lists visible inventory, products appear here automatically."
+              title="No products yet"
+              description="Once Admin adds active catalogue products, they appear here automatically."
             />
           ) : null}
 

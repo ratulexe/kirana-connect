@@ -7,13 +7,13 @@ export const discoveryKeys = {
   offers: (slug, params) => ["product-offers", slug, params],
 };
 
-export function useProductSearch({ search, category, limit, offset }) {
-  const params = { search: search || null, category: category || null, availableOnly: true, limit, offset };
+export function useProductSearch({ search, category, availableOnly = false, limit, offset }) {
+  const params = { search: search || null, category: category || null, availableOnly, limit, offset };
 
   return useQuery({
     queryKey: discoveryKeys.products(params),
     queryFn: ({ signal }) =>
-      fetchProducts({ search, category, availableOnly: true, limit, offset, signal }),
+      fetchProducts({ search, category, availableOnly, limit, offset, signal }),
     // Keeps the previous page visible while the next one loads, so the list
     // does not collapse to a skeleton on every keystroke.
     placeholderData: (previous) => previous,
