@@ -1,8 +1,9 @@
-import { Link } from "react-router-dom";
-import { ChevronDown, MapPin, UserRound } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Search, UserRound } from "lucide-react";
 import Container from "../components/common/Container.jsx";
 import IconButton from "../components/common/IconButton.jsx";
 import SearchBar from "../components/common/SearchBar.jsx";
+import LocationControl from "../components/common/LocationControl.jsx";
 
 /**
  * Wordmark. Text only, with a single accent mark on the "i" of Kirana so the
@@ -29,36 +30,13 @@ function Wordmark() {
   );
 }
 
-/**
- * Location control.
- *
- * A real button with a real accessible name, but intentionally inert: the
- * location picker arrives with the discovery milestone. It is a shell, not a
- * pretend feature.
- */
-function LocationPicker() {
-  return (
-    <button
-      type="button"
-      aria-label="Set your location. Location picker coming soon"
-      className="group flex max-w-[11rem] items-center gap-1.5 rounded-control px-2 py-1.5 text-left transition-colors duration-150 ease-brand hover:bg-surface-sunken"
-    >
-      <MapPin className="size-4 shrink-0 text-primary" aria-hidden="true" />
-      <span className="min-w-0">
-        <span className="block text-[0.6875rem] leading-none text-ink-muted">Shops near</span>
-        <span className="mt-0.5 block truncate text-meta font-semibold text-ink">
-          Set location
-        </span>
-      </span>
-      <ChevronDown
-        className="size-3.5 shrink-0 text-ink-muted transition-transform duration-150 ease-brand group-hover:translate-y-px"
-        aria-hidden="true"
-      />
-    </button>
-  );
-}
+export default function SiteHeader() {
+  const navigate = useNavigate();
 
-export default function SiteHeader({ onSearch }) {
+  const handleSearch = (term) => {
+    navigate(term ? `/search?q=${encodeURIComponent(term)}` : "/search");
+  };
+
   return (
     <header className="sticky top-0 z-40 border-b border-line-soft bg-canvas/85 backdrop-blur-md">
       <Container>
@@ -73,24 +51,20 @@ export default function SiteHeader({ onSearch }) {
               showSubmit={false}
               placeholder="Search milk, atta, tea..."
               label="Search products"
-              onSubmit={onSearch}
+              onSubmit={handleSearch}
               className="mx-auto max-w-xl"
             />
           </div>
 
           <div className="ml-auto flex items-center gap-1 md:ml-0">
-            {/* Wrapped rather than given a responsive display class directly:
-                the button's own `flex` would otherwise compete with `hidden`,
-                and CSS order, not class order, decides that fight. */}
-            <div className="hidden sm:block">
-              <LocationPicker />
-            </div>
+            <LocationControl className="hidden sm:block" />
             <IconButton
-              label="Set your location"
-              icon={MapPin}
+              label="Search products"
+              icon={Search}
               variant="ghost"
               size="sm"
               className="sm:hidden"
+              onClick={() => navigate("/search")}
             />
             <IconButton
               label="Account. Sign in coming soon"

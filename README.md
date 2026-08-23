@@ -222,6 +222,39 @@ to re-run.
   different prices, so price comparison has something real to compare. Requires a
   `profiles.id` to be pasted in first; it refuses to run with the placeholder.
 
+## Customer screens
+
+| Route | Purpose |
+| --- | --- |
+| `/` | Hero search, category browse, how it works |
+| `/search?q=&category=&page=` | Catalogue results, paged, filterable by category |
+| `/product/:slug` | Product detail and the price comparison across nearby shops |
+
+The comparison is the point of the product: every verified shop stocking the
+item, with that shop's own price, its saving against MRP, stock state, distance
+and a "Go to store" link that opens walking directions. Location is optional
+throughout; without it the list still works, simply without distances.
+
+The customer's location lives in a small Zustand store because it is genuine
+global client state that the header sets and several screens read, and it is
+persisted so a returning visitor is not asked again. Server data stays in
+TanStack Query.
+
+### Product images
+
+`products.image_url` is filled from the Open Food Facts family of open
+databases by `server/scripts/fetchProductImages.mjs`. Category decides which
+one is queried: food goes to Open Food Facts, personal care to Open Beauty
+Facts, household to Open Products Facts.
+
+```bash
+node server/scripts/fetchProductImages.mjs --dry-run
+```
+
+Matching is deliberately cautious, since a wrong photo is worse than none on a
+comparison page. Products with no confident match keep `image_url` null and
+render as an initials tile. The photos are CC BY-SA and credited in the footer.
+
 ## Authentication and store onboarding
 
 Supabase Auth owns identity for every app. The Store Portal signs owners in with

@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { PackageSearch, ChevronRight } from "lucide-react";
 import Container from "../../components/common/Container.jsx";
 import SectionHeader from "../../components/common/SectionHeader.jsx";
@@ -8,7 +9,8 @@ import { useRevealOnScroll } from "../../animations/useRevealOnScroll.js";
 
 function CategoryCard({ category }) {
   return (
-    <article
+    <Link
+      to={`/search?category=${category.slug}`}
       className="group flex h-full min-w-[10.5rem] flex-col justify-between gap-6 rounded-card border border-line bg-surface p-4 transition-[border-color,box-shadow,transform] duration-200 ease-brand hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-raised sm:min-w-0"
     >
       <div>
@@ -24,7 +26,7 @@ function CategoryCard({ category }) {
           aria-hidden="true"
         />
       </span>
-    </article>
+    </Link>
   );
 }
 

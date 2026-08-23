@@ -35,9 +35,25 @@ export default function SiteFooter() {
       </Container>
 
       <Container className="border-t border-line-soft py-5">
-        <p className="text-meta text-ink-muted">
-          &copy; {new Date().getFullYear()} Kirana Connect
-        </p>
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-meta text-ink-muted">
+            &copy; {new Date().getFullYear()} Kirana Connect
+          </p>
+          {/* The photos are contributed to the Open Food Facts family under
+              CC BY-SA, which requires visible credit. */}
+          <p className="text-meta text-ink-muted">
+            Product photos from{" "}
+            <a
+              href="https://world.openfoodfacts.org"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-ink-soft"
+            >
+              Open Food Facts
+            </a>
+            , CC BY-SA
+          </p>
+        </div>
       </Container>
     </footer>
   );
