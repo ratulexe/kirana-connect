@@ -14,7 +14,7 @@ const PRODUCT_FIELDS = `
 
 const PRODUCT_WITH_AVAILABLE_INVENTORY_FIELDS = `
   ${PRODUCT_FIELDS},
-  store_products!inner (id)
+  store_products!inner (id, store_id)
 `;
 
 function failed(operation, error) {
@@ -41,7 +41,7 @@ export async function listBrands() {
   return data;
 }
 
-function applyProductFilters(query, { search, categorySlug, brandSlug }) {
+function applyProductFilters(query, { search, categorySlug, brandSlug, storeId }) {
   if (search) {
     query = query.ilike("name", `%${escapeLikePattern(search)}%`);
   }
@@ -51,11 +51,15 @@ function applyProductFilters(query, { search, categorySlug, brandSlug }) {
   if (brandSlug) {
     query = query.eq("brand.slug", brandSlug);
   }
+  if (storeId) {
+    query = query.eq("store_products.store_id", storeId);
+  }
   return query;
 }
 
 async function countProducts(filters) {
-  const fields = filters.availableOnly ? PRODUCT_WITH_AVAILABLE_INVENTORY_FIELDS : PRODUCT_FIELDS;
+  const fields =
+    filters.availableOnly || filters.storeId ? PRODUCT_WITH_AVAILABLE_INVENTORY_FIELDS : PRODUCT_FIELDS;
   const query = applyProductFilters(
     getPublicClient().from("products").select(fields, { count: "exact", head: true }),
     filters,
@@ -77,14 +81,15 @@ export async function listProducts({
   search,
   categorySlug,
   brandSlug,
+  storeId,
   limit,
   offset,
   availableOnly = false,
 }) {
-  const fields = availableOnly ? PRODUCT_WITH_AVAILABLE_INVENTORY_FIELDS : PRODUCT_FIELDS;
+  const fields = availableOnly || storeId ? PRODUCT_WITH_AVAILABLE_INVENTORY_FIELDS : PRODUCT_FIELDS;
   const query = applyProductFilters(
     getPublicClient().from("products").select(fields, { count: "exact" }),
-    { search, categorySlug, brandSlug, availableOnly },
+    { search, categorySlug, brandSlug, storeId, availableOnly },
   );
 
   const { data, error, count } = await query
@@ -98,7 +103,7 @@ export async function listProducts({
     if (error.code === "PGRST103") {
       return {
         products: [],
-        total: await countProducts({ search, categorySlug, brandSlug, availableOnly }),
+        total: await countProducts({ search, categorySlug, brandSlug, storeId, availableOnly }),
       };
     }
     throw failed("product search", error);
