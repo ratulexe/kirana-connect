@@ -77,6 +77,20 @@ export function AuthProvider({ children }) {
       async signOut() {
         await supabase.auth.signOut();
       },
+
+      /**
+       * Re-sends the signup confirmation email. Needed because these links are
+       * single-use and short-lived, and mail providers routinely prefetch them,
+       * which burns the link before the owner ever clicks it.
+       */
+      async resendConfirmation(email) {
+        const { error } = await supabase.auth.resend({
+          type: "signup",
+          email,
+          options: { emailRedirectTo: authRedirectUrl },
+        });
+        if (error) throw error;
+      },
     }),
     [session, isLoading],
   );
