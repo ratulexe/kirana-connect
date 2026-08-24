@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, LocateFixed, Search, Store as StoreIcon } from "lucide-react";
+import { ArrowLeft, ChevronRight, LocateFixed, Search, Store as StoreIcon } from "lucide-react";
 import Container from "../../components/common/Container.jsx";
 import Skeleton from "../../components/common/Skeleton.jsx";
 import EmptyState from "../../components/common/EmptyState.jsx";
 import Button from "../../components/common/Button.jsx";
-import ProductImage from "../../components/common/ProductImage.jsx";
 import StoreOffer from "../../features/product/StoreOffer.jsx";
+import ProductGallery from "../../components/product/ProductGallery.jsx";
+import BrandProducts from "../../components/product/BrandProducts.jsx";
 import { useProduct, useProductOffers } from "../../hooks/useDiscovery.js";
 import { useLocationStore } from "../../store/locationStore.js";
 import { formatPrice } from "../../utils/format.js";
@@ -21,6 +22,52 @@ const EMPTY_OFFERS = [];
 
 function normalize(value) {
   return String(value ?? "").trim().toLowerCase();
+}
+
+function initials(name) {
+  return String(name ?? "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
+function BrandExploreCard({ brand }) {
+  const [logoFailed, setLogoFailed] = useState(false);
+  const showLogo = brand.logo_url && !logoFailed;
+
+  return (
+    <Link
+      to={`/search?brand=${encodeURIComponent(brand.slug)}`}
+      className="mt-5 flex max-w-md items-center gap-3 rounded-card border border-line bg-canvas p-3 transition-[border-color,background-color] hover:border-primary/45 hover:bg-primary-soft"
+    >
+      <span className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-card border border-line-soft bg-surface">
+        {showLogo ? (
+          <img
+            src={brand.logo_url}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            onError={() => setLogoFailed(true)}
+            className="size-full object-contain p-1"
+          />
+        ) : (
+          <span aria-hidden="true" className="text-meta font-bold text-ink-muted">
+            {initials(brand.name)}
+          </span>
+        )}
+      </span>
+
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-card text-ink">{brand.name}</span>
+        <span className="mt-0.5 inline-flex items-center gap-1 text-meta font-semibold text-primary">
+          Explore all products
+          <ChevronRight className="size-3.5" aria-hidden="true" />
+        </span>
+      </span>
+    </Link>
+  );
 }
 
 function OffersSkeleton() {
@@ -117,11 +164,10 @@ export default function ProductDetail() {
       </Link>
 
       <div className="mt-4 flex flex-col gap-5 rounded-panel border border-line bg-surface p-5 sm:flex-row sm:items-start sm:gap-7 sm:p-7">
-        <ProductImage
-          src={item.image_url}
-          name={item.name}
-          size="xl"
-          className="sm:h-40 sm:w-40 sm:shrink-0"
+        <ProductGallery
+          media={item.media}
+          legacyImageUrl={item.image_url}
+          productName={item.name}
         />
 
         <div className="min-w-0">
@@ -140,6 +186,7 @@ export default function ProductDetail() {
           <p className="mt-3 text-meta text-ink-muted">
             In {item.category.name}
           </p>
+          {item.brand ? <BrandExploreCard brand={item.brand} /> : null}
         </div>
       </div>
 
@@ -164,7 +211,7 @@ export default function ProductDetail() {
           ) : null}
         </div>
 
-        <div className="mt-5 grid gap-3 rounded-panel border border-line bg-surface p-4 sm:grid-cols-[minmax(14rem,1fr)_auto_auto] sm:items-end">
+        <div className="mt-5 grid min-w-0 gap-3 rounded-panel border border-line bg-surface p-4 lg:grid-cols-[minmax(14rem,1fr)_auto_auto] lg:items-end">
           <label className="min-w-0">
             <span className="text-meta font-semibold text-ink-soft">Search shops</span>
             <span className="mt-1 flex h-10 items-center gap-2 rounded-control border border-line bg-canvas px-3 focus-within:border-primary">
@@ -179,7 +226,7 @@ export default function ProductDetail() {
             </span>
           </label>
 
-          <div className="grid grid-cols-2 gap-2 sm:flex sm:items-end">
+          <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-3 lg:flex lg:items-end">
             {location ? (
               <>
                 <label>
@@ -187,7 +234,7 @@ export default function ProductDetail() {
                   <select
                     value={radiusKm}
                     onChange={(event) => setRadius(Number(event.target.value))}
-                    className="mt-1 h-10 rounded-control border border-line bg-surface px-2.5 text-meta font-semibold text-ink focus:border-primary focus:outline-none"
+                    className="mt-1 h-10 w-full rounded-control border border-line bg-surface px-2.5 text-meta font-semibold text-ink focus:border-primary focus:outline-none lg:w-auto"
                   >
                     {RADIUS_OPTIONS.map((km) => (
                       <option key={km} value={km}>
@@ -202,7 +249,7 @@ export default function ProductDetail() {
                   <select
                     value={sort}
                     onChange={(event) => setSort(event.target.value)}
-                    className="mt-1 h-10 rounded-control border border-line bg-surface px-2.5 text-meta font-semibold text-ink focus:border-primary focus:outline-none"
+                    className="mt-1 h-10 w-full rounded-control border border-line bg-surface px-2.5 text-meta font-semibold text-ink focus:border-primary focus:outline-none lg:w-auto"
                   >
                     <option value="distance">Nearest first</option>
                     <option value="price">Cheapest first</option>
@@ -216,7 +263,7 @@ export default function ProductDetail() {
               <select
                 value={stockFilter}
                 onChange={(event) => setStockFilter(event.target.value)}
-                className="mt-1 h-10 rounded-control border border-line bg-surface px-2.5 text-meta font-semibold text-ink focus:border-primary focus:outline-none"
+                className="mt-1 h-10 w-full rounded-control border border-line bg-surface px-2.5 text-meta font-semibold text-ink focus:border-primary focus:outline-none lg:w-auto"
               >
                 {STOCK_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -227,7 +274,7 @@ export default function ProductDetail() {
             </label>
           </div>
 
-          <label className="inline-flex h-10 items-center gap-2 rounded-control border border-line bg-canvas px-3 text-meta font-semibold text-ink-soft">
+          <label className="inline-flex h-10 min-w-0 items-center gap-2 rounded-control border border-line bg-canvas px-3 text-meta font-semibold text-ink-soft">
             <input
               type="checkbox"
               checked={dealsOnly}
@@ -306,6 +353,8 @@ export default function ProductDetail() {
           ) : null}
         </div>
       </section>
+
+      <BrandProducts brand={item.brand} currentProductSlug={slug} />
     </Container>
   );
 }

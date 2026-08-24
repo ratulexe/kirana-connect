@@ -7,6 +7,7 @@ import Button from "../components/Button.jsx";
 import Card from "../components/Card.jsx";
 import Field, { SelectInput, TextInput } from "../components/Field.jsx";
 import Skeleton from "../components/Skeleton.jsx";
+import ProductMediaSection from "../components/ProductMediaSection.jsx";
 import {
   useBrands,
   useCategories,
@@ -454,6 +455,10 @@ export default function ProductForm({ mode }) {
           </div>
         </form>
       </Card>
+
+      {isEdit && productId && (
+        <ProductMediaSection productId={productId} />
+      )}
     </div>
   );
 }

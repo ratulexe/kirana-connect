@@ -11,8 +11,11 @@ import {
   X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useLocationStore } from "../../store/locationStore.js";
 import { cn } from "../../lib/cn.js";
+import { useAuth } from "../../auth/useAuth.js";
+import { useCustomerAddresses } from "../../features/customer/useCustomer.js";
 
 const EMPTY_FORM = {
   label: "Home",
@@ -28,6 +31,31 @@ const EMPTY_FORM = {
 
 function addressIcon(label) {
   return label.toLowerCase().includes("work") ? Briefcase : Home;
+}
+
+function remoteAddressSummary(address) {
+  return [
+    address.address_line_1,
+    address.address_line_2,
+    address.locality,
+    address.city,
+    address.state,
+    address.postal_code,
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
+function remoteAddressLocation(address) {
+  return {
+    lat: Number(address.latitude),
+    lng: Number(address.longitude),
+    accuracy: null,
+    source: "saved",
+    addressId: address.id,
+    addressLabel: address.label,
+    addressLine: remoteAddressSummary(address),
+  };
 }
 
 function formFromAddress(address, location) {
@@ -244,6 +272,8 @@ function SavedAddressForm({ initialValues, currentLocation, onCancel, onSubmit }
  * space where a distance would be.
  */
 export default function LocationControl({ className, compact = false }) {
+  const auth = useAuth();
+  const remoteAddresses = useCustomerAddresses();
   const {
     location,
     savedAddresses,
@@ -258,6 +288,7 @@ export default function LocationControl({ className, compact = false }) {
   const [isOpen, setIsOpen] = useState(false);
   const [editingAddress, setEditingAddress] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  const signedIn = auth.isAuthenticated;
 
   const label = location?.addressLabel
     ? location.addressLabel
@@ -265,14 +296,19 @@ export default function LocationControl({ className, compact = false }) {
       ? `${location.lat.toFixed(3)}, ${location.lng.toFixed(3)}`
       : "Set location";
 
+  const addressRows = useMemo(
+    () => (signedIn ? remoteAddresses.data ?? [] : savedAddresses),
+    [remoteAddresses.data, savedAddresses, signedIn],
+  );
   const sortedAddresses = useMemo(
     () =>
-      [...savedAddresses].sort((first, second) => {
+      [...addressRows].sort((first, second) => {
         if (first.id === location?.addressId) return -1;
         if (second.id === location?.addressId) return 1;
+        if (signedIn && first.is_default !== second.is_default) return first.is_default ? -1 : 1;
         return first.label.localeCompare(second.label);
       }),
-    [location?.addressId, savedAddresses],
+    [addressRows, location?.addressId, signedIn],
   );
 
   const startNewAddress = () => {
@@ -284,6 +320,15 @@ export default function LocationControl({ className, compact = false }) {
     saveAddress(values);
     setShowForm(false);
     setEditingAddress(null);
+  };
+
+  const handleUseSavedAddress = (address) => {
+    if (signedIn) {
+      useLocationStore.getState().setLocation(remoteAddressLocation(address));
+    } else {
+      selectAddress(address.id);
+    }
+    setIsOpen(false);
   };
 
   return (
@@ -371,14 +416,25 @@ export default function LocationControl({ className, compact = false }) {
               {status === "locating" ? "Finding you..." : "Use my location"}
             </button>
 
-            <button
-              type="button"
-              onClick={startNewAddress}
-              className="inline-flex h-9 items-center gap-1.5 rounded-control border border-line px-3 text-meta font-semibold text-ink hover:border-primary/40 hover:bg-primary-soft"
-            >
-              <Plus className="size-3.5" aria-hidden="true" />
-              Add address
-            </button>
+            {signedIn ? (
+              <Link
+                to="/account"
+                onClick={() => setIsOpen(false)}
+                className="inline-flex h-9 items-center gap-1.5 rounded-control border border-line px-3 text-meta font-semibold text-ink hover:border-primary/40 hover:bg-primary-soft"
+              >
+                <Plus className="size-3.5" aria-hidden="true" />
+                Add address
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={startNewAddress}
+                className="inline-flex h-9 items-center gap-1.5 rounded-control border border-line px-3 text-meta font-semibold text-ink hover:border-primary/40 hover:bg-primary-soft"
+              >
+                <Plus className="size-3.5" aria-hidden="true" />
+                Add address
+              </button>
+            )}
 
             {location ? (
               <button
@@ -391,11 +447,24 @@ export default function LocationControl({ className, compact = false }) {
             ) : null}
           </div>
 
+          {signedIn && remoteAddresses.isError ? (
+            <p role="alert" className="mt-3 text-meta text-danger">
+              Could not load saved addresses. You can still use current location.
+            </p>
+          ) : null}
+
+          {signedIn && remoteAddresses.isPending ? (
+            <p className="mt-3 text-meta text-ink-muted">Loading saved addresses...</p>
+          ) : null}
+
           {sortedAddresses.length > 0 ? (
             <div className="mt-4 space-y-2">
               {sortedAddresses.map((address) => {
                 const Icon = addressIcon(address.label);
                 const isActive = location?.addressId === address.id;
+                const line = signedIn
+                  ? remoteAddressSummary(address)
+                  : [address.house, address.area].filter(Boolean).join(", ");
 
                 return (
                   <div
@@ -417,15 +486,22 @@ export default function LocationControl({ className, compact = false }) {
                               Selected
                             </span>
                           ) : null}
+                          {signedIn && address.is_default ? (
+                            <span className="rounded-pill bg-accent-soft px-2 py-0.5 text-[0.6875rem] font-semibold text-accent-fg">
+                              Default
+                            </span>
+                          ) : null}
                         </div>
-                        <p className="mt-1 text-meta text-ink-soft">
-                          {address.contactName}
-                          {address.phone ? `, ${address.phone}` : ""}
-                        </p>
+                        {!signedIn ? (
+                          <p className="mt-1 text-meta text-ink-soft">
+                            {address.contactName}
+                            {address.phone ? `, ${address.phone}` : ""}
+                          </p>
+                        ) : null}
                         <p className="mt-1 text-meta text-ink-muted">
-                          {[address.house, address.area].filter(Boolean).join(", ")}
+                          {line}
                         </p>
-                        {address.landmark ? (
+                        {!signedIn && address.landmark ? (
                           <p className="mt-1 text-meta text-ink-muted">
                             Landmark: {address.landmark}
                           </p>
@@ -437,33 +513,45 @@ export default function LocationControl({ className, compact = false }) {
                       <button
                         type="button"
                         onClick={() => {
-                          selectAddress(address.id);
-                          setIsOpen(false);
+                          handleUseSavedAddress(address);
                         }}
                         className="inline-flex h-8 items-center gap-1 rounded-control px-2.5 text-meta font-semibold text-primary hover:bg-primary-soft"
                       >
                         <Check className="size-3.5" aria-hidden="true" />
                         Use
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingAddress(address);
-                          setShowForm(true);
-                        }}
-                        className="inline-flex h-8 items-center gap-1 rounded-control px-2.5 text-meta font-semibold text-ink-soft hover:bg-surface-sunken hover:text-ink"
-                      >
-                        <Pencil className="size-3.5" aria-hidden="true" />
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => removeAddress(address.id)}
-                        className="inline-flex h-8 items-center gap-1 rounded-control px-2.5 text-meta font-semibold text-danger hover:bg-danger-soft"
-                      >
-                        <Trash2 className="size-3.5" aria-hidden="true" />
-                        Delete
-                      </button>
+                      {signedIn ? (
+                        <Link
+                          to="/account"
+                          onClick={() => setIsOpen(false)}
+                          className="inline-flex h-8 items-center gap-1 rounded-control px-2.5 text-meta font-semibold text-ink-soft hover:bg-surface-sunken hover:text-ink"
+                        >
+                          <Pencil className="size-3.5" aria-hidden="true" />
+                          Manage
+                        </Link>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingAddress(address);
+                              setShowForm(true);
+                            }}
+                            className="inline-flex h-8 items-center gap-1 rounded-control px-2.5 text-meta font-semibold text-ink-soft hover:bg-surface-sunken hover:text-ink"
+                          >
+                            <Pencil className="size-3.5" aria-hidden="true" />
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeAddress(address.id)}
+                            className="inline-flex h-8 items-center gap-1 rounded-control px-2.5 text-meta font-semibold text-danger hover:bg-danger-soft"
+                          >
+                            <Trash2 className="size-3.5" aria-hidden="true" />
+                            Delete
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 );
@@ -471,7 +559,7 @@ export default function LocationControl({ className, compact = false }) {
             </div>
           ) : null}
 
-          {showForm ? (
+          {showForm && !signedIn ? (
             <SavedAddressForm
               key={editingAddress?.id ?? "new-address"}
               initialValues={editingAddress}

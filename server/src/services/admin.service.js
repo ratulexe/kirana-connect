@@ -586,7 +586,9 @@ export async function getAdminProduct(productId) {
 
   if (error) throw failed("load product", error);
   if (!data) throw notFoundError("Product not found.");
-  return data;
+
+  const media = await listProductMedia(productId);
+  return { ...data, media };
 }
 
 export async function createProduct(payload) {
@@ -743,4 +745,123 @@ export async function updateBrand(brandId, patch) {
   if (error) throw failed("update brand", error);
   if (!data) throw notFoundError("Brand not found.");
   return data;
+}
+
+const MEDIA_FIELDS = `id, product_id, media_type, image_url, storage_path, alt_text, sort_order, is_primary, created_at, updated_at`;
+
+export async function listProductMedia(productId) {
+  const { data, error } = await getServiceClient()
+    .from("product_media")
+    .select(MEDIA_FIELDS)
+    .eq("product_id", productId)
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true });
+
+  if (error) throw failed("load product media", error);
+  return data ?? [];
+}
+
+export async function createProductMedia(productId, { mediaType, imageUrl, storagePath, altText, sortOrder, isPrimary }) {
+  const client = getServiceClient();
+
+  // Verify product exists
+  const { data: product, error: productError } = await client
+    .from("products")
+    .select("id")
+    .eq("id", productId)
+    .maybeSingle();
+
+  if (productError) throw failed("verify product for media", productError);
+  if (!product) throw notFoundError("Product not found.");
+
+  // If setting as primary, unset any existing primary
+  if (isPrimary) {
+    await client
+      .from("product_media")
+      .update({ is_primary: false })
+      .eq("product_id", productId)
+      .eq("is_primary", true);
+  }
+
+  const { data, error } = await client
+    .from("product_media")
+    .insert({
+      product_id: productId,
+      media_type: mediaType,
+      image_url: imageUrl,
+      storage_path: storagePath ?? null,
+      alt_text: altText ?? null,
+      sort_order: sortOrder ?? 0,
+      is_primary: isPrimary ?? false,
+    })
+    .select(MEDIA_FIELDS)
+    .single();
+
+  if (error) throw failed("create product media", error);
+  return data;
+}
+
+export async function updateProductMedia(mediaId, patch) {
+  const client = getServiceClient();
+
+  // If setting as primary, unset existing primary for the same product
+  if (patch.is_primary) {
+    const { data: existing } = await client
+      .from("product_media")
+      .select("product_id")
+      .eq("id", mediaId)
+      .maybeSingle();
+
+    if (existing) {
+      await client
+        .from("product_media")
+        .update({ is_primary: false })
+        .eq("product_id", existing.product_id)
+        .eq("is_primary", true);
+    }
+  }
+
+  const { data, error } = await client
+    .from("product_media")
+    .update(patch)
+    .eq("id", mediaId)
+    .select(MEDIA_FIELDS)
+    .maybeSingle();
+
+  if (error) throw failed("update product media", error);
+  if (!data) throw notFoundError("Media not found.");
+  return data;
+}
+
+export async function deleteProductMedia(mediaId) {
+  const client = getServiceClient();
+
+  // Fetch the media row to get storage_path for cleanup
+  const { data: media, error: readError } = await client
+    .from("product_media")
+    .select("id, storage_path")
+    .eq("id", mediaId)
+    .maybeSingle();
+
+  if (readError) throw failed("load media for deletion", readError);
+  if (!media) throw notFoundError("Media not found.");
+
+  // Delete storage file if it exists
+  if (media.storage_path) {
+    const { error: storageError } = await client.storage
+      .from(PRODUCT_IMAGE_BUCKET)
+      .remove([media.storage_path]);
+
+    if (storageError) {
+      console.error("[kirana-connect-api] storage cleanup failed:", storageError.message);
+    }
+  }
+
+  const { error } = await client
+    .from("product_media")
+    .delete()
+    .eq("id", media.id);
+
+  if (error) throw failed("delete product media", error);
+  return { id: media.id, deleted: true };
 }

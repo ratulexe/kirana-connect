@@ -81,6 +81,33 @@ async function upload(path, file) {
       payload?.data,
     );
   }
+  return { data: payload.data, meta: payload.meta };
+}
+
+async function uploadWithHeaders(path, file, additionalHeaders = {}) {
+  const headers = { Accept: "application/json", ...(await authHeader()), ...additionalHeaders };
+  if (file?.type) headers["Content-Type"] = file.type;
+
+  let response;
+  try {
+    response = await fetch(`${BASE_URL}/api/admin${path}`, {
+      method: "POST",
+      headers,
+      body: file,
+    });
+  } catch (cause) {
+    if (cause?.name === "AbortError") throw cause;
+    throw new ApiError("Could not reach the Kirana Connect API.", 0);
+  }
+
+  const payload = await response.json().catch(() => null);
+  if (!response.ok || !payload?.success) {
+    throw new ApiError(
+      payload?.error?.message ?? "Upload failed. Please try again.",
+      response.status,
+      payload?.data,
+    );
+  }
 
   return { data: payload.data, meta: payload.meta };
 }
@@ -106,6 +133,18 @@ export const api = {
   uploadProductImage: (file) => upload("/product-images", file),
   createProduct: (body) => request("/products", { method: "POST", body }),
   updateProduct: (id, body) => request(`/products/${id}`, { method: "PATCH", body }),
+  productMedia: (id, options) => request(`/products/${id}/media`, options),
+  createProductMedia: (id, file, metadata) => {
+    const customHeaders = {
+      "x-media-type": metadata.mediaType,
+      "x-alt-text": metadata.altText || "",
+      "x-sort-order": String(metadata.sortOrder || 0),
+      "x-is-primary": String(metadata.isPrimary || false),
+    };
+    return uploadWithHeaders(`/products/${id}/media`, file, customHeaders);
+  },
+  updateProductMedia: (id, body) => request(`/media/${id}`, { method: "PATCH", body }),
+  deleteProductMedia: (id) => request(`/media/${id}`, { method: "DELETE" }),
 
   categories: (options) => request("/categories", options),
   createCategory: (body) => request("/categories", { method: "POST", body }),

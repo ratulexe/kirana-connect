@@ -12,6 +12,7 @@ export async function fetchCategories({ signal } = {}) {
 export async function fetchProducts({
   search,
   category,
+  brand,
   storeId,
   availableOnly = false,
   limit = 24,
@@ -20,7 +21,7 @@ export async function fetchProducts({
 } = {}) {
   const { data, meta } = await apiGet("/products", {
     signal,
-    params: { q: search, category, store_id: storeId, available_only: availableOnly, limit, offset },
+    params: { q: search, category, brand, store_id: storeId, available_only: availableOnly, limit, offset },
   });
   return { products: data, meta };
 }

@@ -215,3 +215,72 @@ export async function patchBrand(req, res) {
   );
   res.status(200).json({ success: true, data });
 }
+
+export async function getProductMedia(req, res) {
+  const { listProductMedia } = await import("../services/admin.service.js");
+  const data = await listProductMedia(uuidField(req.params.productId, "Product"));
+  res.status(200).json({ success: true, data });
+}
+
+export async function postProductMedia(req, res) {
+  const { createProductMedia } = await import("../services/admin.service.js");
+  const productId = uuidField(req.params.productId, "Product");
+  const uploaded = await uploadProductImage({
+    buffer: req.body,
+    mimeType: req.get("content-type")?.split(";")[0]?.trim().toLowerCase(),
+  });
+
+  const mediaType = req.get("x-media-type") || "front";
+  const altText = req.get("x-alt-text") || null;
+  const sortOrder = Number(req.get("x-sort-order") || 0);
+  const isPrimary = req.get("x-is-primary") === "true";
+
+  const validTypes = ["front", "back", "nutrition", "promotional"];
+  if (!validTypes.includes(mediaType)) {
+    const { httpError } = await import("../utils/httpError.js");
+    throw httpError(400, `Invalid media type. Must be one of: ${validTypes.join(", ")}`);
+  }
+
+  const data = await createProductMedia(productId, {
+    mediaType,
+    imageUrl: uploaded.public_url,
+    storagePath: uploaded.path,
+    altText,
+    sortOrder,
+    isPrimary,
+  });
+
+  res.status(201).json({ success: true, data });
+}
+
+export async function patchProductMedia(req, res) {
+  const { updateProductMedia } = await import("../services/admin.service.js");
+  const mediaId = uuidField(req.params.mediaId, "Media");
+  const body = req.body ?? {};
+  const patch = {};
+
+  if (body.alt_text !== undefined) patch.alt_text = typeof body.alt_text === "string" ? body.alt_text.trim() || null : null;
+  if (body.sort_order !== undefined) {
+    const order = Number(body.sort_order);
+    if (!Number.isInteger(order) || order < 0 || order > 999) {
+      const { httpError } = await import("../utils/httpError.js");
+      throw httpError(400, "sort_order must be an integer between 0 and 999.");
+    }
+    patch.sort_order = order;
+  }
+  if (body.is_primary !== undefined) patch.is_primary = Boolean(body.is_primary);
+
+  if (Object.keys(patch).length === 0) {
+    const { httpError } = await import("../utils/httpError.js");
+    throw httpError(400, "No valid fields to update.");
+  }
+
+  const data = await updateProductMedia(mediaId, patch);
+  res.status(200).json({ success: true, data });
+}
+
+export async function deleteProductMediaHandler(req, res) {
+  const { deleteProductMedia } = await import("../services/admin.service.js");
+  const data = await deleteProductMedia(uuidField(req.params.mediaId, "Media"));
+  res.status(200).json({ success: true, data });
+}

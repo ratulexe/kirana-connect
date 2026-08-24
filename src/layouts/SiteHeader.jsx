@@ -1,9 +1,12 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Search, UserRound } from "lucide-react";
+import { LogOut, Search, UserRound } from "lucide-react";
+import { useState } from "react";
 import Container from "../components/common/Container.jsx";
 import IconButton from "../components/common/IconButton.jsx";
 import SearchBar from "../components/common/SearchBar.jsx";
 import LocationControl from "../components/common/LocationControl.jsx";
+import { useAuth } from "../auth/useAuth.js";
+import { useCustomerProfile } from "../features/customer/useCustomer.js";
 
 /**
  * Wordmark. Text only, with a single accent mark on the "i" of Kirana so the
@@ -27,6 +30,72 @@ function Wordmark() {
         Connect
       </span>
     </Link>
+  );
+}
+
+function AccountControl() {
+  const auth = useAuth();
+  const profile = useCustomerProfile();
+  const [open, setOpen] = useState(false);
+
+  if (auth.isLoading) {
+    return (
+      <span className="inline-flex size-9 items-center justify-center rounded-control border border-line bg-surface" aria-label="Loading account">
+        <UserRound className="size-4 text-ink-muted" aria-hidden="true" />
+      </span>
+    );
+  }
+
+  if (!auth.isAuthenticated) {
+    return (
+      <Link
+        to="/login"
+        className="inline-flex h-9 items-center gap-1.5 rounded-control border border-line bg-surface px-3 text-meta font-semibold text-ink transition-colors hover:border-primary/40 hover:bg-primary-soft"
+      >
+        <UserRound className="size-4" aria-hidden="true" />
+        <span className="hidden sm:inline">Sign in</span>
+      </Link>
+    );
+  }
+
+  const name = profile.data?.full_name || auth.user?.email || "Account";
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        aria-expanded={open}
+        className="inline-flex h-9 max-w-[11rem] items-center gap-1.5 rounded-control border border-line bg-surface px-3 text-meta font-semibold text-ink transition-colors hover:border-primary/40 hover:bg-primary-soft"
+      >
+        <UserRound className="size-4 shrink-0" aria-hidden="true" />
+        <span className="hidden min-w-0 truncate sm:block">{name}</span>
+      </button>
+
+      {open ? (
+        <div className="absolute right-0 mt-2 w-56 rounded-card border border-line bg-surface p-2 shadow-float">
+          <Link
+            to="/account"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2 rounded-control px-3 py-2 text-meta font-semibold text-ink-soft hover:bg-surface-sunken hover:text-ink"
+          >
+            <UserRound className="size-4" aria-hidden="true" />
+            Account
+          </Link>
+          <button
+            type="button"
+            onClick={async () => {
+              setOpen(false);
+              await auth.signOut();
+            }}
+            className="flex w-full items-center gap-2 rounded-control px-3 py-2 text-left text-meta font-semibold text-ink-soft hover:bg-surface-sunken hover:text-ink"
+          >
+            <LogOut className="size-4" aria-hidden="true" />
+            Sign out
+          </button>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -67,12 +136,7 @@ export default function SiteHeader() {
               className="sm:hidden"
               onClick={() => navigate("/search")}
             />
-            <IconButton
-              label="Account. Sign in coming soon"
-              icon={UserRound}
-              variant="outline"
-              size="sm"
-            />
+            <AccountControl />
           </div>
         </div>
       </Container>

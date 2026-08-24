@@ -159,6 +159,7 @@ export default function SearchResults() {
 
   const search = params.get("q") ?? "";
   const category = params.get("category") ?? "";
+  const brand = params.get("brand") ?? "";
   const storeId = params.get("store_id") ?? "";
   const page = Math.max(1, Number(params.get("page") ?? 1));
   const offset = (page - 1) * PAGE_SIZE;
@@ -166,6 +167,7 @@ export default function SearchResults() {
   const { data, isPending, isError, error, isPlaceholderData } = useProductSearch({
     search,
     category,
+    brand,
     storeId,
     limit: PAGE_SIZE,
     offset,
@@ -205,6 +207,8 @@ export default function SearchResults() {
             ? `Results for "${search}"`
             : storeId
               ? "Products from this store"
+              : brand
+                ? "Products by brand"
               : category
                 ? "Browse products"
                 : "All products"}
@@ -237,12 +241,14 @@ export default function SearchResults() {
             description={
               search
                 ? `Nothing in the catalogue matches "${search}". Try a shorter word, or browse a category.`
+                : brand
+                  ? "No products from this brand are available yet."
                 : "There is nothing in this category yet."
             }
             action={
-              search ? (
-                <Button variant="secondary" onClick={() => update({ q: null, category: null })}>
-                  Clear search
+              search || brand ? (
+                <Button variant="secondary" onClick={() => update({ q: null, brand: null, category: null })}>
+                  Clear filters
                 </Button>
               ) : null
             }
