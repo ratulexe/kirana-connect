@@ -73,6 +73,18 @@ function isLikelyDuplicateProduct(candidate, values) {
   return matchedTokens.length >= 2;
 }
 
+function firstErrorMessage(errors) {
+  if (!errors || typeof errors !== "object") return "";
+  if (typeof errors.message === "string") return errors.message;
+
+  for (const value of Object.values(errors)) {
+    const message = firstErrorMessage(value);
+    if (message) return message;
+  }
+
+  return "";
+}
+
 function quantityLabel(value) {
   const number = Number(value);
   if (!Number.isFinite(number)) return "";
@@ -183,6 +195,7 @@ export default function ProductForm({ mode }) {
   const [localPreview, setLocalPreview] = useState("");
   const [duplicateError, setDuplicateError] = useState(false);
   const [imageResolveError, setImageResolveError] = useState("");
+  const [submitError, setSubmitError] = useState("");
 
   const {
     control,
@@ -204,11 +217,11 @@ export default function ProductForm({ mode }) {
   const duplicateNameSearch = normalize(watchedName);
   const duplicateNameProducts = useProducts(
     { q: duplicateNameSearch, limit: 8 },
-    { enabled: duplicateNameSearch.length >= 2 },
+    { enabled: !isEdit && duplicateNameSearch.length >= 2 },
   );
 
   const duplicateMatches = useMemo(() => {
-    if (!normalize(watchedName) || !watchedCategory) return [];
+    if (isEdit || !normalize(watchedName) || !watchedCategory) return [];
 
     return (duplicateNameProducts.data ?? []).filter((candidate) => {
       if (candidate.id === productId) return false;
@@ -218,7 +231,7 @@ export default function ProductForm({ mode }) {
         brandId: watchedBrand,
       });
     });
-  }, [duplicateNameProducts.data, productId, watchedBrand, watchedCategory, watchedName]);
+  }, [duplicateNameProducts.data, isEdit, productId, watchedBrand, watchedCategory, watchedName]);
 
   const duplicateMatch = duplicateMatches[0] ?? null;
 
@@ -314,22 +327,35 @@ export default function ProductForm({ mode }) {
   };
 
   const onSubmit = async (values) => {
+    setSubmitError("");
     if (duplicateMatches.length > 0) {
       setDuplicateError(true);
+      setSubmitError("This product already exists. Open the existing product to add or edit sizes.");
       return;
     }
-    if (duplicateVariantLabels.length > 0) return;
-
-    const body = toPayload(values);
-    if (isEdit) {
-      await update.mutateAsync({ id: productId, body });
-      navigate("/products", { replace: true });
+    if (duplicateVariantLabels.length > 0) {
+      setSubmitError(`${duplicateVariantLabels.join(", ")} appears more than once.`);
       return;
     }
 
-    const created = await create.mutateAsync(body);
-    const newProductId = created?.data?.id;
-    navigate(newProductId ? `/products/${newProductId}/edit` : "/products", { replace: true });
+    try {
+      const body = toPayload(values);
+      if (isEdit) {
+        await update.mutateAsync({ id: productId, body });
+        navigate("/products", { replace: true });
+        return;
+      }
+
+      const created = await create.mutateAsync(body);
+      const newProductId = created?.data?.id;
+      navigate(newProductId ? `/products/${newProductId}/edit` : "/products", { replace: true });
+    } catch (error) {
+      setSubmitError(error?.message ?? "Could not save product. Please try again.");
+    }
+  };
+
+  const onInvalidSubmit = (formErrors) => {
+    setSubmitError(firstErrorMessage(formErrors) || "Fix the highlighted fields before saving.");
   };
 
   return (
@@ -347,7 +373,7 @@ export default function ProductForm({ mode }) {
       </p>
 
       <Card className="mt-6 p-5 sm:p-6">
-        <form onSubmit={handleSubmit(onSubmit)} noValidate className="grid gap-6">
+        <form onSubmit={handleSubmit(onSubmit, onInvalidSubmit)} noValidate className="grid gap-6">
           {mutation.isError ? (
             <Alert tone="error" title={isEdit ? "Could not update product" : "Could not create product"}>
               {mutation.error?.message ?? "Could not save product."}
@@ -621,7 +647,12 @@ export default function ProductForm({ mode }) {
             Active in customer catalogue
           </label>
 
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {submitError ? (
+              <p role="alert" className="mr-auto self-center text-meta font-medium text-danger">
+                {submitError}
+              </p>
+            ) : null}
             <Button as={Link} to="/products" variant="secondary">Cancel</Button>
             <Button type="submit" isLoading={isSubmitting || mutation.isPending}>
               {isEdit ? "Save product" : "Create product"}
