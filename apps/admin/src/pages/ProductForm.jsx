@@ -102,6 +102,13 @@ function variantLabel(variant) {
   return `${quantityLabel(variant?.quantity)} ${unitLabel(variant?.unit_code)}`.trim();
 }
 
+function variantSizeKey(variant) {
+  const quantity = Number(variant?.quantity);
+  const unitCode = variant?.unit_code;
+  if (!Number.isFinite(quantity) || quantity <= 0 || !unitCode) return "";
+  return `${quantity}:${unitCode}`;
+}
+
 function toPayload(values) {
   return {
     ...values,
@@ -235,16 +242,24 @@ export default function ProductForm({ mode }) {
 
   const duplicateMatch = duplicateMatches[0] ?? null;
 
-  const duplicateVariantLabels = useMemo(() => {
-    const seen = new Set();
-    const duplicates = new Set();
-    for (const variant of watchedVariants ?? []) {
-      const key = `${Number(variant?.quantity)}:${variant?.unit_code}`;
-      if (seen.has(key)) duplicates.add(variantLabel(variant));
-      seen.add(key);
-    }
-    return [...duplicates].filter(Boolean);
+  const duplicateVariantIssues = useMemo(() => {
+    const bySize = new Map();
+    (watchedVariants ?? []).forEach((variant, index) => {
+      const key = variantSizeKey(variant);
+      if (!key) return;
+      const entry = bySize.get(key) ?? { label: variantLabel(variant), indexes: [] };
+      entry.indexes.push(index);
+      bySize.set(key, entry);
+    });
+
+    return [...bySize.values()].filter((entry) => entry.indexes.length > 1);
   }, [watchedVariants]);
+
+  const duplicateVariantLabels = duplicateVariantIssues.map((issue) => issue.label);
+  const duplicateVariantIndexes = useMemo(
+    () => new Set(duplicateVariantIssues.flatMap((issue) => issue.indexes)),
+    [duplicateVariantIssues],
+  );
 
   useEffect(() => {
     if (duplicateMatches.length === 0) setDuplicateError(false);
@@ -358,6 +373,22 @@ export default function ProductForm({ mode }) {
     setSubmitError(firstErrorMessage(formErrors) || "Fix the highlighted fields before saving.");
   };
 
+  const addVariant = () => {
+    const usedSizes = new Set((watchedVariants ?? []).map(variantSizeKey).filter(Boolean));
+    const suggestions = [
+      { quantity: 500, unit_code: "g" },
+      { quantity: 100, unit_code: "g" },
+      { quantity: 200, unit_code: "g" },
+      { quantity: 250, unit_code: "g" },
+      { quantity: 1, unit_code: "kg" },
+      { quantity: 500, unit_code: "ml" },
+      { quantity: 1, unit_code: "l" },
+      { quantity: 1, unit_code: "pc" },
+    ];
+    const nextSize = suggestions.find((variant) => !usedSizes.has(variantSizeKey(variant))) ?? EMPTY_VARIANT;
+    append({ ...EMPTY_VARIANT, ...nextSize });
+  };
+
   return (
     <div className="max-w-4xl">
       <Button as={Link} to="/products" variant="ghost" size="sm">
@@ -401,9 +432,14 @@ export default function ProductForm({ mode }) {
             </Alert>
           ) : null}
 
-          {duplicateVariantLabels.length > 0 ? (
+          {duplicateVariantIssues.length > 0 ? (
             <Alert tone="error" title="Duplicate variant size">
-              {duplicateVariantLabels.join(", ")} appears more than once.
+              {duplicateVariantIssues.map((issue) => (
+                <span key={issue.label} className="block">
+                  {issue.label} is used in {issue.indexes.map((index) => `Variant ${index + 1}`).join(" and ")}.
+                </span>
+              ))}
+              <span className="mt-1 block">Change one size or remove the extra new variant before saving.</span>
             </Alert>
           ) : null}
 
@@ -527,7 +563,7 @@ export default function ProductForm({ mode }) {
                   Each row is one independently sellable size.
                 </p>
               </div>
-              <Button type="button" variant="secondary" onClick={() => append({ ...EMPTY_VARIANT })}>
+              <Button type="button" variant="secondary" onClick={addVariant}>
                 <Plus className="size-4" aria-hidden="true" />
                 Add another variant
               </Button>
@@ -536,13 +572,26 @@ export default function ProductForm({ mode }) {
             <div className="mt-4 space-y-4">
               {fields.map((field, index) => {
                 const variant = watchedVariants?.[index] ?? {};
+                const isDuplicateVariant = duplicateVariantIndexes.has(index);
                 return (
-                  <div key={field.id} className="rounded-card border border-line bg-canvas p-4">
+                  <div
+                    key={field.id}
+                    className={`rounded-card border p-4 ${
+                      isDuplicateVariant ? "border-danger/35 bg-danger-soft/35" : "border-line bg-canvas"
+                    }`}
+                  >
                     <div className="flex items-center justify-between gap-3">
-                      <p className="text-card text-ink">
-                        Variant {index + 1}
-                        {variantLabel(variant) ? ` · ${variantLabel(variant)}` : ""}
-                      </p>
+                      <div>
+                        <p className="text-card text-ink">
+                          Variant {index + 1}
+                          {variantLabel(variant) ? ` · ${variantLabel(variant)}` : ""}
+                        </p>
+                        {isDuplicateVariant ? (
+                          <p className="mt-1 text-meta font-medium text-danger">
+                            This size is repeated on another variant.
+                          </p>
+                        ) : null}
+                      </div>
                       {fields.length > 1 && !variant.id ? (
                         <Button type="button" variant="ghost" size="sm" onClick={() => remove(index)}>
                           <Trash2 className="size-3.5" aria-hidden="true" />
