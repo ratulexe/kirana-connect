@@ -341,7 +341,11 @@ begin
     into chosen
   from public.product_variants
   where product_id = coalesce(new.product_id, old.product_id)
-  order by is_active desc, created_at asc, id asc
+  order by
+    is_active desc,
+    (quantity = 1 and unit_code = 'pc') asc,
+    created_at asc,
+    id asc
   limit 1;
 
   if found then

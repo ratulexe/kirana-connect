@@ -1,6 +1,7 @@
 import { getPublicClient } from "../config/supabase.js";
 import { notFoundError, httpError } from "../utils/httpError.js";
 import { escapeLikePattern } from "../utils/queryParams.js";
+import { removePlaceholderPieceVariants } from "../utils/productUnits.js";
 
 // Every query here runs through the anon-key client, so row level security
 // still applies: inactive products and unverified stores are filtered by the
@@ -30,7 +31,7 @@ function variantSort(a, b) {
 }
 
 function withVariantSummary(product) {
-  const variants = [...(product.variants ?? [])].sort(variantSort);
+  const variants = removePlaceholderPieceVariants(product.variants).sort(variantSort);
   const activeVariants = variants.filter((item) => item.is_active);
   const variant = variants.find((item) => item.is_active) ?? variants[0] ?? null;
   return {

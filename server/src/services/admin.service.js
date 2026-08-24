@@ -3,7 +3,12 @@ import { getServiceClient } from "../config/supabase.js";
 import { httpError, notFoundError } from "../utils/httpError.js";
 import { escapeLikePattern } from "../utils/queryParams.js";
 import { generateUniqueSlug } from "../utils/slug.js";
-import { formatUnitLabel, normalizeProductIdentity, normalizeUnitCode } from "../utils/productUnits.js";
+import {
+  formatUnitLabel,
+  normalizeProductIdentity,
+  normalizeUnitCode,
+  removePlaceholderPieceVariants,
+} from "../utils/productUnits.js";
 import { resolveImageUrl } from "./imageResolver.service.js";
 import {
   isMissingChangeRequestTable,
@@ -96,7 +101,7 @@ function variantSort(a, b) {
 }
 
 function withVariantSummary(product) {
-  const variants = [...(product.variants ?? [])].sort(variantSort);
+  const variants = removePlaceholderPieceVariants(product.variants).sort(variantSort);
   const variant = variants.find((item) => item.is_active) ?? variants[0] ?? null;
   return {
     ...product,
@@ -925,7 +930,7 @@ export async function getAdminProduct(productId) {
 
 export async function createProduct(payload) {
   const body = await normalizeProductImages(payload);
-  const variants = body.variants;
+  const variants = removePlaceholderPieceVariants(body.variants);
   delete body.variants;
 
   const variantsReady = await productVariantsSchemaReady();
@@ -966,7 +971,9 @@ export async function createProduct(payload) {
 
 export async function updateProduct(productId, patch) {
   const body = await normalizeProductImages(patch);
-  const variants = body.variants;
+  const variants = Array.isArray(body.variants)
+    ? removePlaceholderPieceVariants(body.variants)
+    : body.variants;
   delete body.variants;
 
   const variantsReady = Array.isArray(variants) ? await productVariantsSchemaReady() : true;
