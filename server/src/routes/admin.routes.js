@@ -23,6 +23,7 @@ import {
   postCategory,
   postProductImage,
   postProduct,
+  deleteProductHandler,
   postRejectStore,
   postRejectStoreChange,
 } from "../controllers/admin.controller.js";
@@ -57,6 +58,7 @@ router.post(
 router.post("/products", asyncHandler(postProduct));
 router.get("/products/:productId", asyncHandler(getProduct));
 router.patch("/products/:productId", asyncHandler(patchProduct));
+router.delete("/products/:productId", asyncHandler(deleteProductHandler));
 
 router.get("/categories", asyncHandler(getCategories));
 router.post("/categories", asyncHandler(postCategory));

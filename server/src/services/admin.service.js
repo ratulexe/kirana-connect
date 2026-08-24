@@ -606,7 +606,14 @@ export async function createProduct(payload) {
 
 export async function updateProduct(productId, patch) {
   const body = { ...patch };
-  if (body.name) body.slug = await slugFor("products", body.name, productId);
+  if (body.name) {
+    const { slugify } = await import("../utils/slug.js");
+    const { data: existing } = await getServiceClient().from("products").select("name, slug").eq("id", productId).single();
+    
+    if (existing && slugify(existing.name) !== slugify(body.name)) {
+      body.slug = await slugFor("products", body.name, productId);
+    }
+  }
 
   const { data, error } = await getServiceClient()
     .from("products")
@@ -619,6 +626,31 @@ export async function updateProduct(productId, patch) {
   if (error) throw failed("update product", error);
   if (!data) throw notFoundError("Product not found.");
   return data;
+}
+
+export async function deleteProduct(productId) {
+  const client = getServiceClient();
+
+  // Check store inventory references
+  const { count: inventoryCount, error: countError } = await client
+    .from("store_products")
+    .select("id", { count: "exact", head: true })
+    .eq("product_id", productId);
+
+  if (countError) throw failed("check product inventory", countError);
+  
+  if (inventoryCount && inventoryCount > 0) {
+    throw httpError(409, "This product is used by one or more stores. Deactivate it instead.");
+  }
+
+  // Safe to hard delete
+  const { error } = await client
+    .from("products")
+    .delete()
+    .eq("id", productId);
+
+  if (error) throw failed("delete product", error);
+  return { id: productId, deleted: true };
 }
 
 async function ensureProductImageBucket(client) {

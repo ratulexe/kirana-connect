@@ -20,6 +20,7 @@ import {
   updateBrand,
   updateCategory,
   updateProduct,
+  deleteProduct,
   updateStoreState,
   uploadProductImage,
 } from "../services/admin.service.js";
@@ -169,6 +170,11 @@ export async function patchProduct(req, res) {
     uuidField(req.params.productId, "Product"),
     validateProductUpdate(req.body),
   );
+  res.status(200).json({ success: true, data });
+}
+
+export async function deleteProductHandler(req, res) {
+  const data = await deleteProduct(uuidField(req.params.productId, "Product"));
   res.status(200).json({ success: true, data });
 }
 

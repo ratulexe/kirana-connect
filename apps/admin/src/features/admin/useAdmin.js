@@ -151,6 +151,12 @@ export const useUpdateProduct = () =>
     ["admin", "products"],
   ]);
 
+export const useDeleteProduct = () =>
+  useAdminMutation((id) => api.deleteProduct(id), [
+    adminKeys.dashboard,
+    ["admin", "products"],
+  ]);
+
 export const useUploadProductImage = () =>
   useMutation({
     mutationFn: (file) => api.uploadProductImage(file).then((r) => r.data),

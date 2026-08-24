@@ -133,6 +133,7 @@ export const api = {
   uploadProductImage: (file) => upload("/product-images", file),
   createProduct: (body) => request("/products", { method: "POST", body }),
   updateProduct: (id, body) => request(`/products/${id}`, { method: "PATCH", body }),
+  deleteProduct: (id) => request(`/products/${id}`, { method: "DELETE" }),
   productMedia: (id, options) => request(`/products/${id}/media`, options),
   createProductMedia: (id, file, metadata) => {
     const customHeaders = {
