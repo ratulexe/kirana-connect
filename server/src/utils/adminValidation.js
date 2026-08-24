@@ -30,7 +30,9 @@ function cleanString(value, field, { required = false, max = 120 } = {}) {
     if (required) throw badRequest(`${field} is required.`);
     return null;
   }
-  if (trimmed.length > max) throw badRequest(`${field} must be at most ${max} characters.`);
+  if (typeof max === "number" && trimmed.length > max) {
+    throw badRequest(`${field} must be at most ${max} characters.`);
+  }
   return trimmed;
 }
 
@@ -159,7 +161,7 @@ export function validateProductCreate(body) {
     category_id: uuidField(body.category_id, "category"),
     brand_id: optionalNullableUuid(body.brand_id, "brand") ?? null,
     description: cleanString(body.description, "description", {
-      max: TEXT_LIMITS.description,
+      max: null,
     }),
     image_url: optionalUrl(body.image_url, "image_url"),
     variants: validateVariants(body.variants),
@@ -178,7 +180,7 @@ export function validateProductUpdate(body, { productId } = {}) {
   if (body.brand_id !== undefined) patch.brand_id = optionalNullableUuid(body.brand_id, "brand");
   if (body.description !== undefined) {
     patch.description = cleanString(body.description, "description", {
-      max: TEXT_LIMITS.description,
+      max: null,
     });
   }
   if (body.image_url !== undefined) patch.image_url = optionalUrl(body.image_url, "image_url");
