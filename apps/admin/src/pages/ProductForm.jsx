@@ -109,6 +109,13 @@ function variantSizeKey(variant) {
   return `${quantity}:${unitCode}`;
 }
 
+function cleanVariantId(value) {
+  const id = String(value ?? "").trim();
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
+    ? id
+    : undefined;
+}
+
 function toPayload(values) {
   return {
     ...values,
@@ -117,6 +124,7 @@ function toPayload(values) {
     image_url: values.image_url || null,
     variants: values.variants.map((variant) => ({
       ...variant,
+      id: cleanVariantId(variant.id),
       barcode: variant.barcode || null,
       image_url: variant.image_url || null,
     })),

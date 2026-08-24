@@ -172,9 +172,10 @@ export async function postProduct(req, res) {
 }
 
 export async function patchProduct(req, res) {
+  const productId = uuidField(req.params.productId, "Product");
   const data = await updateProduct(
-    uuidField(req.params.productId, "Product"),
-    validateProductUpdate(req.body),
+    productId,
+    validateProductUpdate(req.body, { productId }),
   );
   res.status(200).json({ success: true, data });
 }

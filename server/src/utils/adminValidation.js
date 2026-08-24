@@ -94,7 +94,7 @@ function requireAtLeastOne(patch) {
   return patch;
 }
 
-function validateVariant(value, index, { existing = false } = {}) {
+function validateVariant(value, index, { existing = false, productId } = {}) {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     throw badRequest(`Variant ${index + 1} must be an object.`);
   }
@@ -110,19 +110,19 @@ function validateVariant(value, index, { existing = false } = {}) {
     is_active: optionalBoolean(value.is_active, `Variant ${index + 1} active`) ?? true,
   };
 
-  if (existing && value.id !== undefined && value.id !== null && value.id !== "") {
+  if (existing && value.id !== undefined && value.id !== null && value.id !== "" && value.id !== productId) {
     variant.id = uuidField(value.id, `Variant ${index + 1}`);
   }
   return variant;
 }
 
-function validateVariants(value, { existing = false } = {}) {
+function validateVariants(value, { existing = false, productId } = {}) {
   if (!Array.isArray(value) || value.length === 0) {
     throw badRequest("At least one product variant is required.");
   }
   if (value.length > 24) throw badRequest("A product can have at most 24 variants.");
 
-  const variants = value.map((variant, index) => validateVariant(variant, index, { existing }));
+  const variants = value.map((variant, index) => validateVariant(variant, index, { existing, productId }));
   const seen = new Set();
   const barcodes = new Set();
   for (const variant of variants) {
@@ -167,7 +167,7 @@ export function validateProductCreate(body) {
   };
 }
 
-export function validateProductUpdate(body) {
+export function validateProductUpdate(body, { productId } = {}) {
   requireObject(body);
   const patch = {};
 
@@ -182,7 +182,7 @@ export function validateProductUpdate(body) {
     });
   }
   if (body.image_url !== undefined) patch.image_url = optionalUrl(body.image_url, "image_url");
-  if (body.variants !== undefined) patch.variants = validateVariants(body.variants, { existing: true });
+  if (body.variants !== undefined) patch.variants = validateVariants(body.variants, { existing: true, productId });
   const isActive = optionalBoolean(body.is_active, "is_active");
   if (isActive !== undefined) patch.is_active = isActive;
 
