@@ -38,6 +38,13 @@ const PRODUCT_FIELDS = `
   )
 `;
 
+const LEGACY_PRODUCT_FIELDS = `
+  id, category_id, brand_id, name, slug, description, image_url, barcode,
+  unit_label, mrp, is_active, created_at, updated_at,
+  category:categories (id, name, slug),
+  brand:brands (id, name, slug, logo_url)
+`;
+
 const CATEGORY_FIELDS = "id, name, slug, description, image_url, is_active, created_at, updated_at";
 const BRAND_FIELDS = "id, name, slug, logo_url, created_at, updated_at";
 const PRODUCT_IMAGE_BUCKET = "product-images";
@@ -51,6 +58,17 @@ const PRODUCT_IMAGE_MAX_BYTES = 2 * 1024 * 1024;
 function failed(operation, error) {
   console.error(`[kirana-connect-api] admin ${operation} failed:`, error.message);
   return httpError(502, `Could not ${operation}. Please try again.`);
+}
+
+function isMissingVariantsShape(error) {
+  const message = String(error?.message ?? "").toLowerCase();
+  return (
+    message.includes("product_variants") &&
+    (message.includes("does not exist") ||
+      message.includes("relationship") ||
+      message.includes("schema cache") ||
+      message.includes("could not find"))
+  );
 }
 
 function textValue(value) {
@@ -77,6 +95,28 @@ function withVariantSummary(product) {
     barcode: variant?.barcode ?? product.barcode,
     image_url: variant?.image_url ?? product.image_url,
     variant_count: variants.length,
+  };
+}
+
+function withLegacyVariant(product) {
+  return {
+    ...product,
+    variants: [
+      {
+        id: product.id,
+        product_id: product.id,
+        quantity: null,
+        unit_code: null,
+        unit_label: product.unit_label,
+        mrp: product.mrp,
+        barcode: product.barcode,
+        image_url: product.image_url,
+        is_active: product.is_active,
+        created_at: product.created_at,
+        updated_at: product.updated_at,
+      },
+    ],
+    variant_count: 1,
   };
 }
 
@@ -154,6 +194,17 @@ async function productById(productId) {
     .eq("id", productId)
     .maybeSingle();
 
+  if (isMissingVariantsShape(error)) {
+    const { data: legacy, error: legacyError } = await getServiceClient()
+      .from("products")
+      .select(LEGACY_PRODUCT_FIELDS)
+      .eq("id", productId)
+      .maybeSingle();
+
+    if (legacyError) throw failed("load product", legacyError);
+    if (!legacy) throw notFoundError("Product not found.");
+    return withLegacyVariant(legacy);
+  }
   if (error) throw failed("load product", error);
   if (!data) throw notFoundError("Product not found.");
   return withVariantSummary(data);
@@ -680,6 +731,18 @@ export async function listAdminProducts({ search, categoryId, brandId, active, l
     .order("updated_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
+  if (isMissingVariantsShape(error)) {
+    const legacyQuery = applyProductFilters(
+      getServiceClient().from("products").select(LEGACY_PRODUCT_FIELDS, { count: "exact" }),
+      { search, categoryId, brandId, active },
+    );
+    const { data: legacyData, error: legacyError, count: legacyCount } = await legacyQuery
+      .order("updated_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (legacyError) throw failed("load products", legacyError);
+    return { products: (legacyData ?? []).map(withLegacyVariant), total: legacyCount ?? 0 };
+  }
   if (error) throw failed("load products", error);
   return { products: (data ?? []).map(withVariantSummary), total: count ?? 0 };
 }
