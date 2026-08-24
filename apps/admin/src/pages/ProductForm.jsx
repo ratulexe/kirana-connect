@@ -258,9 +258,15 @@ export default function ProductForm({ mode }) {
     if (duplicateVariantLabels.length > 0) return;
 
     const body = toPayload(values);
-    if (isEdit) await update.mutateAsync({ id: productId, body });
-    else await create.mutateAsync(body);
-    navigate("/products", { replace: true });
+    if (isEdit) {
+      await update.mutateAsync({ id: productId, body });
+      navigate("/products", { replace: true });
+      return;
+    }
+
+    const created = await create.mutateAsync(body);
+    const newProductId = created?.data?.id;
+    navigate(newProductId ? `/products/${newProductId}/edit` : "/products", { replace: true });
   };
 
   return (
@@ -556,7 +562,16 @@ export default function ProductForm({ mode }) {
         </form>
       </Card>
 
-      {isEdit && productId ? <ProductMediaSection productId={productId} /> : null}
+      {isEdit && productId ? (
+        <ProductMediaSection productId={productId} />
+      ) : (
+        <Card className="mt-6 p-5">
+          <h2 className="text-card text-ink">Pack images</h2>
+          <p className="mt-1 text-meta text-ink-muted">
+            Save the product first, then add front, back side, nutrition facts, and promotional images.
+          </p>
+        </Card>
+      )}
     </div>
   );
 }

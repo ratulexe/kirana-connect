@@ -192,29 +192,29 @@ export default function ProductMediaSection({ productId }) {
   return (
     <div className="mt-8 space-y-6">
       <div>
-        <h3 className="text-section font-semibold text-ink">Product Media (Advanced)</h3>
+        <h3 className="text-section font-semibold text-ink">Pack images</h3>
         <p className="mt-1 text-sm text-ink-muted">
-          Add specific angles and information panels to build a rich gallery for customers. 
+          Add front, back side, nutrition facts, and promotional images to build a rich customer gallery.
           The legacy single image field acts as a fallback.
         </p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <MediaUploadBox 
-          label="Front View" 
+          label="Front image" 
           type="front" 
           productId={productId} 
           media={media} 
           isPrimary={true}
         />
         <MediaUploadBox 
-          label="Back View" 
+          label="Back side image" 
           type="back" 
           productId={productId} 
           media={media} 
         />
         <MediaUploadBox 
-          label="Nutrition Facts" 
+          label="Nutrition facts" 
           type="nutrition" 
           productId={productId} 
           media={media} 
