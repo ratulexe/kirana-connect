@@ -1,5 +1,6 @@
 import { badRequest } from "./httpError.js";
 import { uuidField } from "./validateInventory.js";
+import { normalizeProductName } from "./textFormat.js";
 import { allowedUnitCodes, formatUnitLabel, normalizeUnitCode } from "./productUnits.js";
 
 const TEXT_LIMITS = {
@@ -157,7 +158,7 @@ export function validateProductCreate(body) {
   requireObject(body);
 
   return {
-    name: cleanString(body.name, "name", { required: true, max: TEXT_LIMITS.name }),
+    name: normalizeProductName(cleanString(body.name, "name", { required: true, max: TEXT_LIMITS.name })),
     category_id: uuidField(body.category_id, "category"),
     brand_id: optionalNullableUuid(body.brand_id, "brand") ?? null,
     description: cleanString(body.description, "description", {
@@ -174,7 +175,7 @@ export function validateProductUpdate(body, { productId } = {}) {
   const patch = {};
 
   if (body.name !== undefined) {
-    patch.name = cleanString(body.name, "name", { required: true, max: TEXT_LIMITS.name });
+    patch.name = normalizeProductName(cleanString(body.name, "name", { required: true, max: TEXT_LIMITS.name }));
   }
   if (body.category_id !== undefined) patch.category_id = uuidField(body.category_id, "category");
   if (body.brand_id !== undefined) patch.brand_id = optionalNullableUuid(body.brand_id, "brand");

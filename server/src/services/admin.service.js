@@ -1327,3 +1327,26 @@ export async function deleteProductMedia(mediaId) {
   if (error) throw failed("delete product media", error);
   return { id: media.id, deleted: true };
 }
+
+export async function deleteProduct(productId) {
+  const client = getServiceClient();
+
+  const { count: inventoryCount, error: countError } = await client
+    .from("store_products")
+    .select("id", { count: "exact", head: true })
+    .eq("product_id", productId);
+
+  if (countError) throw failed("check product inventory", countError);
+  
+  if (inventoryCount && inventoryCount > 0) {
+    throw httpError(409, "This product is currently used by one or more stores. Deactivate it instead.");
+  }
+
+  const { error } = await client
+    .from("products")
+    .delete()
+    .eq("id", productId);
+
+  if (error) throw failed("delete product", error);
+  return { id: productId, deleted: true };
+}

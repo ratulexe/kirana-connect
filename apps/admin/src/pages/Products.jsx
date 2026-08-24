@@ -4,7 +4,9 @@ import Alert from "../components/Alert.jsx";
 import Button from "../components/Button.jsx";
 import Skeleton from "../components/Skeleton.jsx";
 import StatusPill from "../components/StatusPill.jsx";
-import { useBrands, useCategories, useProducts, useProductSummary } from "../features/admin/useAdmin.js";
+import DeleteProductDialog from "../components/DeleteProductDialog.jsx";
+import { Trash2 } from "lucide-react";
+import { useBrands, useCategories, useProducts, useProductSummary, useDeleteProduct } from "../features/admin/useAdmin.js";
 import { formatPrice } from "../utils/format.js";
 
 function filterValue(value) {
@@ -108,6 +110,8 @@ function ProductsSummary({ summary, filters, onCategory }) {
 
 export default function Products() {
   const [filters, setFilters] = useState({ q: "", category_id: "any", brand_id: "any", active: "any" });
+  const [productToDelete, setProductToDelete] = useState(null);
+  const deleteMutation = useDeleteProduct();
   const categories = useCategories();
   const brands = useBrands();
   const productSummary = useProductSummary();
@@ -207,14 +211,44 @@ export default function Products() {
                     </p>
                   ) : null}
                 </div>
-                <Button as={Link} to={`/products/${product.id}/edit`} variant="secondary" size="sm">
-                  Edit
-                </Button>
+                <div className="flex gap-2">
+                  <Button as={Link} to={`/products/${product.id}/edit`} variant="secondary" size="sm">
+                    Edit
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="text-error hover:bg-error/10 hover:text-error"
+                    title="Delete product"
+                    onClick={() => {
+                      deleteMutation.reset();
+                      setProductToDelete(product);
+                    }}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </div>
               </article>
             ))
           )}
         </div>
       )}
+
+      <DeleteProductDialog
+        product={productToDelete}
+        isPending={deleteMutation.isPending}
+        error={deleteMutation.error?.message}
+        onClose={() => setProductToDelete(null)}
+        onConfirm={async (id) => {
+          try {
+            await deleteMutation.mutateAsync(id);
+            setProductToDelete(null);
+          } catch {
+            // Error is handled and displayed in the dialog
+          }
+        }}
+      />
     </div>
   );
 }

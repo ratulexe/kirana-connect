@@ -180,6 +180,12 @@ export async function patchProduct(req, res) {
   res.status(200).json({ success: true, data });
 }
 
+export async function deleteProductHandler(req, res) {
+  const { deleteProduct } = await import("../services/admin.service.js");
+  const data = await deleteProduct(uuidField(req.params.productId, "Product"));
+  res.status(200).json({ success: true, data });
+}
+
 export async function postProductImage(req, res) {
   const data = await uploadProductImage({
     buffer: req.body,
