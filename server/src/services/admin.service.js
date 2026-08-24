@@ -216,7 +216,7 @@ async function updateProductRecord(productId, body) {
   let updateBody = { ...body };
   let preferLegacyFields = false;
 
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (let attempt = 0; attempt < 4; attempt += 1) {
     const { data, error } = await getServiceClient()
       .from("products")
       .update(updateBody)
@@ -224,9 +224,12 @@ async function updateProductRecord(productId, body) {
       .select(preferLegacyFields ? LEGACY_PRODUCT_FIELDS : PRODUCT_FIELDS)
       .maybeSingle();
 
-    if (isMissingNormalizedNameShape(error) && Object.hasOwn(updateBody, "normalized_name")) {
-      const { normalized_name: _normalizedName, ...legacyBody } = updateBody;
-      updateBody = legacyBody;
+    if (isMissingNormalizedNameShape(error)) {
+      if (Object.hasOwn(updateBody, "normalized_name")) {
+        const { normalized_name: _normalizedName, ...legacyBody } = updateBody;
+        updateBody = legacyBody;
+      }
+      preferLegacyFields = true;
       continue;
     }
 
@@ -244,6 +247,39 @@ async function updateProductRecord(productId, body) {
   throw failed("update product", { message: "Product schema is not ready for update." });
 }
 
+async function insertProductRecord(body) {
+  let insertBody = { ...body };
+  let preferLegacyFields = false;
+
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const { data, error } = await getServiceClient()
+      .from("products")
+      .insert(insertBody)
+      .select(preferLegacyFields ? LEGACY_PRODUCT_FIELDS : PRODUCT_FIELDS)
+      .single();
+
+    if (isMissingNormalizedNameShape(error)) {
+      if (Object.hasOwn(insertBody, "normalized_name")) {
+        const { normalized_name: _normalizedName, ...legacyBody } = insertBody;
+        insertBody = legacyBody;
+      }
+      preferLegacyFields = true;
+      continue;
+    }
+
+    if (isMissingVariantsShape(error) && !preferLegacyFields) {
+      preferLegacyFields = true;
+      continue;
+    }
+
+    if (error?.code === "23505") throw httpError(409, "A product with that name, barcode or slug already exists.");
+    if (error) throw failed("create product", error);
+    return preferLegacyFields ? withLegacyVariant(data) : withVariantSummary(data);
+  }
+
+  throw failed("create product", { message: "Product schema is not ready for create." });
+}
+
 async function productById(productId) {
   const { data, error } = await getServiceClient()
     .from("products")
@@ -251,7 +287,7 @@ async function productById(productId) {
     .eq("id", productId)
     .maybeSingle();
 
-  if (isMissingVariantsShape(error)) {
+  if (isMissingVariantsShape(error) || isMissingNormalizedNameShape(error)) {
     const { data: legacy, error: legacyError } = await getServiceClient()
       .from("products")
       .select(LEGACY_PRODUCT_FIELDS)
@@ -876,20 +912,13 @@ export async function createProduct(payload) {
     image_url: body.image_url ?? firstVariant.image_url ?? null,
   };
 
-  const client = getServiceClient();
-  const { data, error } = await client
-    .from("products")
-    .insert(productBody)
-    .select(PRODUCT_FIELDS)
-    .single();
-
-  if (error?.code === "23505") throw httpError(409, "A product with that name, barcode or slug already exists.");
-  if (error) throw failed("create product", error);
+  const data = await insertProductRecord(productBody);
 
   const rows = await variantRows(data.id, variants);
-  const { error: variantError } = await client.from("product_variants").insert(rows);
+  const { error: variantError } = await getServiceClient().from("product_variants").insert(rows);
   if (variantError) {
-    await client.from("products").delete().eq("id", data.id);
+    if (isMissingVariantsShape(variantError)) return productById(data.id);
+    await getServiceClient().from("products").delete().eq("id", data.id);
     if (variantError.code === "23505") {
       throw httpError(409, "A variant with that size or barcode already exists.");
     }
