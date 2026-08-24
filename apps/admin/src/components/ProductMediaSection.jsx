@@ -84,7 +84,7 @@ function MediaUploadBox({ label, type, productId, media, isPrimary, onUploadSucc
           disabled={upload.isPending}
         />
       </div>
-      
+
       {upload.isPending && <p className="text-xs text-primary">Uploading...</p>}
       {error && <p className="text-xs text-error">{error}</p>}
 
@@ -200,24 +200,24 @@ export default function ProductMediaSection({ productId }) {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <MediaUploadBox 
-          label="Front image" 
-          type="front" 
-          productId={productId} 
-          media={media} 
+        <MediaUploadBox
+          label="Front image"
+          type="front"
+          productId={productId}
+          media={media}
           isPrimary={true}
         />
-        <MediaUploadBox 
-          label="Back side image" 
-          type="back" 
-          productId={productId} 
-          media={media} 
+        <MediaUploadBox
+          label="Back side image"
+          type="back"
+          productId={productId}
+          media={media}
         />
-        <MediaUploadBox 
-          label="Nutrition facts" 
-          type="nutrition" 
-          productId={productId} 
-          media={media} 
+        <MediaUploadBox
+          label="Nutrition facts"
+          type="nutrition"
+          productId={productId}
+          media={media}
         />
       </div>
 
