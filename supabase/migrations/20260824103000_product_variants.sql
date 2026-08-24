@@ -292,10 +292,31 @@ alter table public.store_products
 
 do $$
 begin
-  alter table public.store_products
-    add constraint store_products_store_variant_unique unique (store_id, product_variant_id);
-exception
-  when duplicate_object then null;
+  if exists (
+    select 1
+    from pg_constraint
+    where conname = 'store_products_store_variant_unique'
+      and conrelid = 'public.store_products'::regclass
+  ) then
+    return;
+  end if;
+
+  if exists (
+    select 1
+    from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+    join pg_index i on i.indexrelid = c.oid
+    where n.nspname = 'public'
+      and c.relname = 'store_products_store_variant_unique'
+      and c.relkind = 'i'
+      and i.indisunique
+  ) then
+    alter table public.store_products
+      add constraint store_products_store_variant_unique unique using index store_products_store_variant_unique;
+  else
+    alter table public.store_products
+      add constraint store_products_store_variant_unique unique (store_id, product_variant_id);
+  end if;
 end
 $$;
 
