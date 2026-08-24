@@ -106,9 +106,32 @@ join public.categories c on c.slug = v.category_slug
 join public.brands     b on b.slug = v.brand_slug
 on conflict (slug) do nothing;
 
+-- Variants ---------------------------------------------------------------------
+-- Fresh databases run seeds after migrations, so the structural migration cannot
+-- backfill these seed rows. Keep the first/default variant aligned with the
+-- legacy unit_label/mrp columns used above for compatibility.
+insert into public.product_variants (
+  product_id, quantity, unit_code, unit_label, mrp, barcode, image_url, is_active
+)
+select
+  p.id,
+  coalesce(nullif((regexp_match(p.unit_label, '^\s*([0-9]+(?:\.[0-9]+)?)\s+(.+?)\s*$'))[1], '')::numeric, 1),
+  public.normalize_unit_code(coalesce((regexp_match(p.unit_label, '^\s*([0-9]+(?:\.[0-9]+)?)\s+(.+?)\s*$'))[2], 'pc')),
+  p.unit_label,
+  p.mrp,
+  p.barcode,
+  p.image_url,
+  p.is_active
+from public.products p
+where not exists (
+  select 1 from public.product_variants pv where pv.product_id = p.id
+)
+on conflict do nothing;
+
 
 -- Summary ------------------------------------------------------------------------
 select
   (select count(*) from public.categories) as categories,
   (select count(*) from public.brands)     as brands,
-  (select count(*) from public.products)   as products;
+  (select count(*) from public.products)   as products,
+  (select count(*) from public.product_variants) as product_variants;

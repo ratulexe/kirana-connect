@@ -3,6 +3,8 @@ import { getServiceClient } from "../config/supabase.js";
 import { httpError, notFoundError } from "../utils/httpError.js";
 import { escapeLikePattern } from "../utils/queryParams.js";
 import { generateUniqueSlug } from "../utils/slug.js";
+import { formatUnitLabel, normalizeProductIdentity } from "../utils/productUnits.js";
+import { resolveImageUrl } from "./imageResolver.service.js";
 import {
   isMissingChangeRequestTable,
   markMemoryStoreChangeReviewed,
@@ -27,9 +29,13 @@ const CHANGE_REQUEST_FIELDS = `
 
 const PRODUCT_FIELDS = `
   id, category_id, brand_id, name, slug, description, image_url, barcode,
-  unit_label, mrp, is_active, created_at, updated_at,
+  unit_label, mrp, is_active, normalized_name, created_at, updated_at,
   category:categories (id, name, slug),
-  brand:brands (id, name, slug, logo_url)
+  brand:brands (id, name, slug, logo_url),
+  variants:product_variants (
+    id, product_id, quantity, unit_code, unit_label, mrp, barcode, image_url,
+    is_active, created_at, updated_at
+  )
 `;
 
 const CATEGORY_FIELDS = "id, name, slug, description, image_url, is_active, created_at, updated_at";
@@ -50,6 +56,107 @@ function failed(operation, error) {
 function textValue(value) {
   const text = typeof value === "string" ? value.trim() : "";
   return text || null;
+}
+
+function variantSort(a, b) {
+  if (a.is_active !== b.is_active) return a.is_active ? -1 : 1;
+  if (a.created_at && b.created_at && a.created_at !== b.created_at) {
+    return new Date(a.created_at) - new Date(b.created_at);
+  }
+  return String(a.id).localeCompare(String(b.id));
+}
+
+function withVariantSummary(product) {
+  const variants = [...(product.variants ?? [])].sort(variantSort);
+  const variant = variants.find((item) => item.is_active) ?? variants[0] ?? null;
+  return {
+    ...product,
+    variants,
+    unit_label: variant?.unit_label ?? product.unit_label,
+    mrp: variant?.mrp ?? product.mrp,
+    barcode: variant?.barcode ?? product.barcode,
+    image_url: variant?.image_url ?? product.image_url,
+    variant_count: variants.length,
+  };
+}
+
+async function resolvedImageUrl(value) {
+  const input = textValue(value);
+  if (!input) return null;
+  const resolved = await resolveImageUrl(input);
+  return resolved?.resolved_url ?? null;
+}
+
+async function normalizeProductImages(payload) {
+  const body = { ...payload };
+  if (Object.hasOwn(body, "image_url")) body.image_url = await resolvedImageUrl(body.image_url);
+  if (Array.isArray(body.variants)) {
+    body.variants = await Promise.all(
+      body.variants.map(async (variant) => ({
+        ...variant,
+        image_url: Object.hasOwn(variant, "image_url")
+          ? await resolvedImageUrl(variant.image_url)
+          : undefined,
+      })),
+    );
+  }
+  return body;
+}
+
+async function findDuplicateProduct({ name, category_id: categoryId, brand_id: brandId }, currentId) {
+  const normalized = normalizeProductIdentity(name);
+  if (!normalized || !categoryId) return null;
+
+  let query = getServiceClient()
+    .from("products")
+    .select("id, name, slug, category_id, brand_id, variants:product_variants (id, unit_label, is_active)")
+    .eq("normalized_name", normalized)
+    .eq("category_id", categoryId)
+    .limit(1);
+
+  query = brandId ? query.eq("brand_id", brandId) : query.is("brand_id", null);
+  if (currentId) query = query.neq("id", currentId);
+
+  const { data, error } = await query;
+  if (error) throw failed("check duplicate product", error);
+  return data?.[0] ?? null;
+}
+
+function duplicateProductError(product) {
+  const error = httpError(
+    409,
+    `A matching product already exists: ${product.name}. Add another size to the existing product instead.`,
+  );
+  error.payload = { existing_product: product };
+  return error;
+}
+
+async function variantRows(productId, variants) {
+  return Promise.all(
+    variants.map(async (variant) => ({
+      id: variant.id ?? undefined,
+      product_id: productId,
+      quantity: variant.quantity,
+      unit_code: variant.unit_code,
+      unit_label: formatUnitLabel(variant.quantity, variant.unit_code),
+      mrp: variant.mrp,
+      barcode: textValue(variant.barcode),
+      image_url: await resolvedImageUrl(variant.image_url),
+      is_active: variant.is_active,
+    })),
+  );
+}
+
+async function productById(productId) {
+  const { data, error } = await getServiceClient()
+    .from("products")
+    .select(PRODUCT_FIELDS)
+    .eq("id", productId)
+    .maybeSingle();
+
+  if (error) throw failed("load product", error);
+  if (!data) throw notFoundError("Product not found.");
+  return withVariantSummary(data);
 }
 
 async function countRows(table, apply = (query) => query) {
@@ -574,39 +681,85 @@ export async function listAdminProducts({ search, categoryId, brandId, active, l
     .range(offset, offset + limit - 1);
 
   if (error) throw failed("load products", error);
-  return { products: data ?? [], total: count ?? 0 };
+  return { products: (data ?? []).map(withVariantSummary), total: count ?? 0 };
 }
 
 export async function getAdminProduct(productId) {
-  const { data, error } = await getServiceClient()
-    .from("products")
-    .select(PRODUCT_FIELDS)
-    .eq("id", productId)
-    .maybeSingle();
-
-  if (error) throw failed("load product", error);
-  if (!data) throw notFoundError("Product not found.");
-
+  const data = await productById(productId);
   const media = await listProductMedia(productId);
   return { ...data, media };
 }
 
 export async function createProduct(payload) {
-  const body = { ...payload, slug: await slugFor("products", payload.name) };
-  const { data, error } = await getServiceClient()
+  const body = await normalizeProductImages(payload);
+  const variants = body.variants;
+  delete body.variants;
+
+  const duplicate = await findDuplicateProduct(body);
+  if (duplicate) throw duplicateProductError(duplicate);
+
+  const firstVariant = variants[0];
+  const productBody = {
+    ...body,
+    normalized_name: normalizeProductIdentity(body.name),
+    slug: await slugFor("products", body.name),
+    unit_label: formatUnitLabel(firstVariant.quantity, firstVariant.unit_code),
+    mrp: firstVariant.mrp,
+    barcode: textValue(firstVariant.barcode),
+    image_url: body.image_url ?? firstVariant.image_url ?? null,
+  };
+
+  const client = getServiceClient();
+  const { data, error } = await client
     .from("products")
-    .insert(body)
+    .insert(productBody)
     .select(PRODUCT_FIELDS)
     .single();
 
-  if (error?.code === "23505") throw httpError(409, "A product with that barcode or slug already exists.");
+  if (error?.code === "23505") throw httpError(409, "A product with that name, barcode or slug already exists.");
   if (error) throw failed("create product", error);
-  return data;
+
+  const rows = await variantRows(data.id, variants);
+  const { error: variantError } = await client.from("product_variants").insert(rows);
+  if (variantError) {
+    await client.from("products").delete().eq("id", data.id);
+    if (variantError.code === "23505") {
+      throw httpError(409, "A variant with that size or barcode already exists.");
+    }
+    throw failed("create product variants", variantError);
+  }
+
+  return productById(data.id);
 }
 
 export async function updateProduct(productId, patch) {
-  const body = { ...patch };
-  if (body.name) body.slug = await slugFor("products", body.name, productId);
+  const body = await normalizeProductImages(patch);
+  const variants = body.variants;
+  delete body.variants;
+
+  const current = await productById(productId);
+  const duplicate = await findDuplicateProduct(
+    {
+      name: body.name ?? current.name,
+      category_id: body.category_id ?? current.category_id,
+      brand_id: body.brand_id === undefined ? current.brand_id : body.brand_id,
+    },
+    productId,
+  );
+  if (duplicate) throw duplicateProductError(duplicate);
+
+  if (body.name) {
+    body.slug = await slugFor("products", body.name, productId);
+    body.normalized_name = normalizeProductIdentity(body.name);
+  }
+
+  if (Array.isArray(variants) && variants.length > 0) {
+    const first = variants.find((variant) => variant.is_active) ?? variants[0];
+    body.unit_label = formatUnitLabel(first.quantity, first.unit_code);
+    body.mrp = first.mrp;
+    body.barcode = textValue(first.barcode);
+    if (!body.image_url && first.image_url) body.image_url = first.image_url;
+  }
 
   const { data, error } = await getServiceClient()
     .from("products")
@@ -615,10 +768,40 @@ export async function updateProduct(productId, patch) {
     .select(PRODUCT_FIELDS)
     .maybeSingle();
 
-  if (error?.code === "23505") throw httpError(409, "A product with that barcode or slug already exists.");
+  if (error?.code === "23505") throw httpError(409, "A product with that name, barcode or slug already exists.");
   if (error) throw failed("update product", error);
   if (!data) throw notFoundError("Product not found.");
-  return data;
+
+  if (Array.isArray(variants)) {
+    const rows = await variantRows(productId, variants);
+    const inserts = rows.filter((variant) => !variant.id);
+    const updates = rows.filter((variant) => variant.id);
+
+    for (const row of updates) {
+      const { id, ...changes } = row;
+      const { error: variantError } = await getServiceClient()
+        .from("product_variants")
+        .update(changes)
+        .eq("id", id)
+        .eq("product_id", productId);
+      if (variantError?.code === "23505") {
+        throw httpError(409, "A variant with that size or barcode already exists.");
+      }
+      if (variantError) throw failed("update product variant", variantError);
+    }
+
+    if (inserts.length > 0) {
+      const { error: insertError } = await getServiceClient()
+        .from("product_variants")
+        .insert(inserts);
+      if (insertError?.code === "23505") {
+        throw httpError(409, "A variant with that size or barcode already exists.");
+      }
+      if (insertError) throw failed("create product variant", insertError);
+    }
+  }
+
+  return productById(productId);
 }
 
 async function ensureProductImageBucket(client) {
@@ -665,6 +848,10 @@ export async function uploadProductImage({ buffer, mimeType }) {
 
   const { data } = client.storage.from(PRODUCT_IMAGE_BUCKET).getPublicUrl(path);
   return { bucket: PRODUCT_IMAGE_BUCKET, path, public_url: data.publicUrl };
+}
+
+export async function resolveProductImageInput(imageUrl) {
+  return resolveImageUrl(imageUrl);
 }
 
 export async function listAdminCategories() {

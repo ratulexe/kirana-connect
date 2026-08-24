@@ -15,6 +15,46 @@ const optionalUrl = z
   .optional()
   .or(z.literal(""));
 
+export const UNIT_OPTIONS = [
+  { code: "mg", label: "mg" },
+  { code: "g", label: "g" },
+  { code: "kg", label: "kg" },
+  { code: "ml", label: "ml" },
+  { code: "l", label: "L" },
+  { code: "pc", label: "pc" },
+  { code: "pcs", label: "pcs" },
+  { code: "pair", label: "pair" },
+  { code: "dozen", label: "dozen" },
+  { code: "pack", label: "pack" },
+  { code: "packet", label: "packet" },
+  { code: "pouch", label: "pouch" },
+  { code: "sachet", label: "sachet" },
+  { code: "bottle", label: "bottle" },
+  { code: "can", label: "can" },
+  { code: "jar", label: "jar" },
+  { code: "box", label: "box" },
+  { code: "carton", label: "carton" },
+  { code: "roll", label: "roll" },
+  { code: "tray", label: "tray" },
+];
+
+const unitCodes = UNIT_OPTIONS.map((unit) => unit.code);
+const variantSchema = z.object({
+  id: z.string().uuid().optional(),
+  quantity: z.preprocess(
+    (value) => (value === "" || value === null ? undefined : value),
+    z.coerce.number({ error: "Enter a quantity" }).positive("Quantity must be greater than zero"),
+  ),
+  unit_code: z.string().refine((value) => unitCodes.includes(value), "Choose a unit"),
+  mrp: z.preprocess(
+    (value) => (value === "" || value === null ? undefined : value),
+    z.coerce.number({ error: "Enter the MRP" }).min(0, "MRP cannot be negative"),
+  ),
+  barcode: optionalText(120),
+  image_url: optionalUrl,
+  is_active: z.boolean(),
+});
+
 export const loginSchema = z.object({
   email: z.string().trim().toLowerCase().pipe(z.email("Enter a valid email address")),
   password: z.string().min(1, "Enter your password"),
@@ -26,12 +66,7 @@ export const productSchema = z.object({
   brand_id: z.string().optional().or(z.literal("")),
   description: optionalText(500),
   image_url: optionalUrl,
-  barcode: optionalText(120),
-  unit_label: z.string().trim().min(1, "Enter a unit").max(60, "Unit is too long"),
-  mrp: z.preprocess(
-    (value) => (value === "" || value === null ? undefined : value),
-    z.coerce.number({ error: "Enter the MRP" }).min(0, "MRP cannot be negative"),
-  ),
+  variants: z.array(variantSchema).min(1, "Add at least one variant"),
   is_active: z.boolean(),
 });
 

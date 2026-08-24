@@ -131,6 +131,7 @@ export const api = {
   products: ({ signal, ...params } = {}) => request("/products", { signal, params }),
   product: (id, options) => request(`/products/${id}`, options),
   uploadProductImage: (file) => upload("/product-images", file),
+  resolveProductImage: (image_url) => request("/product-images/resolve", { method: "POST", body: { image_url } }),
   createProduct: (body) => request("/products", { method: "POST", body }),
   updateProduct: (id, body) => request(`/products/${id}`, { method: "PATCH", body }),
   productMedia: (id, options) => request(`/products/${id}/media`, options),

@@ -9,6 +9,7 @@ import {
   parsePagination,
 } from "../utils/queryParams.js";
 import { badRequest } from "../utils/httpError.js";
+import { uuidField } from "../utils/validateInventory.js";
 
 export async function getNearbyStores(req, res) {
   const { limit, offset } = parsePagination(req.query);
@@ -53,6 +54,7 @@ export async function getProductOffers(req, res) {
 
   const { product, offers, summary } = await findStoresStockingProduct({
     slug: req.params.slug,
+    variantId: uuidField(req.query.variant_id, "variant_id", { required: false }),
     location,
     sort,
     limit,

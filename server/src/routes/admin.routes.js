@@ -25,6 +25,7 @@ import {
   postProduct,
   postRejectStore,
   postRejectStoreChange,
+  postResolveProductImage,
 } from "../controllers/admin.controller.js";
 import { asyncHandler } from "../utils/httpError.js";
 
@@ -54,6 +55,7 @@ router.post(
   express.raw({ type: "*/*", limit: "2mb" }),
   asyncHandler(postProductImage),
 );
+router.post("/product-images/resolve", asyncHandler(postResolveProductImage));
 router.post("/products", asyncHandler(postProduct));
 router.get("/products/:productId", asyncHandler(getProduct));
 router.patch("/products/:productId", asyncHandler(patchProduct));

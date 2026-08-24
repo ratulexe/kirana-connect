@@ -14,7 +14,7 @@ import { useAddInventoryItem, useCatalogueSearch } from "./useInventory.js";
  * what keeps one canonical product comparable across every shop. Creating new
  * catalogue entries is deliberately not possible here; that is curation.
  */
-export default function AddProductPanel({ existingProductIds, storeId, onClose }) {
+export default function AddProductPanel({ existingVariantIds = new Set(), storeId, onClose }) {
   const [term, setTerm] = useState("");
   const [debounced, setDebounced] = useState("");
   const [selected, setSelected] = useState(null);
@@ -33,11 +33,11 @@ export default function AddProductPanel({ existingProductIds, storeId, onClose }
     return () => clearTimeout(timer);
   }, [term]);
 
-  const choose = (product) => {
-    setSelected(product);
+  const choose = (product, variant) => {
+    setSelected({ product, variant });
     // Prefill with MRP: most shops start there and discount from it.
     setForm({
-      selling_price: String(product.mrp),
+      selling_price: String(variant.mrp),
       stock_status: "in_stock",
       quantity_available: "",
       discount_percentage: "0",
@@ -48,7 +48,7 @@ export default function AddProductPanel({ existingProductIds, storeId, onClose }
     event.preventDefault();
     add.mutate(
       {
-        product_id: selected.id,
+        product_variant_id: selected.variant.id,
         selling_price: form.selling_price,
         stock_status: form.stock_status,
         quantity_available: form.quantity_available === "" ? null : form.quantity_available,
@@ -134,11 +134,11 @@ export default function AddProductPanel({ existingProductIds, storeId, onClose }
             ) : (
               <ul className="divide-y divide-line-soft rounded-card border border-line">
                 {results.map((product) => {
-                  const alreadyListed = existingProductIds.has(product.id);
+                  const variants = (product.variants ?? []).filter((variant) => variant.is_active);
                   return (
                     <li
                       key={product.id}
-                      className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+                      className="px-4 py-3"
                     >
                       <div className="flex min-w-0 items-center gap-3">
                         <ProductImage src={product.image_url} name={product.name} size="sm" />
@@ -147,23 +147,35 @@ export default function AddProductPanel({ existingProductIds, storeId, onClose }
                             {product.name}
                           </p>
                           <p className="text-meta text-ink-muted">
-                            {product.unit_label}
                             {product.brand ? ` · ${product.brand.name}` : ""}
-                            {` · MRP ${formatPrice(product.mrp)}`}
+                            {product.category ? ` · ${product.category.name}` : ""}
                           </p>
                         </div>
                       </div>
-                      {alreadyListed ? (
-                        <span className="inline-flex items-center gap-1 text-meta font-semibold text-success">
-                          <Check className="size-3.5" aria-hidden="true" />
-                          Already listed
-                        </span>
-                      ) : (
-                        <Button size="sm" variant="secondary" onClick={() => choose(product)}>
-                          <Plus className="size-3.5" aria-hidden="true" />
-                          Select
-                        </Button>
-                      )}
+                      <div className="mt-3 flex flex-wrap gap-2 pl-14">
+                        {variants.map((variant) => {
+                          const alreadyListed = existingVariantIds.has(variant.id);
+                          return alreadyListed ? (
+                            <span
+                              key={variant.id}
+                              className="inline-flex h-9 items-center gap-1 rounded-control border border-success/25 bg-success-soft px-3 text-meta font-semibold text-success"
+                            >
+                              <Check className="size-3.5" aria-hidden="true" />
+                              {variant.unit_label}
+                            </span>
+                          ) : (
+                            <Button
+                              key={variant.id}
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => choose(product, variant)}
+                            >
+                              <Plus className="size-3.5" aria-hidden="true" />
+                              {variant.unit_label}
+                            </Button>
+                          );
+                        })}
+                      </div>
                     </li>
                   );
                 })}
@@ -174,11 +186,15 @@ export default function AddProductPanel({ existingProductIds, storeId, onClose }
       ) : (
         <form onSubmit={submit} className="mt-5">
           <div className="flex items-center gap-3 rounded-card border border-line bg-canvas p-4">
-            <ProductImage src={selected.image_url} name={selected.name} size="md" />
+            <ProductImage
+              src={selected.variant.image_url ?? selected.product.image_url}
+              name={selected.product.name}
+              size="md"
+            />
             <div>
-              <p className="text-card text-ink">{selected.name}</p>
+              <p className="text-card text-ink">{selected.product.name}</p>
               <p className="mt-0.5 text-meta text-ink-muted">
-                {selected.unit_label} · MRP {formatPrice(selected.mrp)}
+                {selected.variant.unit_label} · MRP {formatPrice(selected.variant.mrp)}
               </p>
             </div>
           </div>

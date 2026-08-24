@@ -9,7 +9,7 @@ import {
 export const discoveryKeys = {
   products: (params) => ["products", params],
   product: (slug) => ["product", slug],
-  offers: (slug, params) => ["product-offers", slug, params],
+  offers: (slug, variantId, params) => ["product-offers", slug, variantId, params],
   nearbyStores: (params) => ["nearby-stores", params],
 };
 
@@ -65,12 +65,12 @@ export function useProduct(slug) {
   });
 }
 
-export function useProductOffers({ slug, location, radiusKm, sort }) {
+export function useProductOffers({ slug, variantId, location, radiusKm, sort }) {
   const params = { lat: location?.lat, lng: location?.lng, radiusKm, sort };
 
   return useQuery({
-    queryKey: discoveryKeys.offers(slug, params),
-    queryFn: ({ signal }) => fetchProductOffers({ slug, location, radiusKm, sort, signal }),
-    enabled: Boolean(slug),
+    queryKey: discoveryKeys.offers(slug, variantId, params),
+    queryFn: ({ signal }) => fetchProductOffers({ slug, variantId, location, radiusKm, sort, signal }),
+    enabled: Boolean(slug && variantId),
   });
 }

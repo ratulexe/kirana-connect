@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ChevronRight, LocateFixed, Search, Store as StoreIcon } from "lucide-react";
 import Container from "../../components/common/Container.jsx";
 import Skeleton from "../../components/common/Skeleton.jsx";
@@ -82,13 +82,22 @@ function OffersSkeleton() {
 
 export default function ProductDetail() {
   const { slug } = useParams();
+  const [params, setParams] = useSearchParams();
   const { location, status, detect, radiusKm, sort, setRadius, setSort } = useLocationStore();
   const [shopSearch, setShopSearch] = useState("");
   const [stockFilter, setStockFilter] = useState("all");
   const [dealsOnly, setDealsOnly] = useState(false);
 
   const product = useProduct(slug);
-  const offers = useProductOffers({ slug, location, radiusKm, sort });
+  const item = product.data;
+  const variants = item?.variants ?? [];
+  const queryVariantId = params.get("variant");
+  const selectedVariant =
+    variants.find((variant) => variant.id === queryVariantId && variant.is_active) ??
+    variants.find((variant) => variant.is_active) ??
+    variants[0] ??
+    null;
+  const offers = useProductOffers({ slug, variantId: selectedVariant?.id, location, radiusKm, sort });
   const list = offers.data?.offers ?? EMPTY_OFFERS;
   const filteredOffers = useMemo(() => {
     const query = normalize(shopSearch);
@@ -144,8 +153,15 @@ export default function ProductDetail() {
     );
   }
 
-  const item = product.data;
   const summary = offers.data?.meta;
+  const displayImage = selectedVariant?.image_url ?? item.image_url;
+  const displayMrp = selectedVariant?.mrp ?? item.mrp;
+
+  const selectVariant = (variantId) => {
+    const next = new URLSearchParams(params);
+    next.set("variant", variantId);
+    setParams(next, { replace: true });
+  };
 
   const clearOfferFilters = () => {
     setShopSearch("");
@@ -166,7 +182,7 @@ export default function ProductDetail() {
       <div className="mt-4 flex flex-col gap-5 rounded-panel border border-line bg-surface p-5 sm:flex-row sm:items-start sm:gap-7 sm:p-7">
         <ProductGallery
           media={item.media}
-          legacyImageUrl={item.image_url}
+          legacyImageUrl={displayImage}
           productName={item.name}
         />
 
@@ -176,10 +192,35 @@ export default function ProductDetail() {
           ) : null}
           <h1 className="mt-1 text-heading text-balance text-ink">{item.name}</h1>
           <p className="mt-2 text-body text-ink-soft">
-            {item.unit_label}
+            {selectedVariant?.unit_label ?? item.unit_label}
             <span aria-hidden="true"> &middot; </span>
-            MRP <span className="font-semibold tabular-nums">{formatPrice(item.mrp)}</span>
+            MRP <span className="font-semibold tabular-nums">{formatPrice(displayMrp)}</span>
           </p>
+          {variants.length > 1 ? (
+            <div className="mt-4">
+              <p className="text-meta font-semibold text-ink-soft">Available sizes</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {variants.filter((variant) => variant.is_active).map((variant) => {
+                  const active = selectedVariant?.id === variant.id;
+                  return (
+                    <button
+                      key={variant.id}
+                      type="button"
+                      onClick={() => selectVariant(variant.id)}
+                      aria-pressed={active}
+                      className={`rounded-control border px-3 py-2 text-meta font-semibold transition-colors ${
+                        active
+                          ? "border-primary bg-primary text-primary-fg"
+                          : "border-line bg-canvas text-ink-soft hover:border-primary/45"
+                      }`}
+                    >
+                      {variant.unit_label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
           {item.description ? (
             <p className="mt-3 max-w-prose text-body text-ink-muted">{item.description}</p>
           ) : null}
@@ -346,7 +387,7 @@ export default function ProductDetail() {
 
               <ul className="divide-y divide-line-soft overflow-hidden rounded-panel border border-line bg-surface">
                 {filteredOffers.map((offer) => (
-                  <StoreOffer key={offer.store.id} offer={offer} mrp={item.mrp} />
+                  <StoreOffer key={offer.store.id} offer={offer} mrp={displayMrp} />
                 ))}
               </ul>
             </>

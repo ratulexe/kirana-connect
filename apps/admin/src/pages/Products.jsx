@@ -11,6 +11,15 @@ function filterValue(value) {
   return value === "any" ? "" : value;
 }
 
+function variantSummary(product) {
+  const variants = product.variants ?? [];
+  if (variants.length === 0) return `${product.unit_label} · MRP ${formatPrice(product.mrp)}`;
+  return variants
+    .slice(0, 4)
+    .map((variant) => `${variant.unit_label} ${formatPrice(variant.mrp)}`)
+    .join(" · ");
+}
+
 export default function Products() {
   const [filters, setFilters] = useState({ q: "", category_id: "any", brand_id: "any", active: "any" });
   const categories = useCategories();
@@ -97,8 +106,13 @@ export default function Products() {
                     </StatusPill>
                   </div>
                   <p className="mt-1 text-meta text-ink-muted">
-                    {product.category?.name ?? "No category"} · {product.brand?.name ?? "No brand"} · {product.unit_label} · MRP {formatPrice(product.mrp)}
+                    {product.category?.name ?? "No category"} · {product.brand?.name ?? "No brand"} · {variantSummary(product)}
                   </p>
+                  {(product.variants?.length ?? 0) > 4 ? (
+                    <p className="mt-1 text-meta font-semibold text-primary">
+                      {product.variants.length - 4} more sizes
+                    </p>
+                  ) : null}
                 </div>
                 <Button as={Link} to={`/products/${product.id}/edit`} variant="secondary" size="sm">
                   Edit

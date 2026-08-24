@@ -156,6 +156,11 @@ export const useUploadProductImage = () =>
     mutationFn: (file) => api.uploadProductImage(file).then((r) => r.data),
   });
 
+export const useResolveProductImage = () =>
+  useMutation({
+    mutationFn: (imageUrl) => api.resolveProductImage(imageUrl).then((r) => r.data),
+  });
+
 export const useCreateCategory = () =>
   useAdminMutation((body) => api.createCategory(body), [adminKeys.categories]);
 

@@ -75,7 +75,7 @@ export function validateInventoryCreate(body) {
   const status = stockStatus(body.stock_status ?? "in_stock");
 
   return {
-    product_id: uuidField(body.product_id, "Product"),
+    product_variant_id: uuidField(body.product_variant_id ?? body.variant_id, "Product size"),
     selling_price: money(body.selling_price, "Selling price"),
     stock_status: status,
     quantity_available: quantity(body.quantity_available),

@@ -22,6 +22,7 @@ import {
   updateProduct,
   updateStoreState,
   uploadProductImage,
+  resolveProductImageInput,
 } from "../services/admin.service.js";
 import {
   validateAdminStorePatch,
@@ -178,6 +179,13 @@ export async function postProductImage(req, res) {
     mimeType: req.get("content-type")?.split(";")[0]?.trim().toLowerCase(),
   });
   res.status(201).json({ success: true, data });
+}
+
+export async function postResolveProductImage(req, res) {
+  const imageUrl = typeof req.body?.image_url === "string" ? req.body.image_url.trim() : "";
+  if (!imageUrl) throw badRequest("image_url is required.");
+  const data = await resolveProductImageInput(imageUrl);
+  res.status(200).json({ success: true, data });
 }
 
 export async function getCategories(req, res) {
