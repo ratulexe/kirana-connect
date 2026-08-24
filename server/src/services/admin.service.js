@@ -212,6 +212,38 @@ async function variantRows(productId, variants) {
   );
 }
 
+async function updateProductRecord(productId, body) {
+  let updateBody = { ...body };
+  let preferLegacyFields = false;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const { data, error } = await getServiceClient()
+      .from("products")
+      .update(updateBody)
+      .eq("id", productId)
+      .select(preferLegacyFields ? LEGACY_PRODUCT_FIELDS : PRODUCT_FIELDS)
+      .maybeSingle();
+
+    if (isMissingNormalizedNameShape(error) && Object.hasOwn(updateBody, "normalized_name")) {
+      const { normalized_name: _normalizedName, ...legacyBody } = updateBody;
+      updateBody = legacyBody;
+      continue;
+    }
+
+    if (isMissingVariantsShape(error) && !preferLegacyFields) {
+      preferLegacyFields = true;
+      continue;
+    }
+
+    if (error?.code === "23505") throw httpError(409, "A product with that name, barcode or slug already exists.");
+    if (error) throw failed("update product", error);
+    if (!data) throw notFoundError("Product not found.");
+    return preferLegacyFields ? withLegacyVariant(data) : withVariantSummary(data);
+  }
+
+  throw failed("update product", { message: "Product schema is not ready for update." });
+}
+
 async function productById(productId) {
   const { data, error } = await getServiceClient()
     .from("products")
@@ -896,16 +928,7 @@ export async function updateProduct(productId, patch) {
     if (!body.image_url && first.image_url) body.image_url = first.image_url;
   }
 
-  const { data, error } = await getServiceClient()
-    .from("products")
-    .update(body)
-    .eq("id", productId)
-    .select(PRODUCT_FIELDS)
-    .maybeSingle();
-
-  if (error?.code === "23505") throw httpError(409, "A product with that name, barcode or slug already exists.");
-  if (error) throw failed("update product", error);
-  if (!data) throw notFoundError("Product not found.");
+  await updateProductRecord(productId, body);
 
   if (Array.isArray(variants)) {
     const rows = await variantRows(productId, variants);
@@ -922,6 +945,7 @@ export async function updateProduct(productId, patch) {
       if (variantError?.code === "23505") {
         throw httpError(409, "A variant with that size or barcode already exists.");
       }
+      if (isMissingVariantsShape(variantError)) return productById(productId);
       if (variantError) throw failed("update product variant", variantError);
     }
 
@@ -932,6 +956,7 @@ export async function updateProduct(productId, patch) {
       if (insertError?.code === "23505") {
         throw httpError(409, "A variant with that size or barcode already exists.");
       }
+      if (isMissingVariantsShape(insertError)) return productById(productId);
       if (insertError) throw failed("create product variant", insertError);
     }
   }
