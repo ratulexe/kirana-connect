@@ -149,7 +149,7 @@ async function findDuplicateProduct({ name, category_id: categoryId, brand_id: b
 
   let query = getServiceClient()
     .from("products")
-    .select("id, name, slug, category_id, brand_id, variants:product_variants (id, unit_label, is_active)")
+    .select("id, name, slug, category_id, brand_id")
     .eq("normalized_name", normalized)
     .eq("category_id", categoryId)
     .limit(1);
