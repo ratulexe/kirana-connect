@@ -950,7 +950,8 @@ export async function createProduct(payload) {
   if (!variantsReady) return productById(data.id);
 
   const rows = await variantRows(data.id, variants);
-  const { error: variantError } = await getServiceClient().from("product_variants").insert(rows);
+  const insertRows = rows.map((row) => ({ ...row, id: row.id ?? randomUUID() }));
+  const { error: variantError } = await getServiceClient().from("product_variants").insert(insertRows);
   if (variantError) {
     if (isMissingVariantsShape(variantError)) return productById(data.id);
     await getServiceClient().from("products").delete().eq("id", data.id);
@@ -1001,7 +1002,9 @@ export async function updateProduct(productId, patch) {
 
   if (Array.isArray(variants) && variantsReady) {
     const rows = await variantRows(productId, variants);
-    const inserts = rows.filter((variant) => !variant.id);
+    const inserts = rows
+      .filter((variant) => !variant.id)
+      .map((variant) => ({ ...variant, id: randomUUID() }));
     const updates = rows.filter((variant) => variant.id);
 
     for (const row of updates) {
