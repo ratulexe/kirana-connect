@@ -40,7 +40,7 @@ export const UNIT_OPTIONS = [
 
 const unitCodes = UNIT_OPTIONS.map((unit) => unit.code);
 const variantSchema = z.object({
-  id: z.string().uuid().optional().or(z.literal("")),
+  id: z.string().optional().or(z.literal("")),
   quantity: z.preprocess(
     (value) => (value === "" || value === null ? undefined : value),
     z.coerce.number({ error: "Enter a quantity" }).positive("Quantity must be greater than zero"),

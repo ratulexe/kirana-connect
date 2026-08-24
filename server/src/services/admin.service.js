@@ -211,6 +211,21 @@ function duplicateProductError(product) {
   return error;
 }
 
+function variantsMigrationRequiredError() {
+  return httpError(
+    503,
+    "Product variants cannot be saved yet because the Supabase product variants migration is not applied. Run supabase/migrations/20260824103000_product_variants.sql, then try again.",
+  );
+}
+
+async function productVariantsSchemaReady() {
+  const { error } = await getServiceClient()
+    .from("product_variants")
+    .select("id, product_id, quantity, unit_code, mrp")
+    .limit(1);
+  return !isMissingVariantsShape(error);
+}
+
 async function variantRows(productId, variants) {
   return Promise.all(
     variants.map(async (variant) => ({
@@ -913,6 +928,9 @@ export async function createProduct(payload) {
   const variants = body.variants;
   delete body.variants;
 
+  const variantsReady = await productVariantsSchemaReady();
+  if (variants.length > 1 && !variantsReady) throw variantsMigrationRequiredError();
+
   const duplicate = await findDuplicateProduct(body);
   if (duplicate) throw duplicateProductError(duplicate);
 
@@ -928,6 +946,8 @@ export async function createProduct(payload) {
   };
 
   const data = await insertProductRecord(productBody);
+
+  if (!variantsReady) return productById(data.id);
 
   const rows = await variantRows(data.id, variants);
   const { error: variantError } = await getServiceClient().from("product_variants").insert(rows);
@@ -947,6 +967,11 @@ export async function updateProduct(productId, patch) {
   const body = await normalizeProductImages(patch);
   const variants = body.variants;
   delete body.variants;
+
+  const variantsReady = Array.isArray(variants) ? await productVariantsSchemaReady() : true;
+  if (Array.isArray(variants) && variants.length > 1 && !variantsReady) {
+    throw variantsMigrationRequiredError();
+  }
 
   const current = await productById(productId);
   const duplicate = await findDuplicateProduct(
@@ -974,7 +999,7 @@ export async function updateProduct(productId, patch) {
 
   await updateProductRecord(productId, body);
 
-  if (Array.isArray(variants)) {
+  if (Array.isArray(variants) && variantsReady) {
     const rows = await variantRows(productId, variants);
     const inserts = rows.filter((variant) => !variant.id);
     const updates = rows.filter((variant) => variant.id);
