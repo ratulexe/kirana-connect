@@ -3,7 +3,7 @@ import { getServiceClient } from "../config/supabase.js";
 import { httpError, notFoundError } from "../utils/httpError.js";
 import { escapeLikePattern } from "../utils/queryParams.js";
 import { generateUniqueSlug } from "../utils/slug.js";
-import { formatUnitLabel, normalizeProductIdentity } from "../utils/productUnits.js";
+import { formatUnitLabel, normalizeProductIdentity, normalizeUnitCode } from "../utils/productUnits.js";
 import { resolveImageUrl } from "./imageResolver.service.js";
 import {
   isMissingChangeRequestTable,
@@ -109,16 +109,31 @@ function withVariantSummary(product) {
   };
 }
 
+function parseLegacyUnitLabel(value) {
+  const match = String(value ?? "").trim().match(/^(\d+(?:\.\d+)?)\s*([a-zA-Z]+)$/);
+  if (!match) return { quantity: 1, unit_code: "pc" };
+
+  const quantity = Number(match[1]);
+  const unitCode = normalizeUnitCode(match[2]);
+  if (!Number.isFinite(quantity) || !formatUnitLabel(quantity, unitCode)) {
+    return { quantity: 1, unit_code: "pc" };
+  }
+
+  return { quantity, unit_code: unitCode };
+}
+
 function withLegacyVariant(product) {
+  const { quantity, unit_code: unitCode } = parseLegacyUnitLabel(product.unit_label);
+
   return {
     ...product,
     variants: [
       {
         id: product.id,
         product_id: product.id,
-        quantity: null,
-        unit_code: null,
-        unit_label: product.unit_label,
+        quantity,
+        unit_code: unitCode,
+        unit_label: product.unit_label ?? formatUnitLabel(quantity, unitCode),
         mrp: product.mrp,
         barcode: product.barcode,
         image_url: product.image_url,

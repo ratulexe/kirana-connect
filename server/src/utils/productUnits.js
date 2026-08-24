@@ -33,6 +33,10 @@ export const UNIT_OPTIONS = [
 
 const UNIT_LABELS = new Map(UNIT_OPTIONS.map((unit) => [unit.code, unit.label]));
 const UNIT_ALIASES = new Map([
+  ["gm", "g"],
+  ["gram", "g"],
+  ["grams", "g"],
+  ["kgs", "kg"],
   ["ltr", "l"],
   ["litre", "l"],
   ["liter", "l"],
