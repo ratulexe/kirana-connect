@@ -52,6 +52,27 @@ function normalize(value) {
     .trim();
 }
 
+function productNameTokens(value) {
+  return normalize(value).split(" ").filter((token) => token.length >= 3);
+}
+
+function isLikelyDuplicateProduct(candidate, values) {
+  const name = normalize(values.name);
+  const candidateName = normalize(candidate?.name);
+  if (!name || !candidateName) return false;
+  if (candidate.category_id !== values.categoryId) return false;
+  if ((candidate.brand_id ?? "") !== (values.brandId || "")) return false;
+  if (candidateName === name) return true;
+  if (name.length >= 4 && (candidateName.includes(name) || name.includes(candidateName))) return true;
+
+  const nameTokens = productNameTokens(name);
+  if (nameTokens.length < 2) return false;
+
+  const candidateTokens = new Set(productNameTokens(candidateName));
+  const matchedTokens = nameTokens.filter((token) => candidateTokens.has(token));
+  return matchedTokens.length >= 2;
+}
+
 function quantityLabel(value) {
   const number = Number(value);
   if (!Number.isFinite(number)) return "";
@@ -106,6 +127,47 @@ function ImagePreview({ src, name }) {
   );
 }
 
+function DuplicateProductDialog({ match, onClose }) {
+  if (!match) return null;
+
+  const sizes = (match.variants ?? []).map(variantLabel).filter(Boolean);
+  const sizeSummary = sizes.length > 0 ? ` Existing sizes: ${sizes.join(", ")}.` : "";
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/35 px-4 py-6">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="duplicate-product-title"
+        className="w-full max-w-md rounded-card border border-danger/25 bg-white p-5 shadow-xl"
+      >
+        <div className="flex gap-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-danger-soft text-danger">
+            <AlertTriangle className="size-5" aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            <h2 id="duplicate-product-title" className="text-section text-ink">
+              Product already exists
+            </h2>
+            <p className="mt-2 text-body text-ink-muted">
+              {match.name} is already in this brand and category.{sizeSummary} Open the existing product
+              and add another pack size there.
+            </p>
+          </div>
+        </div>
+        <div className="mt-5 flex flex-wrap justify-end gap-2">
+          <Button type="button" variant="secondary" onClick={onClose}>
+            Keep editing
+          </Button>
+          <Button as={Link} to={`/products/${match.id}/edit`}>
+            Open existing product
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ProductForm({ mode }) {
   const { productId } = useParams();
   const navigate = useNavigate();
@@ -146,18 +208,19 @@ export default function ProductForm({ mode }) {
   );
 
   const duplicateMatches = useMemo(() => {
-    const name = normalize(watchedName);
-    if (!name || !watchedCategory) return [];
+    if (!normalize(watchedName) || !watchedCategory) return [];
 
     return (duplicateNameProducts.data ?? []).filter((candidate) => {
       if (candidate.id === productId) return false;
-      return (
-        normalize(candidate.name) === name &&
-        candidate.category_id === watchedCategory &&
-        (candidate.brand_id ?? "") === (watchedBrand || "")
-      );
+      return isLikelyDuplicateProduct(candidate, {
+        name: watchedName,
+        categoryId: watchedCategory,
+        brandId: watchedBrand,
+      });
     });
   }, [duplicateNameProducts.data, productId, watchedBrand, watchedCategory, watchedName]);
+
+  const duplicateMatch = duplicateMatches[0] ?? null;
 
   const duplicateVariantLabels = useMemo(() => {
     const seen = new Set();
@@ -286,23 +349,28 @@ export default function ProductForm({ mode }) {
       <Card className="mt-6 p-5 sm:p-6">
         <form onSubmit={handleSubmit(onSubmit)} noValidate className="grid gap-6">
           {mutation.isError ? (
-            <Alert tone="error">{mutation.error?.message ?? "Could not save product."}</Alert>
+            <Alert tone="error" title={isEdit ? "Could not update product" : "Could not create product"}>
+              {mutation.error?.message ?? "Could not save product."}
+            </Alert>
           ) : null}
 
-          {duplicateMatches.length > 0 ? (
+          {duplicateMatch ? (
             <Alert
               tone={duplicateError ? "error" : "warning"}
-              title={duplicateError ? "This base product already exists" : "Possible existing product"}
+              title={duplicateError ? "This product already exists" : "Possible existing product"}
             >
-              <span className="block">Matching product: {duplicateMatches[0].name}.</span>
+              <span className="block">
+                Matching product: {duplicateMatch.name}. Use that product for more sizes instead of creating
+                another base product.
+              </span>
               <Button
                 as={Link}
-                to={`/products/${duplicateMatches[0].id}/edit`}
+                to={`/products/${duplicateMatch.id}/edit`}
                 variant="secondary"
                 size="sm"
                 className="mt-3"
               >
-                Add a size to existing product
+                Open existing product
               </Button>
             </Alert>
           ) : null}
@@ -561,6 +629,10 @@ export default function ProductForm({ mode }) {
           </div>
         </form>
       </Card>
+
+      {duplicateError && duplicateMatch ? (
+        <DuplicateProductDialog match={duplicateMatch} onClose={() => setDuplicateError(false)} />
+      ) : null}
 
       {isEdit && productId ? (
         <ProductMediaSection productId={productId} />
