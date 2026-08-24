@@ -71,6 +71,17 @@ function isMissingVariantsShape(error) {
   );
 }
 
+function isMissingNormalizedNameShape(error) {
+  const message = String(error?.message ?? "").toLowerCase();
+  return (
+    message.includes("normalized_name") &&
+    (message.includes("does not exist") ||
+      message.includes("schema cache") ||
+      message.includes("could not find") ||
+      message.includes("column"))
+  );
+}
+
 function textValue(value) {
   const text = typeof value === "string" ? value.trim() : "";
   return text || null;
@@ -158,6 +169,20 @@ async function findDuplicateProduct({ name, category_id: categoryId, brand_id: b
   if (currentId) query = query.neq("id", currentId);
 
   const { data, error } = await query;
+  if (isMissingNormalizedNameShape(error)) {
+    let legacyQuery = getServiceClient()
+      .from("products")
+      .select("id, name, slug, category_id, brand_id")
+      .eq("category_id", categoryId)
+      .limit(200);
+
+    legacyQuery = brandId ? legacyQuery.eq("brand_id", brandId) : legacyQuery.is("brand_id", null);
+    if (currentId) legacyQuery = legacyQuery.neq("id", currentId);
+
+    const { data: legacyData, error: legacyError } = await legacyQuery;
+    if (legacyError) throw failed("check duplicate product", legacyError);
+    return (legacyData ?? []).find((product) => normalizeProductIdentity(product.name) === normalized) ?? null;
+  }
   if (error) throw failed("check duplicate product", error);
   return data?.[0] ?? null;
 }
