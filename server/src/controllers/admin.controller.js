@@ -15,6 +15,7 @@ import {
   listPendingStoreChanges,
   listSellers,
   listStores,
+  productCatalogueSummary,
   rejectStore,
   rejectStoreChange,
   updateBrand,
@@ -153,6 +154,11 @@ export async function getProducts(req, res) {
     data: products,
     meta: { total, limit, offset, returned: products.length },
   });
+}
+
+export async function getProductSummary(req, res) {
+  const data = await productCatalogueSummary();
+  res.status(200).json({ success: true, data });
 }
 
 export async function getProduct(req, res) {

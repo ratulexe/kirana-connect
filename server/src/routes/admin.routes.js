@@ -9,6 +9,7 @@ import {
   getPendingStores,
   getPendingStoreChanges,
   getProduct,
+  getProductSummary,
   getProducts,
   getSellers,
   getStore,
@@ -49,6 +50,7 @@ router.post("/store-changes/:changeId/reject", asyncHandler(postRejectStoreChang
 
 router.get("/sellers", asyncHandler(getSellers));
 
+router.get("/products/summary", asyncHandler(getProductSummary));
 router.get("/products", asyncHandler(getProducts));
 router.post(
   "/product-images",

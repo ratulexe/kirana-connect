@@ -684,6 +684,53 @@ export async function listAdminProducts({ search, categoryId, brandId, active, l
   return { products: (data ?? []).map(withVariantSummary), total: count ?? 0 };
 }
 
+export async function productCatalogueSummary() {
+  const client = getServiceClient();
+  const [productsResult, categoriesResult] = await Promise.all([
+    client.from("products").select("id, category_id, is_active"),
+    client.from("categories").select("id, name, slug, is_active").order("name", { ascending: true }),
+  ]);
+
+  if (productsResult.error) throw failed("load product summary", productsResult.error);
+  if (categoriesResult.error) throw failed("load category summary", categoriesResult.error);
+
+  const categories = new Map(
+    (categoriesResult.data ?? []).map((category) => [
+      category.id,
+      {
+        id: category.id,
+        name: category.name,
+        slug: category.slug,
+        is_active: category.is_active,
+        total: 0,
+        active: 0,
+        inactive: 0,
+      },
+    ]),
+  );
+
+  let active = 0;
+  let inactive = 0;
+  for (const product of productsResult.data ?? []) {
+    if (product.is_active) active += 1;
+    else inactive += 1;
+
+    const category = categories.get(product.category_id);
+    if (category) {
+      category.total += 1;
+      if (product.is_active) category.active += 1;
+      else category.inactive += 1;
+    }
+  }
+
+  return {
+    total: (productsResult.data ?? []).length,
+    active,
+    inactive,
+    categories: [...categories.values()],
+  };
+}
+
 export async function getAdminProduct(productId) {
   const data = await productById(productId);
   const media = await listProductMedia(productId);
