@@ -44,7 +44,11 @@ export default function BrandProducts({ brand, currentProductSlug }) {
       </div>
 
       <div className="mt-4 flex gap-4 overflow-x-auto pb-2">
-        {products.map((product) => (
+        {products.map((product) => {
+          const variantCount = product.variant_count ?? product.variants?.length ?? 0;
+          const sizeLabel = variantCount > 1 ? `${variantCount} sizes` : product.unit_label;
+          const mrpLabel = variantCount > 1 ? "From" : "MRP";
+          return (
           <Link
             key={product.slug}
             to={`/product/${product.slug}`}
@@ -57,12 +61,13 @@ export default function BrandProducts({ brand, currentProductSlug }) {
             <h3 className="mt-0.5 line-clamp-2 text-[0.8125rem] font-semibold text-ink">
               {product.name}
             </h3>
-            <p className="mt-1 text-meta text-ink-muted">{product.unit_label}</p>
+            <p className="mt-1 text-meta text-ink-muted">{sizeLabel}</p>
             <p className="mt-auto pt-2 text-meta text-ink-soft">
-              MRP <span className="font-semibold tabular-nums">{formatPrice(product.mrp)}</span>
+              {mrpLabel} <span className="font-semibold tabular-nums">{formatPrice(product.price_from ?? product.mrp)}</span>
             </p>
           </Link>
-        ))}
+          );
+        })}
       </div>
     </section>
   );

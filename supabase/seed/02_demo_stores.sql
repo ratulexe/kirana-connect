@@ -81,15 +81,15 @@ begin
   -- Inventory ---------------------------------------------------------------------
   -- The same canonical products at deliberately different prices per store.
   insert into public.store_products (
-    store_id, product_id, selling_price, stock_status,
+    store_id, product_id, product_variant_id, selling_price, stock_status,
     quantity_available, discount_percentage, is_available
   )
   -- discount_percentage is the badge a store advertises. It is derived from the
   -- real gap to MRP rather than hardcoded, so the demo can never show "5% off"
   -- on a store that is actually charging full price.
-  select v.store_id, p.id, v.price, v.status::public.stock_status, v.qty,
+  select v.store_id, p.id, pv.id, v.price, v.status::public.stock_status, v.qty,
          case
-           when p.mrp > 0 then greatest(round((p.mrp - v.price) / p.mrp * 100, 2), 0)
+           when pv.mrp > 0 then greatest(round((pv.mrp - v.price) / pv.mrp * 100, 2), 0)
            else 0
          end,
          true
@@ -109,13 +109,20 @@ begin
       ('surf-excel-easy-wash-detergent-powder-1-kg',     136.00, 140.00, 132.00)
   ) as prices (product_slug, price_a, price_b, price_c)
   join public.products p on p.slug = prices.product_slug
+  join lateral (
+    select id, mrp
+    from public.product_variants
+    where product_id = p.id and is_active
+    order by created_at asc, id asc
+    limit 1
+  ) pv on true
   cross join lateral (
     values
       (v_store_a, prices.price_a, 'in_stock',  40),
       (v_store_b, prices.price_b, 'in_stock',  25),
       (v_store_c, prices.price_c, 'low_stock',  6)
   ) as v (store_id, price, status, qty)
-  on conflict (store_id, product_id) do update
+  on conflict (store_id, product_variant_id) do update
     set selling_price       = excluded.selling_price,
         stock_status        = excluded.stock_status,
         quantity_available  = excluded.quantity_available,

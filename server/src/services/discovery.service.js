@@ -105,8 +105,18 @@ export async function getStoreBySlug(slug) {
  * The price-comparison read path: every nearby store currently stocking one
  * canonical product, with that store's own price.
  */
-export async function findStoresStockingProduct({ slug, location, sort, limit }) {
+function pickVariant(product, variantId) {
+  const variants = [...(product.variants ?? [])].filter((variant) => variant.is_active);
+  if (variantId) return variants.find((variant) => variant.id === variantId) ?? null;
+  return variants[0] ?? null;
+}
+
+export async function findStoresStockingProduct({ slug, variantId, location, sort, limit }) {
   const product = await getProductBySlug(slug);
+  const variant = pickVariant(product, variantId);
+  if (!variant) {
+    throw notFoundError(variantId ? "That product size was not found." : "No active size was found for this product.");
+  }
 
   let query = getPublicClient()
     .from("store_products")
@@ -117,7 +127,7 @@ export async function findStoresStockingProduct({ slug, location, sort, limit })
         store:stores!inner (${STORE_FIELDS})
       `,
     )
-    .eq("product_id", product.id)
+    .eq("product_variant_id", variant.id)
     .eq("is_available", true);
 
   if (location) {
@@ -127,7 +137,7 @@ export async function findStoresStockingProduct({ slug, location, sort, limit })
   const { data, error } = await query;
   if (error) throw failed("store product lookup", error);
 
-  const mrp = Number(product.mrp);
+  const mrp = Number(variant.mrp);
 
   const offers = withDistance(data, location, (row) => row.store).map((row) => {
     const sellingPrice = Number(row.selling_price);
@@ -167,7 +177,14 @@ export async function findStoresStockingProduct({ slug, location, sort, limit })
   const limited = offers.slice(0, limit);
 
   return {
-    product,
+    product: {
+      ...product,
+      selected_variant: variant,
+      unit_label: variant.unit_label,
+      mrp: variant.mrp,
+      barcode: variant.barcode,
+      image_url: variant.image_url ?? product.image_url,
+    },
     offers: limited,
     summary: {
       store_count: offers.length,

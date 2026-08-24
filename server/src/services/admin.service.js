@@ -3,6 +3,8 @@ import { getServiceClient } from "../config/supabase.js";
 import { httpError, notFoundError } from "../utils/httpError.js";
 import { escapeLikePattern } from "../utils/queryParams.js";
 import { generateUniqueSlug } from "../utils/slug.js";
+import { formatUnitLabel, normalizeProductIdentity, normalizeUnitCode } from "../utils/productUnits.js";
+import { resolveImageUrl } from "./imageResolver.service.js";
 import {
   isMissingChangeRequestTable,
   markMemoryStoreChangeReviewed,
@@ -27,6 +29,17 @@ const CHANGE_REQUEST_FIELDS = `
 
 const PRODUCT_FIELDS = `
   id, category_id, brand_id, name, slug, description, image_url, barcode,
+  unit_label, mrp, is_active, normalized_name, created_at, updated_at,
+  category:categories (id, name, slug),
+  brand:brands (id, name, slug, logo_url),
+  variants:product_variants (
+    id, product_id, quantity, unit_code, unit_label, mrp, barcode, image_url,
+    is_active, created_at, updated_at
+  )
+`;
+
+const LEGACY_PRODUCT_FIELDS = `
+  id, category_id, brand_id, name, slug, description, image_url, barcode,
   unit_label, mrp, is_active, created_at, updated_at,
   category:categories (id, name, slug),
   brand:brands (id, name, slug, logo_url)
@@ -47,9 +60,277 @@ function failed(operation, error) {
   return httpError(502, `Could not ${operation}. Please try again.`);
 }
 
+function isMissingVariantsShape(error) {
+  const message = String(error?.message ?? "").toLowerCase();
+  return (
+    message.includes("product_variants") &&
+    (message.includes("does not exist") ||
+      message.includes("relationship") ||
+      message.includes("schema cache") ||
+      message.includes("could not find"))
+  );
+}
+
+function isMissingNormalizedNameShape(error) {
+  const message = String(error?.message ?? "").toLowerCase();
+  return (
+    message.includes("normalized_name") &&
+    (message.includes("does not exist") ||
+      message.includes("schema cache") ||
+      message.includes("could not find") ||
+      message.includes("column"))
+  );
+}
+
 function textValue(value) {
   const text = typeof value === "string" ? value.trim() : "";
   return text || null;
+}
+
+function variantSort(a, b) {
+  if (a.is_active !== b.is_active) return a.is_active ? -1 : 1;
+  if (a.created_at && b.created_at && a.created_at !== b.created_at) {
+    return new Date(a.created_at) - new Date(b.created_at);
+  }
+  return String(a.id).localeCompare(String(b.id));
+}
+
+function withVariantSummary(product) {
+  const variants = [...(product.variants ?? [])].sort(variantSort);
+  const variant = variants.find((item) => item.is_active) ?? variants[0] ?? null;
+  return {
+    ...product,
+    variants,
+    unit_label: variant?.unit_label ?? product.unit_label,
+    mrp: variant?.mrp ?? product.mrp,
+    barcode: variant?.barcode ?? product.barcode,
+    image_url: variant?.image_url ?? product.image_url,
+    variant_count: variants.length,
+  };
+}
+
+function parseLegacyUnitLabel(value) {
+  const match = String(value ?? "").trim().match(/^(\d+(?:\.\d+)?)\s*([a-zA-Z]+)$/);
+  if (!match) return { quantity: 1, unit_code: "pc" };
+
+  const quantity = Number(match[1]);
+  const unitCode = normalizeUnitCode(match[2]);
+  if (!Number.isFinite(quantity) || !formatUnitLabel(quantity, unitCode)) {
+    return { quantity: 1, unit_code: "pc" };
+  }
+
+  return { quantity, unit_code: unitCode };
+}
+
+function withLegacyVariant(product) {
+  const { quantity, unit_code: unitCode } = parseLegacyUnitLabel(product.unit_label);
+
+  return {
+    ...product,
+    variants: [
+      {
+        id: product.id,
+        product_id: product.id,
+        quantity,
+        unit_code: unitCode,
+        unit_label: product.unit_label ?? formatUnitLabel(quantity, unitCode),
+        mrp: product.mrp,
+        barcode: product.barcode,
+        image_url: product.image_url,
+        is_active: product.is_active,
+        created_at: product.created_at,
+        updated_at: product.updated_at,
+      },
+    ],
+    variant_count: 1,
+  };
+}
+
+async function resolvedImageUrl(value) {
+  const input = textValue(value);
+  if (!input) return null;
+  const resolved = await resolveImageUrl(input);
+  return resolved?.resolved_url ?? null;
+}
+
+async function normalizeProductImages(payload) {
+  const body = { ...payload };
+  if (Object.hasOwn(body, "image_url")) body.image_url = await resolvedImageUrl(body.image_url);
+  if (Array.isArray(body.variants)) {
+    body.variants = await Promise.all(
+      body.variants.map(async (variant) => ({
+        ...variant,
+        image_url: Object.hasOwn(variant, "image_url")
+          ? await resolvedImageUrl(variant.image_url)
+          : undefined,
+      })),
+    );
+  }
+  return body;
+}
+
+async function findDuplicateProduct({ name, category_id: categoryId, brand_id: brandId }, currentId) {
+  const normalized = normalizeProductIdentity(name);
+  if (!normalized || !categoryId) return null;
+
+  let query = getServiceClient()
+    .from("products")
+    .select("id, name, slug, category_id, brand_id")
+    .eq("normalized_name", normalized)
+    .eq("category_id", categoryId)
+    .limit(1);
+
+  query = brandId ? query.eq("brand_id", brandId) : query.is("brand_id", null);
+  if (currentId) query = query.neq("id", currentId);
+
+  const { data, error } = await query;
+  if (isMissingNormalizedNameShape(error)) {
+    let legacyQuery = getServiceClient()
+      .from("products")
+      .select("id, name, slug, category_id, brand_id")
+      .eq("category_id", categoryId)
+      .limit(200);
+
+    legacyQuery = brandId ? legacyQuery.eq("brand_id", brandId) : legacyQuery.is("brand_id", null);
+    if (currentId) legacyQuery = legacyQuery.neq("id", currentId);
+
+    const { data: legacyData, error: legacyError } = await legacyQuery;
+    if (legacyError) throw failed("check duplicate product", legacyError);
+    return (legacyData ?? []).find((product) => normalizeProductIdentity(product.name) === normalized) ?? null;
+  }
+  if (error) throw failed("check duplicate product", error);
+  return data?.[0] ?? null;
+}
+
+function duplicateProductError(product) {
+  const error = httpError(
+    409,
+    `A matching product already exists: ${product.name}. Add another size to the existing product instead.`,
+  );
+  error.payload = { existing_product: product };
+  return error;
+}
+
+function variantsMigrationRequiredError() {
+  return httpError(
+    503,
+    "Product variants cannot be saved yet because the Supabase product variants migration is not applied. Run supabase/migrations/20260824103000_product_variants.sql, then try again.",
+  );
+}
+
+async function productVariantsSchemaReady() {
+  const { error } = await getServiceClient()
+    .from("product_variants")
+    .select("id, product_id, quantity, unit_code, mrp")
+    .limit(1);
+  return !isMissingVariantsShape(error);
+}
+
+async function variantRows(productId, variants) {
+  return Promise.all(
+    variants.map(async (variant) => ({
+      id: variant.id ?? undefined,
+      product_id: productId,
+      quantity: variant.quantity,
+      unit_code: variant.unit_code,
+      unit_label: formatUnitLabel(variant.quantity, variant.unit_code),
+      mrp: variant.mrp,
+      barcode: textValue(variant.barcode),
+      image_url: await resolvedImageUrl(variant.image_url),
+      is_active: variant.is_active,
+    })),
+  );
+}
+
+async function updateProductRecord(productId, body) {
+  let updateBody = { ...body };
+  let preferLegacyFields = false;
+
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const { data, error } = await getServiceClient()
+      .from("products")
+      .update(updateBody)
+      .eq("id", productId)
+      .select(preferLegacyFields ? LEGACY_PRODUCT_FIELDS : PRODUCT_FIELDS)
+      .maybeSingle();
+
+    if (isMissingNormalizedNameShape(error)) {
+      if (Object.hasOwn(updateBody, "normalized_name")) {
+        const { normalized_name: _normalizedName, ...legacyBody } = updateBody;
+        updateBody = legacyBody;
+      }
+      preferLegacyFields = true;
+      continue;
+    }
+
+    if (isMissingVariantsShape(error) && !preferLegacyFields) {
+      preferLegacyFields = true;
+      continue;
+    }
+
+    if (error?.code === "23505") throw httpError(409, "A product with that name, barcode or slug already exists.");
+    if (error) throw failed("update product", error);
+    if (!data) throw notFoundError("Product not found.");
+    return preferLegacyFields ? withLegacyVariant(data) : withVariantSummary(data);
+  }
+
+  throw failed("update product", { message: "Product schema is not ready for update." });
+}
+
+async function insertProductRecord(body) {
+  let insertBody = { ...body };
+  let preferLegacyFields = false;
+
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const { data, error } = await getServiceClient()
+      .from("products")
+      .insert(insertBody)
+      .select(preferLegacyFields ? LEGACY_PRODUCT_FIELDS : PRODUCT_FIELDS)
+      .single();
+
+    if (isMissingNormalizedNameShape(error)) {
+      if (Object.hasOwn(insertBody, "normalized_name")) {
+        const { normalized_name: _normalizedName, ...legacyBody } = insertBody;
+        insertBody = legacyBody;
+      }
+      preferLegacyFields = true;
+      continue;
+    }
+
+    if (isMissingVariantsShape(error) && !preferLegacyFields) {
+      preferLegacyFields = true;
+      continue;
+    }
+
+    if (error?.code === "23505") throw httpError(409, "A product with that name, barcode or slug already exists.");
+    if (error) throw failed("create product", error);
+    return preferLegacyFields ? withLegacyVariant(data) : withVariantSummary(data);
+  }
+
+  throw failed("create product", { message: "Product schema is not ready for create." });
+}
+
+async function productById(productId) {
+  const { data, error } = await getServiceClient()
+    .from("products")
+    .select(PRODUCT_FIELDS)
+    .eq("id", productId)
+    .maybeSingle();
+
+  if (isMissingVariantsShape(error) || isMissingNormalizedNameShape(error)) {
+    const { data: legacy, error: legacyError } = await getServiceClient()
+      .from("products")
+      .select(LEGACY_PRODUCT_FIELDS)
+      .eq("id", productId)
+      .maybeSingle();
+
+    if (legacyError) throw failed("load product", legacyError);
+    if (!legacy) throw notFoundError("Product not found.");
+    return withLegacyVariant(legacy);
+  }
+  if (error) throw failed("load product", error);
+  if (!data) throw notFoundError("Product not found.");
+  return withVariantSummary(data);
 }
 
 async function countRows(table, apply = (query) => query) {
@@ -573,52 +854,186 @@ export async function listAdminProducts({ search, categoryId, brandId, active, l
     .order("updated_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
+  if (isMissingVariantsShape(error)) {
+    const legacyQuery = applyProductFilters(
+      getServiceClient().from("products").select(LEGACY_PRODUCT_FIELDS, { count: "exact" }),
+      { search, categoryId, brandId, active },
+    );
+    const { data: legacyData, error: legacyError, count: legacyCount } = await legacyQuery
+      .order("updated_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (legacyError) throw failed("load products", legacyError);
+    return { products: (legacyData ?? []).map(withLegacyVariant), total: legacyCount ?? 0 };
+  }
   if (error) throw failed("load products", error);
-  return { products: data ?? [], total: count ?? 0 };
+  return { products: (data ?? []).map(withVariantSummary), total: count ?? 0 };
+}
+
+export async function productCatalogueSummary() {
+  const client = getServiceClient();
+  const [productsResult, categoriesResult] = await Promise.all([
+    client.from("products").select("id, category_id, is_active"),
+    client.from("categories").select("id, name, slug, is_active").order("name", { ascending: true }),
+  ]);
+
+  if (productsResult.error) throw failed("load product summary", productsResult.error);
+  if (categoriesResult.error) throw failed("load category summary", categoriesResult.error);
+
+  const categories = new Map(
+    (categoriesResult.data ?? []).map((category) => [
+      category.id,
+      {
+        id: category.id,
+        name: category.name,
+        slug: category.slug,
+        is_active: category.is_active,
+        total: 0,
+        active: 0,
+        inactive: 0,
+      },
+    ]),
+  );
+
+  let active = 0;
+  let inactive = 0;
+  for (const product of productsResult.data ?? []) {
+    if (product.is_active) active += 1;
+    else inactive += 1;
+
+    const category = categories.get(product.category_id);
+    if (category) {
+      category.total += 1;
+      if (product.is_active) category.active += 1;
+      else category.inactive += 1;
+    }
+  }
+
+  return {
+    total: (productsResult.data ?? []).length,
+    active,
+    inactive,
+    categories: [...categories.values()],
+  };
 }
 
 export async function getAdminProduct(productId) {
-  const { data, error } = await getServiceClient()
-    .from("products")
-    .select(PRODUCT_FIELDS)
-    .eq("id", productId)
-    .maybeSingle();
-
-  if (error) throw failed("load product", error);
-  if (!data) throw notFoundError("Product not found.");
-
+  const data = await productById(productId);
   const media = await listProductMedia(productId);
   return { ...data, media };
 }
 
 export async function createProduct(payload) {
-  const body = { ...payload, slug: await slugFor("products", payload.name) };
-  const { data, error } = await getServiceClient()
-    .from("products")
-    .insert(body)
-    .select(PRODUCT_FIELDS)
-    .single();
+  const body = await normalizeProductImages(payload);
+  const variants = body.variants;
+  delete body.variants;
 
-  if (error?.code === "23505") throw httpError(409, "A product with that barcode or slug already exists.");
-  if (error) throw failed("create product", error);
-  return data;
+  const variantsReady = await productVariantsSchemaReady();
+  if (variants.length > 1 && !variantsReady) throw variantsMigrationRequiredError();
+
+  const duplicate = await findDuplicateProduct(body);
+  if (duplicate) throw duplicateProductError(duplicate);
+
+  const firstVariant = variants[0];
+  const productBody = {
+    ...body,
+    normalized_name: normalizeProductIdentity(body.name),
+    slug: await slugFor("products", body.name),
+    unit_label: formatUnitLabel(firstVariant.quantity, firstVariant.unit_code),
+    mrp: firstVariant.mrp,
+    barcode: textValue(firstVariant.barcode),
+    image_url: body.image_url ?? firstVariant.image_url ?? null,
+  };
+
+  const data = await insertProductRecord(productBody);
+
+  if (!variantsReady) return productById(data.id);
+
+  const rows = await variantRows(data.id, variants);
+  const insertRows = rows.map((row) => ({ ...row, id: row.id ?? randomUUID() }));
+  const { error: variantError } = await getServiceClient().from("product_variants").insert(insertRows);
+  if (variantError) {
+    if (isMissingVariantsShape(variantError)) return productById(data.id);
+    await getServiceClient().from("products").delete().eq("id", data.id);
+    if (variantError.code === "23505") {
+      throw httpError(409, "A variant with that size or barcode already exists.");
+    }
+    throw failed("create product variants", variantError);
+  }
+
+  return productById(data.id);
 }
 
 export async function updateProduct(productId, patch) {
-  const body = { ...patch };
-  if (body.name) body.slug = await slugFor("products", body.name, productId);
+  const body = await normalizeProductImages(patch);
+  const variants = body.variants;
+  delete body.variants;
 
-  const { data, error } = await getServiceClient()
-    .from("products")
-    .update(body)
-    .eq("id", productId)
-    .select(PRODUCT_FIELDS)
-    .maybeSingle();
+  const variantsReady = Array.isArray(variants) ? await productVariantsSchemaReady() : true;
+  if (Array.isArray(variants) && variants.length > 1 && !variantsReady) {
+    throw variantsMigrationRequiredError();
+  }
 
-  if (error?.code === "23505") throw httpError(409, "A product with that barcode or slug already exists.");
-  if (error) throw failed("update product", error);
-  if (!data) throw notFoundError("Product not found.");
-  return data;
+  const current = await productById(productId);
+  const duplicate = await findDuplicateProduct(
+    {
+      name: body.name ?? current.name,
+      category_id: body.category_id ?? current.category_id,
+      brand_id: body.brand_id === undefined ? current.brand_id : body.brand_id,
+    },
+    productId,
+  );
+  if (duplicate) throw duplicateProductError(duplicate);
+
+  if (body.name) {
+    body.slug = await slugFor("products", body.name, productId);
+    body.normalized_name = normalizeProductIdentity(body.name);
+  }
+
+  if (Array.isArray(variants) && variants.length > 0) {
+    const first = variants.find((variant) => variant.is_active) ?? variants[0];
+    body.unit_label = formatUnitLabel(first.quantity, first.unit_code);
+    body.mrp = first.mrp;
+    body.barcode = textValue(first.barcode);
+    if (!body.image_url && first.image_url) body.image_url = first.image_url;
+  }
+
+  await updateProductRecord(productId, body);
+
+  if (Array.isArray(variants) && variantsReady) {
+    const rows = await variantRows(productId, variants);
+    const inserts = rows
+      .filter((variant) => !variant.id)
+      .map((variant) => ({ ...variant, id: randomUUID() }));
+    const updates = rows.filter((variant) => variant.id);
+
+    for (const row of updates) {
+      const { id, ...changes } = row;
+      const { error: variantError } = await getServiceClient()
+        .from("product_variants")
+        .update(changes)
+        .eq("id", id)
+        .eq("product_id", productId);
+      if (variantError?.code === "23505") {
+        throw httpError(409, "A variant with that size or barcode already exists.");
+      }
+      if (isMissingVariantsShape(variantError)) return productById(productId);
+      if (variantError) throw failed("update product variant", variantError);
+    }
+
+    if (inserts.length > 0) {
+      const { error: insertError } = await getServiceClient()
+        .from("product_variants")
+        .insert(inserts);
+      if (insertError?.code === "23505") {
+        throw httpError(409, "A variant with that size or barcode already exists.");
+      }
+      if (isMissingVariantsShape(insertError)) return productById(productId);
+      if (insertError) throw failed("create product variant", insertError);
+    }
+  }
+
+  return productById(productId);
 }
 
 async function ensureProductImageBucket(client) {
@@ -665,6 +1080,10 @@ export async function uploadProductImage({ buffer, mimeType }) {
 
   const { data } = client.storage.from(PRODUCT_IMAGE_BUCKET).getPublicUrl(path);
   return { bucket: PRODUCT_IMAGE_BUCKET, path, public_url: data.publicUrl };
+}
+
+export async function resolveProductImageInput(imageUrl) {
+  return resolveImageUrl(imageUrl);
 }
 
 export async function listAdminCategories() {

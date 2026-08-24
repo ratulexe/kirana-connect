@@ -46,10 +46,11 @@ export async function fetchNearbyStores({ location, radiusKm, limit = 8, offset 
 }
 
 /** The price comparison: every nearby store stocking one product. */
-export async function fetchProductOffers({ slug, location, radiusKm, sort, signal }) {
+export async function fetchProductOffers({ slug, variantId, location, radiusKm, sort, signal }) {
   const { data, meta } = await apiGet(`/products/${encodeURIComponent(slug)}/stores`, {
     signal,
     params: {
+      variant_id: variantId,
       lat: location?.lat,
       lng: location?.lng,
       radius: location ? radiusKm : undefined,

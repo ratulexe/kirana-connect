@@ -9,6 +9,12 @@ import { formatPrice } from "../../utils/format.js";
  * cheapest is the question the product page answers.
  */
 export default function ProductCard({ product }) {
+  const variantCount = product.variant_count ?? product.variants?.length ?? 0;
+  const sizeLabel = variantCount > 1
+    ? `${variantCount} sizes`
+    : product.unit_label;
+  const mrpLabel = variantCount > 1 ? "From" : "MRP";
+
   return (
     <li>
       <Link
@@ -26,10 +32,10 @@ export default function ProductCard({ product }) {
             {product.name}
           </h3>
 
-          <p className="mt-1 text-meta text-ink-muted">{product.unit_label}</p>
+          <p className="mt-1 text-meta text-ink-muted">{sizeLabel}</p>
 
           <p className="mt-auto pt-3 text-meta text-ink-soft">
-            MRP <span className="font-semibold tabular-nums">{formatPrice(product.mrp)}</span>
+            {mrpLabel} <span className="font-semibold tabular-nums">{formatPrice(product.price_from ?? product.mrp)}</span>
             <span className="ml-1.5 text-primary group-hover:underline">Compare shops</span>
           </p>
         </div>

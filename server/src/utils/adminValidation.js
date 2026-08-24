@@ -1,5 +1,6 @@
 import { badRequest } from "./httpError.js";
 import { uuidField } from "./validateInventory.js";
+import { allowedUnitCodes, formatUnitLabel, normalizeUnitCode } from "./productUnits.js";
 
 const TEXT_LIMITS = {
   name: 120,
@@ -8,6 +9,7 @@ const TEXT_LIMITS = {
   logo_url: 500,
   barcode: 120,
   unit_label: 60,
+  unit_code: 24,
 };
 
 function requireObject(body) {
@@ -49,6 +51,25 @@ function money(value, field) {
   return Math.round(parsed * 100) / 100;
 }
 
+function positiveQuantity(value, field = "Quantity") {
+  if (value === undefined || value === null || value === "") {
+    throw badRequest(`${field} is required.`);
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) throw badRequest(`${field} must be a number.`);
+  if (parsed <= 0) throw badRequest(`${field} must be greater than zero.`);
+  if (parsed > 99999999.999) throw badRequest(`${field} is too large.`);
+  return Math.round(parsed * 1000) / 1000;
+}
+
+function unitCode(value) {
+  const code = normalizeUnitCode(cleanString(value, "unit", { required: true, max: TEXT_LIMITS.unit_code }));
+  if (!allowedUnitCodes().includes(code)) {
+    throw badRequest(`Unit must be one of: ${allowedUnitCodes().join(", ")}.`);
+  }
+  return code;
+}
+
 function optionalNullableUuid(value, field) {
   if (value === undefined) return undefined;
   if (value === null || value === "") return null;
@@ -71,6 +92,51 @@ function optionalUrl(value, field) {
 function requireAtLeastOne(patch) {
   if (Object.keys(patch).length === 0) throw badRequest("Nothing to update.");
   return patch;
+}
+
+function validateVariant(value, index, { existing = false, productId } = {}) {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw badRequest(`Variant ${index + 1} must be an object.`);
+  }
+  const quantity = positiveQuantity(value.quantity, `Variant ${index + 1} quantity`);
+  const code = unitCode(value.unit_code);
+  const variant = {
+    quantity,
+    unit_code: code,
+    unit_label: formatUnitLabel(quantity, code),
+    mrp: money(value.mrp, `Variant ${index + 1} MRP`),
+    barcode: cleanString(value.barcode, `Variant ${index + 1} barcode`, { max: TEXT_LIMITS.barcode }),
+    image_url: optionalUrl(value.image_url, "image_url"),
+    is_active: optionalBoolean(value.is_active, `Variant ${index + 1} active`) ?? true,
+  };
+
+  if (existing && value.id !== undefined && value.id !== null && value.id !== "" && value.id !== productId) {
+    variant.id = uuidField(value.id, `Variant ${index + 1}`);
+  }
+  return variant;
+}
+
+function validateVariants(value, { existing = false, productId } = {}) {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw badRequest("At least one product variant is required.");
+  }
+  if (value.length > 24) throw badRequest("A product can have at most 24 variants.");
+
+  const variants = value.map((variant, index) => validateVariant(variant, index, { existing, productId }));
+  const seen = new Set();
+  const barcodes = new Set();
+  for (const variant of variants) {
+    const key = `${variant.quantity}:${variant.unit_code}`;
+    if (seen.has(key)) throw badRequest(`${variant.unit_label} is already listed for this product.`);
+    seen.add(key);
+
+    const barcode = variant.barcode?.toLowerCase();
+    if (barcode) {
+      if (barcodes.has(barcode)) throw badRequest(`Barcode ${variant.barcode} is used by more than one variant.`);
+      barcodes.add(barcode);
+    }
+  }
+  return variants;
 }
 
 export function validateAdminStorePatch(body) {
@@ -96,17 +162,12 @@ export function validateProductCreate(body) {
       max: TEXT_LIMITS.description,
     }),
     image_url: optionalUrl(body.image_url, "image_url"),
-    barcode: cleanString(body.barcode, "barcode", { max: TEXT_LIMITS.barcode }),
-    unit_label: cleanString(body.unit_label, "unit_label", {
-      required: true,
-      max: TEXT_LIMITS.unit_label,
-    }),
-    mrp: money(body.mrp, "MRP"),
+    variants: validateVariants(body.variants),
     is_active: optionalBoolean(body.is_active, "is_active") ?? true,
   };
 }
 
-export function validateProductUpdate(body) {
+export function validateProductUpdate(body, { productId } = {}) {
   requireObject(body);
   const patch = {};
 
@@ -121,16 +182,7 @@ export function validateProductUpdate(body) {
     });
   }
   if (body.image_url !== undefined) patch.image_url = optionalUrl(body.image_url, "image_url");
-  if (body.barcode !== undefined) {
-    patch.barcode = cleanString(body.barcode, "barcode", { max: TEXT_LIMITS.barcode });
-  }
-  if (body.unit_label !== undefined) {
-    patch.unit_label = cleanString(body.unit_label, "unit_label", {
-      required: true,
-      max: TEXT_LIMITS.unit_label,
-    });
-  }
-  if (body.mrp !== undefined) patch.mrp = money(body.mrp, "MRP");
+  if (body.variants !== undefined) patch.variants = validateVariants(body.variants, { existing: true, productId });
   const isActive = optionalBoolean(body.is_active, "is_active");
   if (isActive !== undefined) patch.is_active = isActive;
 

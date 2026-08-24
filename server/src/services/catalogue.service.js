@@ -8,7 +8,10 @@ import { escapeLikePattern } from "../utils/queryParams.js";
 
 const PRODUCT_BASE_FIELDS = `
   id, name, slug, description, image_url, unit_label, mrp, barcode,
-  category:categories!inner (id, name, slug)
+  category:categories!inner (id, name, slug),
+  variants:product_variants (
+    id, product_id, quantity, unit_code, unit_label, mrp, barcode, image_url, is_active
+  )
 `;
 
 const productFields = ({ brandSlug, availableOnly, storeId } = {}) => `
@@ -19,6 +22,29 @@ const productFields = ({ brandSlug, availableOnly, storeId } = {}) => `
 
 function failed(operation, error) {
   return httpError(502, `Supabase ${operation} failed: ${error.message}`);
+}
+
+function variantSort(a, b) {
+  if (a.is_active !== b.is_active) return a.is_active ? -1 : 1;
+  return Number(a.quantity) - Number(b.quantity);
+}
+
+function withVariantSummary(product) {
+  const variants = [...(product.variants ?? [])].sort(variantSort);
+  const activeVariants = variants.filter((item) => item.is_active);
+  const variant = variants.find((item) => item.is_active) ?? variants[0] ?? null;
+  return {
+    ...product,
+    variants,
+    unit_label: variant?.unit_label ?? product.unit_label,
+    mrp: variant?.mrp ?? product.mrp,
+    barcode: variant?.barcode ?? product.barcode,
+    image_url: variant?.image_url ?? product.image_url,
+    variant_count: variants.length,
+    price_from: activeVariants.length
+      ? Math.min(...activeVariants.map((item) => Number(item.mrp)))
+      : Number(product.mrp),
+  };
 }
 
 export async function listCategories() {
@@ -106,7 +132,7 @@ export async function listProducts({
     throw failed("product search", error);
   }
 
-  const products = (data ?? []).map(({ store_products: _storeProducts, ...product }) => product);
+  const products = (data ?? []).map(({ store_products: _storeProducts, ...product }) => withVariantSummary(product));
 
   return { products, total: count ?? 0 };
 }
@@ -133,5 +159,5 @@ export async function getProductBySlug(slug) {
     return { ...data, media: [] };
   }
 
-  return { ...data, media: media ?? [] };
+  return { ...withVariantSummary(data), media: media ?? [] };
 }

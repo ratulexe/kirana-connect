@@ -53,8 +53,8 @@ export default function InventoryManager({ compact = false, storeId }) {
   const { data, isPending, isError, error } = useInventory(storeId);
   const items = data?.items ?? EMPTY_ITEMS;
 
-  const existingProductIds = useMemo(
-    () => new Set(items.map((item) => item.product.id)),
+  const existingVariantIds = useMemo(
+    () => new Set(items.map((item) => item.product_variant_id ?? item.variant?.id)),
     [items],
   );
   const visibleItems = useMemo(() => {
@@ -64,7 +64,7 @@ export default function InventoryManager({ compact = false, storeId }) {
       const product = item.product;
       const matchesSearch =
         !query ||
-        [product.name, product.brand?.name, product.category?.name, product.unit_label]
+        [product.name, product.brand?.name, product.category?.name, product.unit_label, item.variant?.unit_label]
           .map(normalize)
           .some((value) => value.includes(query));
       const matchesStatus =
@@ -169,7 +169,7 @@ export default function InventoryManager({ compact = false, storeId }) {
       {isAdding ? (
         <div className="mt-6">
           <AddProductPanel
-            existingProductIds={existingProductIds}
+            existingVariantIds={existingVariantIds}
             storeId={storeId}
             onClose={() => setIsAdding(false)}
           />

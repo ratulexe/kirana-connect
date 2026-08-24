@@ -14,6 +14,9 @@ import { httpError, notFoundError } from "../utils/httpError.js";
 const LINE_FIELDS = `
   id, selling_price, stock_status, quantity_available,
   discount_percentage, is_available, last_stock_update, updated_at,
+  variant:product_variants!inner (
+    id, quantity, unit_code, unit_label, mrp, barcode, image_url, is_active
+  ),
   product:products!inner (
     id, name, slug, unit_label, mrp, image_url, is_active,
     category:categories!inner (id, name, slug),
@@ -24,6 +27,22 @@ const LINE_FIELDS = `
 function failed(operation, error) {
   console.error(`[kirana-connect-api] ${operation} failed:`, error.message);
   return httpError(502, `Could not ${operation}. Please try again.`);
+}
+
+function withVariantDisplay(item) {
+  if (!item) return item;
+  const imageUrl = item.variant?.image_url ?? item.product?.image_url ?? null;
+  return {
+    ...item,
+    product_variant_id: item.variant?.id ?? item.product_variant_id,
+    product: {
+      ...item.product,
+      unit_label: item.variant?.unit_label ?? item.product?.unit_label,
+      mrp: item.variant?.mrp ?? item.product?.mrp,
+      barcode: item.variant?.barcode ?? null,
+      image_url: imageUrl,
+    },
+  };
 }
 
 /**
@@ -75,41 +94,41 @@ export async function listInventory({ userId, storeId }) {
 
   if (error) throw failed("load your inventory", error);
 
-  return { store, items: data ?? [] };
+  return { store, items: (data ?? []).map(withVariantDisplay) };
 }
 
 export async function addInventoryItem({ userId, storeId, payload }) {
   const store = await resolveOwnedStore(userId, storeId);
   const client = getServiceClient();
 
-  const { data: product, error: productError } = await client
-    .from("products")
-    .select("id, name, is_active")
-    .eq("id", payload.product_id)
+  const { data: variant, error: variantError } = await client
+    .from("product_variants")
+    .select("id, product_id, unit_label, is_active, product:products!inner (id, name, is_active)")
+    .eq("id", payload.product_variant_id)
     .maybeSingle();
 
-  if (productError) throw failed("check that product", productError);
-  if (!product) throw notFoundError("That product is not in the catalogue.");
-  if (!product.is_active) {
-    throw httpError(409, "That product is no longer available in the catalogue.");
+  if (variantError) throw failed("check that product size", variantError);
+  if (!variant) throw notFoundError("That product size is not in the catalogue.");
+  if (!variant.is_active || !variant.product?.is_active) {
+    throw httpError(409, "That product size is no longer available in the catalogue.");
   }
 
   const { data, error } = await client
     .from("store_products")
-    .insert({ ...payload, store_id: store.id })
+    .insert({ ...payload, product_id: variant.product_id, store_id: store.id })
     .select(LINE_FIELDS)
     .single();
 
   if (error) {
-    // The (store_id, product_id) unique constraint is the intended guard
-    // against listing the same product twice.
+    // The (store_id, product_variant_id) unique constraint is the intended
+    // guard against listing the same product size twice.
     if (error.code === "23505") {
-      throw httpError(409, `${product.name} is already in your inventory.`);
+      throw httpError(409, `${variant.product.name} ${variant.unit_label} is already in your inventory.`);
     }
     throw failed("add that product", error);
   }
 
-  return data;
+  return withVariantDisplay(data);
 }
 
 export async function updateInventoryItem({ userId, itemId, storeId, buildPatch }) {
@@ -140,7 +159,7 @@ export async function updateInventoryItem({ userId, itemId, storeId, buildPatch 
 
   if (error) throw failed("update that product", error);
 
-  return data;
+  return withVariantDisplay(data);
 }
 
 export async function removeInventoryItem({ userId, itemId, storeId }) {

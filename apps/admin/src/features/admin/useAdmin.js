@@ -10,6 +10,7 @@ export const adminKeys = {
   store: (id) => ["admin", "stores", id],
   sellers: ["admin", "sellers"],
   products: (params = {}) => ["admin", "products", params],
+  productSummary: ["admin", "products", "summary"],
   product: (id) => ["admin", "products", id],
   productMedia: (productId) => ["admin", "products", productId, "media"],
   categories: ["admin", "categories"],
@@ -72,6 +73,13 @@ export function useProducts(params, options = {}) {
     queryKey: adminKeys.products(params),
     queryFn: ({ signal }) => api.products({ ...params, signal }).then((r) => r.data),
     ...options,
+  });
+}
+
+export function useProductSummary() {
+  return useQuery({
+    queryKey: adminKeys.productSummary,
+    queryFn: ({ signal }) => api.productSummary({ signal }).then((r) => r.data),
   });
 }
 
@@ -154,6 +162,11 @@ export const useUpdateProduct = () =>
 export const useUploadProductImage = () =>
   useMutation({
     mutationFn: (file) => api.uploadProductImage(file).then((r) => r.data),
+  });
+
+export const useResolveProductImage = () =>
+  useMutation({
+    mutationFn: (imageUrl) => api.resolveProductImage(imageUrl).then((r) => r.data),
   });
 
 export const useCreateCategory = () =>

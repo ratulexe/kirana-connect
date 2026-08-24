@@ -9,6 +9,7 @@ import {
   getPendingStores,
   getPendingStoreChanges,
   getProduct,
+  getProductSummary,
   getProducts,
   getSellers,
   getStore,
@@ -25,6 +26,7 @@ import {
   postProduct,
   postRejectStore,
   postRejectStoreChange,
+  postResolveProductImage,
 } from "../controllers/admin.controller.js";
 import { asyncHandler } from "../utils/httpError.js";
 
@@ -48,12 +50,14 @@ router.post("/store-changes/:changeId/reject", asyncHandler(postRejectStoreChang
 
 router.get("/sellers", asyncHandler(getSellers));
 
+router.get("/products/summary", asyncHandler(getProductSummary));
 router.get("/products", asyncHandler(getProducts));
 router.post(
   "/product-images",
   express.raw({ type: "*/*", limit: "2mb" }),
   asyncHandler(postProductImage),
 );
+router.post("/product-images/resolve", asyncHandler(postResolveProductImage));
 router.post("/products", asyncHandler(postProduct));
 router.get("/products/:productId", asyncHandler(getProduct));
 router.patch("/products/:productId", asyncHandler(patchProduct));
