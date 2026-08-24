@@ -74,6 +74,16 @@ export function formatUnitLabel(quantity, unitCode) {
   return `${formatQuantity(quantity)} ${label}`;
 }
 
+export function isPlaceholderPieceVariant(variant) {
+  return Number(variant?.quantity) === 1 && normalizeUnitCode(variant?.unit_code) === "pc";
+}
+
+export function removePlaceholderPieceVariants(variants) {
+  const rows = [...(variants ?? [])];
+  const hasMeasuredSize = rows.some((variant) => normalizeUnitCode(variant?.unit_code) !== "pc");
+  return hasMeasuredSize ? rows.filter((variant) => !isPlaceholderPieceVariant(variant)) : rows;
+}
+
 export function normalizeProductIdentity(value) {
   return String(value ?? "")
     .trim()
