@@ -237,6 +237,12 @@ export async function patchBrand(req, res) {
   res.status(200).json({ success: true, data });
 }
 
+export async function deleteBrandHandler(req, res) {
+  const { deleteBrand } = await import("../services/admin.service.js");
+  const data = await deleteBrand(uuidField(req.params.brandId, "Brand"));
+  res.status(200).json({ success: true, data });
+}
+
 export async function getProductMedia(req, res) {
   const { listProductMedia } = await import("../services/admin.service.js");
   const data = await listProductMedia(uuidField(req.params.productId, "Product"));

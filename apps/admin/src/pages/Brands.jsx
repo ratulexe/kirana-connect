@@ -11,10 +11,13 @@ import {
   useCreateBrand,
   useResolveProductImage,
   useUpdateBrand,
+  useDeleteBrand,
   useUploadProductImage,
 } from "../features/admin/useAdmin.js";
 import { brandSchema } from "../features/admin/schemas.js";
 import { zodResolver } from "../lib/zodResolver.js";
+import DeleteBrandDialog from "../components/DeleteBrandDialog.jsx";
+import { Trash2 } from "lucide-react";
 
 const DEFAULTS = { name: "", logo_url: "" };
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -27,7 +30,13 @@ function BrandLogoPreview({ src, name }) {
   return (
     <div className="grid size-24 place-items-center overflow-hidden rounded-card border border-line bg-surface">
       {src && !failed ? (
-        <img src={src} alt="" className="size-full object-contain p-2" onError={() => setFailed(true)} />
+        <img 
+          src={src} 
+          alt="" 
+          className="size-full object-contain p-2" 
+          referrerPolicy="no-referrer"
+          onError={() => setFailed(true)} 
+        />
       ) : (
         <div className="grid justify-items-center gap-1 text-center text-meta text-ink-muted">
           <ImageIcon className="size-6" aria-hidden="true" />
@@ -192,6 +201,8 @@ function BrandForm({ editing, onDone }) {
 export default function Brands() {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [brandToDelete, setBrandToDelete] = useState(null);
+  const deleteMutation = useDeleteBrand();
   const brands = useBrands();
 
   return (
@@ -232,10 +243,22 @@ export default function Brands() {
               <div className="flex min-w-0 items-center gap-3">
                 <div className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-card border border-line-soft bg-surface-sunken">
                   {brand.logo_url ? (
-                    <img src={brand.logo_url} alt="" className="size-full object-contain p-1.5" />
-                  ) : (
-                    <ImageIcon className="size-5 text-ink-muted" aria-hidden="true" />
-                  )}
+                    <img 
+                      src={brand.logo_url} 
+                      alt="" 
+                      className="size-full object-contain p-1.5"
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextElementSibling.style.display = 'block';
+                      }}
+                    />
+                  ) : null}
+                  <ImageIcon 
+                    className="size-5 text-ink-muted" 
+                    aria-hidden="true" 
+                    style={{ display: brand.logo_url ? 'none' : 'block' }}
+                  />
                 </div>
                 <div className="min-w-0">
                   <h2 className="truncate text-card text-ink">{brand.name}</h2>
@@ -244,13 +267,41 @@ export default function Brands() {
                   </p>
                 </div>
               </div>
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-2">
                 <Button variant="secondary" size="sm" onClick={() => setEditing(brand)}>Edit</Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="text-error hover:bg-error/10 hover:text-error"
+                  title="Delete brand"
+                  onClick={() => {
+                    deleteMutation.reset();
+                    setBrandToDelete(brand);
+                  }}
+                >
+                  <Trash2 className="size-4" />
+                </Button>
               </div>
             </article>
           ))}
         </div>
       )}
+
+      <DeleteBrandDialog
+        brand={brandToDelete}
+        isPending={deleteMutation.isPending}
+        error={deleteMutation.error?.message}
+        onClose={() => setBrandToDelete(null)}
+        onConfirm={async (id) => {
+          try {
+            await deleteMutation.mutateAsync(id);
+            setBrandToDelete(null);
+          } catch {
+            // Error handled in dialog
+          }
+        }}
+      />
     </div>
   );
 }

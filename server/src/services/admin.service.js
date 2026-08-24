@@ -1350,3 +1350,15 @@ export async function deleteProduct(productId) {
   if (error) throw failed("delete product", error);
   return { id: productId, deleted: true };
 }
+
+export async function deleteBrand(brandId) {
+  const client = getServiceClient();
+
+  const { error } = await client
+    .from("brands")
+    .delete()
+    .eq("id", brandId);
+
+  if (error) throw failed("delete brand", error);
+  return { id: brandId, deleted: true };
+}

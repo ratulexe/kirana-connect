@@ -14,7 +14,7 @@ import {
   getSellers,
   getStore,
   getStores,
-  patchBrand,
+  patchBrand, deleteBrandHandler,
   patchCategory,
   patchProduct,
   patchStore,
@@ -71,6 +71,7 @@ router.patch("/categories/:categoryId", asyncHandler(patchCategory));
 router.get("/brands", asyncHandler(getBrands));
 router.post("/brands", asyncHandler(postBrand));
 router.patch("/brands/:brandId", asyncHandler(patchBrand));
+router.delete("/brands/:brandId", asyncHandler(deleteBrandHandler));
 
 router.get("/products/:productId/media", asyncHandler(async (req, res) => {
   const { getProductMedia } = await import("../controllers/admin.controller.js");

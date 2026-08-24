@@ -135,6 +135,7 @@ export const api = {
   resolveProductImage: (image_url) => request("/product-images/resolve", { method: "POST", body: { image_url } }),
   createProduct: (body) => request("/products", { method: "POST", body }),
   updateProduct: (id, body) => request(`/products/${id}`, { method: "PATCH", body }),
+  deleteProduct: (id) => request(`/products/${id}`, { method: "DELETE" }),
   productMedia: (id, options) => request(`/products/${id}/media`, options),
   createProductMedia: (id, file, metadata) => {
     const customHeaders = {
@@ -155,4 +156,5 @@ export const api = {
   brands: (options) => request("/brands", options),
   createBrand: (body) => request("/brands", { method: "POST", body }),
   updateBrand: (id, body) => request(`/brands/${id}`, { method: "PATCH", body }),
+  deleteBrand: (id) => request(`/brands/${id}`, { method: "DELETE" }),
 };
