@@ -48,7 +48,7 @@ const variantSchema = z.object({
   unit_code: z.string().refine((value) => unitCodes.includes(value), "Choose a unit"),
   mrp: z.preprocess(
     (value) => (value === "" || value === null ? undefined : value),
-    z.coerce.number({ error: "Enter the MRP" }).min(0, "MRP cannot be negative"),
+    z.coerce.number({ error: "Enter MRP" }).positive("Enter MRP"),
   ),
   barcode: optionalText(120),
   image_url: optionalUrl,
