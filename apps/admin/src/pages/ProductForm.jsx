@@ -734,7 +734,7 @@ export default function ProductForm({ mode }) {
         <Card className="mt-6 p-5">
           <h2 className="text-card text-ink">Pack images</h2>
           <p className="mt-1 text-meta text-ink-muted">
-            Save the product first, then add front, back side, nutrition facts, and promotional images.
+            Save the product first, then add front, back, and extra named images.
           </p>
         </Card>
       )}
