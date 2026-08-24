@@ -11,6 +11,7 @@ export const adminKeys = {
   sellers: ["admin", "sellers"],
   products: (params = {}) => ["admin", "products", params],
   product: (id) => ["admin", "products", id],
+  productMedia: (productId) => ["admin", "products", productId, "media"],
   categories: ["admin", "categories"],
   brands: ["admin", "brands"],
 };
@@ -166,3 +167,44 @@ export const useCreateBrand = () =>
 
 export const useUpdateBrand = () =>
   useAdminMutation(({ id, body }) => api.updateBrand(id, body), [adminKeys.brands]);
+
+export function useProductMedia(productId) {
+  return useQuery({
+    queryKey: adminKeys.productMedia(productId),
+    queryFn: ({ signal }) => api.productMedia(productId, { signal }).then((r) => r.data),
+    enabled: Boolean(productId),
+  });
+}
+
+export const useCreateProductMedia = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ productId, file, metadata }) => api.createProductMedia(productId, file, metadata).then((r) => r.data),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.productMedia(variables.productId) });
+      queryClient.invalidateQueries({ queryKey: adminKeys.product(variables.productId) });
+    },
+  });
+};
+
+export const useUpdateProductMedia = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }) => api.updateProductMedia(id, body).then((r) => r.data),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.productMedia(data.product_id) });
+      queryClient.invalidateQueries({ queryKey: adminKeys.product(data.product_id) });
+    },
+  });
+};
+
+export const useDeleteProductMedia = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id }) => api.deleteProductMedia(id).then((r) => r.data),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.productMedia(variables.productId) });
+      queryClient.invalidateQueries({ queryKey: adminKeys.product(variables.productId) });
+    },
+  });
+};

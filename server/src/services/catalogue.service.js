@@ -6,15 +6,15 @@ import { escapeLikePattern } from "../utils/queryParams.js";
 // still applies: inactive products and unverified stores are filtered by the
 // database, not merely by the conditions written below.
 
-const PRODUCT_FIELDS = `
+const PRODUCT_BASE_FIELDS = `
   id, name, slug, description, image_url, unit_label, mrp, barcode,
-  category:categories!inner (id, name, slug),
-  brand:brands (id, name, slug, logo_url)
+  category:categories!inner (id, name, slug)
 `;
 
-const PRODUCT_WITH_AVAILABLE_INVENTORY_FIELDS = `
-  ${PRODUCT_FIELDS},
-  store_products!inner (id, store_id)
+const productFields = ({ brandSlug, availableOnly, storeId } = {}) => `
+  ${PRODUCT_BASE_FIELDS},
+  brand:brands${brandSlug ? "!inner" : ""} (id, name, slug, logo_url)
+  ${availableOnly || storeId ? ", store_products!inner (id, store_id)" : ""}
 `;
 
 function failed(operation, error) {
@@ -58,10 +58,8 @@ function applyProductFilters(query, { search, categorySlug, brandSlug, storeId }
 }
 
 async function countProducts(filters) {
-  const fields =
-    filters.availableOnly || filters.storeId ? PRODUCT_WITH_AVAILABLE_INVENTORY_FIELDS : PRODUCT_FIELDS;
   const query = applyProductFilters(
-    getPublicClient().from("products").select(fields, { count: "exact", head: true }),
+    getPublicClient().from("products").select(productFields(filters), { count: "exact", head: true }),
     filters,
   );
 
@@ -86,9 +84,8 @@ export async function listProducts({
   offset,
   availableOnly = false,
 }) {
-  const fields = availableOnly || storeId ? PRODUCT_WITH_AVAILABLE_INVENTORY_FIELDS : PRODUCT_FIELDS;
   const query = applyProductFilters(
-    getPublicClient().from("products").select(fields, { count: "exact" }),
+    getPublicClient().from("products").select(productFields({ brandSlug, availableOnly, storeId }), { count: "exact" }),
     { search, categorySlug, brandSlug, storeId, availableOnly },
   );
 
@@ -117,12 +114,24 @@ export async function listProducts({
 export async function getProductBySlug(slug) {
   const { data, error } = await getPublicClient()
     .from("products")
-    .select(PRODUCT_FIELDS)
+    .select(productFields())
     .eq("slug", slug)
     .maybeSingle();
 
   if (error) throw failed("product lookup", error);
   if (!data) throw notFoundError(`No product found with slug "${slug}"`);
 
-  return data;
+  const { data: media, error: mediaError } = await getPublicClient()
+    .from("product_media")
+    .select("id, media_type, image_url, alt_text, sort_order, is_primary")
+    .eq("product_id", data.id)
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true });
+
+  if (mediaError) {
+    console.error("[kirana-connect-api] product media lookup failed:", mediaError.message);
+    return { ...data, media: [] };
+  }
+
+  return { ...data, media: media ?? [] };
 }

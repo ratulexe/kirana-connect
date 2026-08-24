@@ -66,4 +66,25 @@ router.get("/brands", asyncHandler(getBrands));
 router.post("/brands", asyncHandler(postBrand));
 router.patch("/brands/:brandId", asyncHandler(patchBrand));
 
+router.get("/products/:productId/media", asyncHandler(async (req, res) => {
+  const { getProductMedia } = await import("../controllers/admin.controller.js");
+  return getProductMedia(req, res);
+}));
+router.post(
+  "/products/:productId/media",
+  express.raw({ type: "*/*", limit: "5mb" }),
+  asyncHandler(async (req, res) => {
+    const { postProductMedia } = await import("../controllers/admin.controller.js");
+    return postProductMedia(req, res);
+  })
+);
+router.patch("/media/:mediaId", asyncHandler(async (req, res) => {
+  const { patchProductMedia } = await import("../controllers/admin.controller.js");
+  return patchProductMedia(req, res);
+}));
+router.delete("/media/:mediaId", asyncHandler(async (req, res) => {
+  const { deleteProductMediaHandler } = await import("../controllers/admin.controller.js");
+  return deleteProductMediaHandler(req, res);
+}));
+
 export default router;

@@ -90,14 +90,21 @@ export default function Brands() {
           {brands.error?.message ?? "Please try again."}
         </Alert>
       ) : (
-        <div className="mt-6 divide-y divide-line-soft rounded-panel border border-line bg-surface">
+        <div className="mt-6 divide-y divide-line-soft overflow-hidden rounded-panel border border-line bg-surface">
           {brands.data.map((brand) => (
-            <article key={brand.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
-              <div>
-                <h2 className="text-card text-ink">{brand.name}</h2>
-                <p className="mt-1 text-meta text-ink-muted">{brand.logo_url || "No logo URL"}</p>
+            <article
+              key={brand.id}
+              className="grid min-w-0 gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+            >
+              <div className="min-w-0">
+                <h2 className="truncate text-card text-ink">{brand.name}</h2>
+                <p className="mt-1 max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-meta text-ink-muted">
+                  {brand.logo_url || "No logo URL"}
+                </p>
               </div>
-              <Button variant="secondary" size="sm" onClick={() => setEditing(brand)}>Edit</Button>
+              <div className="flex justify-end">
+                <Button variant="secondary" size="sm" onClick={() => setEditing(brand)}>Edit</Button>
+              </div>
             </article>
           ))}
         </div>

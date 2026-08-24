@@ -13,10 +13,11 @@ export const discoveryKeys = {
   nearbyStores: (params) => ["nearby-stores", params],
 };
 
-export function useProductSearch({ search, category, storeId, availableOnly = false, limit, offset }) {
+export function useProductSearch({ search, category, brand, storeId, availableOnly = false, limit, offset }) {
   const params = {
     search: search || null,
     category: category || null,
+    brand: brand || null,
     storeId: storeId || null,
     availableOnly,
     limit,
@@ -26,10 +27,22 @@ export function useProductSearch({ search, category, storeId, availableOnly = fa
   return useQuery({
     queryKey: discoveryKeys.products(params),
     queryFn: ({ signal }) =>
-      fetchProducts({ search, category, storeId, availableOnly, limit, offset, signal }),
+      fetchProducts({ search, category, brand, storeId, availableOnly, limit, offset, signal }),
     // Keeps the previous page visible while the next one loads, so the list
     // does not collapse to a skeleton on every keystroke.
     placeholderData: (previous) => previous,
+  });
+}
+
+export function useBrandProducts({ brandSlug, excludeSlug, limit = 8 }) {
+  return useQuery({
+    queryKey: ["brand-products", brandSlug, excludeSlug, limit],
+    queryFn: async ({ signal }) => {
+      const { products } = await fetchProducts({ brand: brandSlug, limit, signal });
+      return products.filter((p) => p.slug !== excludeSlug);
+    },
+    enabled: Boolean(brandSlug),
+    staleTime: 5 * 60_000,
   });
 }
 

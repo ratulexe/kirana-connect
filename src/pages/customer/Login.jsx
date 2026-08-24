@@ -1,0 +1,108 @@
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import Container from "../../components/common/Container.jsx";
+import Alert from "../../components/common/Alert.jsx";
+import Button from "../../components/common/Button.jsx";
+import Field, { TextInput } from "../../components/common/Field.jsx";
+import PasswordInput from "../../components/common/PasswordInput.jsx";
+import { useAuth } from "../../auth/useAuth.js";
+import { friendlyAuthMessage } from "../../auth/authMessages.js";
+import { loginSchema } from "../../features/customer/schemas.js";
+import { zodResolver } from "../../lib/zodResolver.js";
+
+function readLinkError() {
+  if (typeof window === "undefined") return null;
+  const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : "";
+  if (!hash) return null;
+  const params = new URLSearchParams(hash);
+  if (!params.get("error") && !params.get("error_code")) return null;
+  return friendlyAuthMessage({ message: params.get("error_description") ?? params.get("error_code") });
+}
+
+export default function Login() {
+  const auth = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [formError, setFormError] = useState("");
+  const [linkError] = useState(readLinkError);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm({ resolver: zodResolver(loginSchema), defaultValues: { email: "", password: "" } });
+
+  if (auth.isAuthenticated) return <Navigate to={location.state?.from ?? "/account"} replace />;
+
+  const onSubmit = async (values) => {
+    setFormError("");
+    try {
+      await auth.signIn(values);
+      navigate(location.state?.from ?? "/account", { replace: true });
+    } catch (error) {
+      setFormError(friendlyAuthMessage(error));
+    }
+  };
+
+  return (
+    <Container className="py-10 sm:py-14">
+      <div className="mx-auto max-w-md">
+        <h1 className="text-heading text-ink">Sign in</h1>
+        <p className="mt-2 text-body text-ink-muted">
+          Save addresses and reuse your preferred location on Kirana Connect.
+        </p>
+
+        <div className="mt-6 rounded-panel border border-line bg-surface p-5 shadow-subtle sm:p-6">
+          {!auth.isConfigured ? (
+            <Alert tone="error" title="Consumer auth is not configured">
+              Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in the consumer environment.
+            </Alert>
+          ) : (
+            <form onSubmit={handleSubmit(onSubmit)} noValidate className="grid gap-5">
+              {linkError ? <Alert tone="warning">{linkError}</Alert> : null}
+              {formError ? <Alert tone="error">{formError}</Alert> : null}
+
+              <Field label="Email" required error={errors.email?.message}>
+                {(field) => (
+                  <TextInput
+                    {...field}
+                    {...register("email")}
+                    invalid={Boolean(errors.email)}
+                    type="email"
+                    autoComplete="email"
+                    placeholder="you@example.com"
+                  />
+                )}
+              </Field>
+
+              <Field label="Password" required error={errors.password?.message}>
+                {(field) => (
+                  <PasswordInput
+                    {...field}
+                    {...register("password")}
+                    invalid={Boolean(errors.password)}
+                    autoComplete="current-password"
+                  />
+                )}
+              </Field>
+
+              <Button type="submit" size="lg" fullWidth disabled={isSubmitting}>
+                {isSubmitting ? "Signing in..." : "Sign in"}
+              </Button>
+
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line-soft pt-4 text-meta">
+                <Link to="/forgot-password" className="font-semibold text-primary hover:text-primary-hover">
+                  Forgot password
+                </Link>
+                <Link to="/register" className="font-semibold text-primary hover:text-primary-hover">
+                  Create account
+                </Link>
+              </div>
+            </form>
+          )}
+        </div>
+      </div>
+    </Container>
+  );
+}
