@@ -41,7 +41,11 @@ export default function PortalLayout() {
   };
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="relative isolate flex min-h-dvh flex-col overflow-x-clip">
+      <div aria-hidden="true" className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+        <span className="portal-float absolute -left-20 top-72 size-64 rounded-full bg-[#ffd45e]/25 blur-3xl" />
+        <span className="portal-float-slow absolute -right-24 top-[38rem] size-72 rounded-full bg-[#e93483]/15 blur-3xl" />
+      </div>
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50 focus:rounded-control focus:bg-primary focus:px-4 focus:py-2 focus:text-meta focus:font-semibold focus:text-primary-fg"
@@ -49,7 +53,7 @@ export default function PortalLayout() {
         Skip to content
       </a>
 
-      <header className="sticky top-0 z-40 border-b border-line-soft bg-canvas/85 backdrop-blur-md">
+      <header className="sticky top-0 z-40 border-b border-white/40 bg-canvas/85 shadow-[0_6px_24px_rgba(49,36,118,.05)] backdrop-blur-md">
         <Container>
           <div className="flex min-h-14 items-center justify-between gap-3 py-2">
             <Logo />
@@ -135,12 +139,13 @@ export default function PortalLayout() {
         <Outlet />
       </main>
 
-      <footer className="mt-16 border-t border-line-soft bg-surface">
-        <Container className="flex flex-col gap-1 py-8 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-meta text-ink-muted">
+      <footer className="relative mt-16 overflow-hidden border-t border-line-soft bg-[#21165e] text-white">
+        <div aria-hidden="true" className="absolute -right-10 -top-16 size-56 rounded-full bg-[#e93483]/35 blur-3xl" />
+        <Container className="relative flex flex-col gap-1 py-8 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-meta text-white/70">
             Kirana Connect helps nearby customers find what you stock.
           </p>
-          <p className="text-meta text-ink-muted">
+          <p className="text-meta text-white/70">
             &copy; {new Date().getFullYear()} Kirana Connect
           </p>
         </Container>

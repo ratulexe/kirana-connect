@@ -24,6 +24,7 @@ export default function Button({
   variant = "primary",
   size = "md",
   fullWidth = false,
+  isLoading = false,
   className,
   type,
   children,
@@ -32,6 +33,7 @@ export default function Button({
   return (
     <Tag
       type={Tag === "button" ? (type ?? "button") : type}
+      aria-busy={isLoading || undefined}
       className={cn(
         "inline-flex items-center justify-center rounded-control font-semibold whitespace-nowrap",
         "transition-[background-color,border-color,color,transform] duration-150 ease-brand",
@@ -43,6 +45,7 @@ export default function Button({
       )}
       {...props}
     >
+      {isLoading ? <span className="size-3.5 animate-spin rounded-pill border-2 border-current border-r-transparent" aria-hidden="true" /> : null}
       {children}
     </Tag>
   );

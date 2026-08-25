@@ -13,7 +13,7 @@ export const discoveryKeys = {
   nearbyStores: (params) => ["nearby-stores", params],
 };
 
-export function useProductSearch({ search, category, brand, storeId, availableOnly = false, limit, offset }) {
+export function useProductSearch({ search, category, brand, storeId, availableOnly = false, limit, offset, refetchInterval }) {
   const params = {
     search: search || null,
     category: category || null,
@@ -31,6 +31,8 @@ export function useProductSearch({ search, category, brand, storeId, availableOn
     // Keeps the previous page visible while the next one loads, so the list
     // does not collapse to a skeleton on every keystroke.
     placeholderData: (previous) => previous,
+    refetchInterval,
+    refetchIntervalInBackground: false,
   });
 }
 

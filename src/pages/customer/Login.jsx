@@ -6,6 +6,7 @@ import Alert from "../../components/common/Alert.jsx";
 import Button from "../../components/common/Button.jsx";
 import Field, { TextInput } from "../../components/common/Field.jsx";
 import PasswordInput from "../../components/common/PasswordInput.jsx";
+import { MapPin, Sparkles, Zap } from "lucide-react";
 import { useAuth } from "../../auth/useAuth.js";
 import { friendlyAuthMessage } from "../../auth/authMessages.js";
 import { loginSchema } from "../../features/customer/schemas.js";
@@ -47,13 +48,20 @@ export default function Login() {
 
   return (
     <Container className="py-10 sm:py-14">
-      <div className="mx-auto max-w-md">
-        <h1 className="text-heading text-ink">Sign in</h1>
+      <div className="mx-auto grid max-w-4xl items-center gap-8 lg:grid-cols-[.85fr_1.15fr]">
+        <div className="order-2 rounded-panel bg-[#21165e] p-7 text-white shadow-[0_20px_60px_rgba(37,23,102,.25)] lg:order-1">
+          <span className="inline-flex size-11 items-center justify-center rounded-2xl bg-[#ffd45e] text-[#33216e]"><Sparkles className="size-5" /></span>
+          <h2 className="mt-6 text-2xl font-bold tracking-tight">Your local favourites, one tap away.</h2>
+          <p className="mt-3 text-body text-white/70">Keep your places close, search the shelf faster and make every market run feel easier.</p>
+          <div className="mt-7 space-y-3 text-meta font-semibold text-white/85"><p className="flex items-center gap-2"><MapPin className="size-4 text-[#ffd45e]" /> Save your preferred location</p><p className="flex items-center gap-2"><Zap className="size-4 text-[#ffd45e]" /> Discover what is nearby</p></div>
+        </div>
+        <div className="order-1 lg:order-2">
+        <h1 className="text-heading text-ink">Welcome back</h1>
         <p className="mt-2 text-body text-ink-muted">
           Save addresses and reuse your preferred location on Kirana Connect.
         </p>
 
-        <div className="mt-6 rounded-panel border border-line bg-surface p-5 shadow-subtle sm:p-6">
+        <div className="gloss-panel mt-6 rounded-panel p-5 sm:p-6">
           {!auth.isConfigured ? (
             <Alert tone="error" title="Consumer auth is not configured">
               Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in the consumer environment.
@@ -101,6 +109,7 @@ export default function Login() {
               </div>
             </form>
           )}
+        </div>
         </div>
       </div>
     </Container>

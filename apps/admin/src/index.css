@@ -3,7 +3,7 @@
 @theme {
   --font-sans: "Parkinsans", system-ui, sans-serif;
 
-  --color-canvas: #f7f6f2;
+  --color-canvas: #f4f0ff;
   --color-surface: #ffffff;
   --color-surface-sunken: #efede7;
 
@@ -11,13 +11,13 @@
   --color-ink-soft: #454a52;
   --color-ink-muted: #69707a;
 
-  --color-primary: #0c6b4f;
-  --color-primary-hover: #0a5942;
+  --color-primary: #5138dd;
+  --color-primary-hover: #3824b8;
   --color-primary-fg: #ffffff;
-  --color-primary-soft: #e5f1ec;
+  --color-primary-soft: #eeeaff;
 
-  --color-accent: #b77911;
-  --color-accent-soft: #fbf0d9;
+  --color-accent: #e93483;
+  --color-accent-soft: #ffe5f0;
 
   --color-line: #dfddd6;
   --color-line-soft: #ece9e2;
@@ -70,7 +70,8 @@
   body {
     margin: 0;
     min-height: 100dvh;
-    background: var(--color-canvas);
+    background-color: var(--color-canvas);
+    background-image: radial-gradient(circle at 95% 0%, rgba(255, 204, 81, .32), transparent 25rem), radial-gradient(circle at 10% 20%, rgba(112, 81, 231, .18), transparent 26rem), radial-gradient(circle at 55% 100%, rgba(233, 52, 131, .12), transparent 25rem);
     color: var(--color-ink);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
@@ -93,3 +94,11 @@
     }
   }
 }
+
+@layer components {
+  .admin-glow { box-shadow: 0 20px 60px rgba(54, 37, 153, .16); }
+  .admin-float { animation: admin-float 6s ease-in-out infinite; }
+  .admin-glass { border: 1px solid rgba(255,255,255,.76); background: linear-gradient(135deg, rgba(255,255,255,.88), rgba(255,255,255,.62)); box-shadow: 0 16px 44px rgba(65,44,148,.11), inset 0 1px rgba(255,255,255,.8); backdrop-filter: blur(16px); }
+}
+
+@keyframes admin-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }

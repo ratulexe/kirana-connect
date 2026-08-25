@@ -59,8 +59,8 @@ function NavItems({ onNavigate }) {
             className={cn(
               "flex items-center gap-2 rounded-control px-3 py-2 text-meta font-semibold transition-colors",
               active
-                ? "bg-primary text-primary-fg"
-                : "text-ink-soft hover:bg-surface-sunken hover:text-ink",
+                ? "bg-[#ffd45e] text-[#302069] shadow-sm"
+                : "text-white/70 hover:bg-white/10 hover:text-white",
             )}
           >
             <Icon className="size-4" aria-hidden="true" />
@@ -84,7 +84,11 @@ export default function AdminLayout() {
   };
 
   return (
-    <div className="min-h-dvh bg-canvas">
+    <div className="relative isolate min-h-dvh overflow-x-clip bg-canvas">
+      <div aria-hidden="true" className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+        <span className="admin-float absolute -right-24 top-[26rem] size-72 rounded-full bg-[#ffd45e]/25 blur-3xl" />
+        <span className="admin-float absolute -left-24 top-[43rem] size-72 rounded-full bg-[#e93483]/12 blur-3xl" />
+      </div>
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50 focus:rounded-control focus:bg-primary focus:px-4 focus:py-2 focus:text-meta focus:font-semibold focus:text-primary-fg"
@@ -92,14 +96,14 @@ export default function AdminLayout() {
         Skip to content
       </a>
 
-      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-line-soft bg-surface px-4 py-5 lg:block">
-        <div className="mb-8">
+      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-white/10 bg-[#21165e] px-4 py-5 text-white lg:block">
+        <div className="mb-8 rounded-card bg-white/8 p-3 [&_.border-line]:border-white/20 [&_.text-ink]:text-white [&_.text-ink-muted]:text-white/55">
           <Logo />
         </div>
         <NavItems />
       </aside>
 
-      <header className="sticky top-0 z-40 border-b border-line-soft bg-surface/90 backdrop-blur-md lg:ml-64">
+      <header className="sticky top-0 z-40 border-b border-white/40 bg-canvas/80 backdrop-blur-md lg:ml-64">
         <div className="flex min-h-14 items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-3">
             <button
@@ -116,7 +120,7 @@ export default function AdminLayout() {
             <div className="hidden min-w-0 items-center gap-2 lg:flex">
               <Boxes className="size-4 text-primary" aria-hidden="true" />
               <span className="text-meta font-semibold text-ink-muted">
-                Admin operations
+                Marketplace command centre
               </span>
             </div>
           </div>

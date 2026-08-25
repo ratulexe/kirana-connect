@@ -22,31 +22,30 @@
 
   /* Surfaces ------------------------------------------------------------- */
   /* Warm off-white rather than pure white: reads as paper, not as a dashboard. */
-  --color-canvas: #faf9f6;
-  --color-surface: #ffffff;
-  --color-surface-sunken: #f4f2ed;
+  --color-canvas: #faf7f0;
+  --color-surface: #fffdf8;
+  --color-surface-sunken: #f3ecdf;
 
   /* Foreground ----------------------------------------------------------- */
-  --color-ink: #16181c;
-  --color-ink-soft: #4b4f57;
+  --color-ink: #19352a;
+  --color-ink-soft: #365044;
   /* Darkened from the first pass: the lighter grey measured 4.09:1 on canvas,
      under the 4.5:1 AA floor for body text. This sits at 4.85:1. */
-  --color-ink-muted: #6a6e77;
+  --color-ink-muted: #617168;
 
-  /* Primary: deep kirana green. Trustworthy and local without clip-art. --- */
-  --color-primary: #0c6b4f;
-  --color-primary-hover: #0a5942;
+  /* An electric indigo core with mango and coral highlights. */
+  --color-primary: #1b2cc1;
+  --color-primary-hover: #0f6143;
   --color-primary-fg: #ffffff;
-  --color-primary-soft: #e8f2ee;
+  --color-primary-soft: #e4f3ea;
 
-  /* Accent: marigold. Reserved for savings and emphasis, never decoration. */
-  --color-accent: #e0a018;
+  --color-accent: #e5a12f;
   --color-accent-fg: #402c05;
-  --color-accent-soft: #fdf4e0;
+  --color-accent-soft: #fff3cf;
 
   /* Lines ---------------------------------------------------------------- */
-  --color-line: #e5e2db;
-  --color-line-soft: #f0eee9;
+  --color-line: #ddd5c7;
+  --color-line-soft: #eee7dc;
 
   /* Status --------------------------------------------------------------- */
   /* Deepened: the first green measured 4.28:1 on success-soft. Now 5.37:1. */
@@ -112,6 +111,9 @@
     margin: 0;
     min-height: 100dvh;
     background-color: var(--color-canvas);
+    background-image: radial-gradient(circle at 10% 0%, rgba(21, 122, 85, 0.08), transparent 40rem),
+                      radial-gradient(circle at 90% 10%, rgba(229, 161, 47, 0.09), transparent 40rem),
+                      radial-gradient(circle at 50% 100%, rgba(130, 92, 48, 0.05), transparent 40rem);
     color: var(--color-ink);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
@@ -139,6 +141,73 @@
   }
 }
 
+@layer components {
+  .hero-grid {
+    background-image: linear-gradient(rgba(255,255,255,.09) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.09) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+
+  .float-orbit {
+    animation: float-orbit 5s ease-in-out infinite;
+  }
+
+  .float-orbit-delayed {
+    animation: float-orbit 5.8s ease-in-out -2.2s infinite;
+  }
+
+  .shine-sweep {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .shine-sweep::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-120%) skewX(-18deg);
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.24), transparent);
+    animation: shine-sweep 4.5s ease-in-out infinite;
+  }
+
+  .gloss-panel {
+    border: 1px solid rgba(255,255,255,.72);
+    background: linear-gradient(135deg, rgba(255,255,255,.84), rgba(255,255,255,.56));
+    box-shadow: 0 14px 38px rgba(65, 44, 148, .10), inset 0 1px rgba(255,255,255,.72);
+    backdrop-filter: blur(16px);
+  }
+
+  .gloss-orb {
+    background: radial-gradient(circle at 35% 30%, rgba(255,255,255,.9), rgba(255,255,255,.18) 32%, transparent 63%);
+  }
+
+  .pulse-track {
+    animation: market-pulse 24s linear infinite;
+  }
+
+  .pulse-track:hover {
+    animation-play-state: paused;
+  }
+}
+
+@keyframes float-orbit {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50% { transform: translateY(-10px) rotate(3deg); }
+}
+
+@keyframes shine-sweep {
+  0%, 60% { transform: translateX(-130%) skewX(-18deg); }
+  100% { transform: translateX(140%) skewX(-18deg); }
+}
+
+@keyframes quick-pop {
+  from { opacity: 0; transform: translateY(8px) scale(.9); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes market-pulse {
+  to { transform: translateX(-50%); }
+}
+
 /* Modal entrance only -- deliberately small, matches the reduced-motion
    handling in @theme above since it is a plain CSS animation. */
 @keyframes modal-fade-in {
@@ -163,4 +232,125 @@
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
+}
+
+@layer components {
+  .glass-card {
+    background: rgba(255,255,255,0.72);
+    border: 1px solid rgba(255,255,255,0.5);
+    backdrop-filter: blur(24px) saturate(180%);
+    box-shadow: 0 8px 32px rgba(79,54,217,0.08), inset 0 1px rgba(255,255,255,0.7);
+  }
+  .glass-dark {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    backdrop-filter: blur(24px) saturate(180%);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3), inset 0 1px rgba(255,255,255,0.05);
+  }
+  .neon-glow-indigo { box-shadow: 0 0 12px rgba(99,102,241,0.7), 0 0 30px rgba(99,102,241,0.4); }
+  .neon-glow-pink { box-shadow: 0 0 12px rgba(236,72,153,0.7), 0 0 30px rgba(236,72,153,0.4); }
+  .neon-glow-yellow { box-shadow: 0 0 12px rgba(255,212,94,0.7), 0 0 30px rgba(255,212,94,0.4); }
+  .neon-glow-cyan { box-shadow: 0 0 12px rgba(6,182,212,0.7), 0 0 30px rgba(6,182,212,0.4); }
+  .neon-glow-green { box-shadow: 0 0 12px rgba(34,197,94,0.7), 0 0 30px rgba(34,197,94,0.4); }
+  .gradient-text {
+    background: linear-gradient(135deg, #ffd45e 0%, #ff7b54 33%, #e93483 66%, #4f36d9 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-size: 200% 200%;
+    animation: gradient-shift 4s ease infinite;
+  }
+  .hologram {
+    position: relative;
+    overflow: hidden;
+  }
+  .hologram::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.18) 50%, transparent 65%);
+    animation: hologram-sweep 3s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .neon-btn {
+    position: relative;
+    transition: all 0.25s cubic-bezier(0.22, 0.61, 0.36, 1);
+    overflow: hidden;
+  }
+  .neon-btn:hover { transform: translateY(-2px) scale(1.02); }
+  .neon-btn:active { transform: translateY(0) scale(0.98); }
+  .live-dot { animation: live-pulse 1.5s ease-in-out infinite; }
+  .deal-flash { animation: deal-flash 1.8s ease-in-out infinite; }
+  .card-lift {
+    transition: transform 0.25s cubic-bezier(0.22,0.61,0.36,1), box-shadow 0.25s ease;
+  }
+  .card-lift:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 20px 40px rgba(79,54,217,0.15);
+  }
+}
+
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+@keyframes hologram-sweep {
+  0% { transform: translateX(-150%) skewX(-15deg); }
+  100% { transform: translateX(250%) skewX(-15deg); }
+}
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34,197,94,0.6); }
+  50% { opacity: 0.7; box-shadow: 0 0 0 8px rgba(34,197,94,0); }
+}
+@keyframes deal-flash {
+  0%, 100% { box-shadow: 0 0 8px rgba(239,68,68,0.5); }
+  50% { box-shadow: 0 0 20px rgba(239,68,68,0.9), 0 0 40px rgba(239,68,68,0.4); }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+@keyframes slide-up {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes bounce-in {
+  0% { transform: scale(0.3); opacity: 0; }
+  50% { transform: scale(1.05); }
+  70% { transform: scale(0.9); }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes radar-sweep {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes heart-burst {
+  0% { transform: scale(1); }
+  25% { transform: scale(1.4); }
+  50% { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+
+@layer utilities {
+  .animate-slide-up { animation: slide-up 0.4s cubic-bezier(0.16,1,0.3,1) both; }
+  .animate-bounce-in { animation: bounce-in 0.5s cubic-bezier(0.16,1,0.3,1) both; }
+  .animate-radar { animation: radar-sweep 3s linear infinite; }
+  .animate-spin-slow { animation: spin-slow 8s linear infinite; }
+  .text-shadow-neon-yellow { text-shadow: 0 0 10px rgba(255,212,94,0.8), 0 0 30px rgba(255,212,94,0.4); }
+  .scrollbar-neon::-webkit-scrollbar { height: 4px; background: transparent; }
+  .scrollbar-neon::-webkit-scrollbar-thumb { background: linear-gradient(90deg, #4f36d9, #e93483); border-radius: 4px; }
+  .bg-dark-glass { background: rgba(8,4,18,0.7); backdrop-filter: blur(20px); }
+}
+
+@layer base {
+  /* Removed dark mode body override to keep UI whitish */
 }

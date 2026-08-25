@@ -25,8 +25,11 @@ function initials(name) {
  * photo is a designed state rather than a broken image icon.
  */
 export default function ProductImage({ src, name, size = "md", className }) {
-  const [failed, setFailed] = useState(false);
-  const showFallback = !src || failed;
+  // Store the URL that failed instead of resetting local state in an effect.
+  // When a live catalogue update supplies a new image URL, it is immediately
+  // eligible to render without an extra cascading render.
+  const [failedSrc, setFailedSrc] = useState(null);
+  const showFallback = !src || failedSrc === src;
 
   return (
     <div
@@ -43,10 +46,10 @@ export default function ProductImage({ src, name, size = "md", className }) {
       ) : (
         <img
           src={src}
-          alt=""
+          alt={name || "Product image"}
           loading="lazy"
           decoding="async"
-          onError={() => setFailed(true)}
+          onError={() => setFailedSrc(src)}
           className="size-full object-contain p-1"
         />
       )}
