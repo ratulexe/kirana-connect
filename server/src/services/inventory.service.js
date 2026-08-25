@@ -1,6 +1,7 @@
 import { getServiceClient } from "../config/supabase.js";
 import { httpError, notFoundError } from "../utils/httpError.js";
 import { getExpiryStatus } from "../utils/expiryStatus.js";
+import { fulfillNearbyDemand } from "./demandRequests.service.js";
 
 /**
  * Store inventory for the authenticated owner.
@@ -60,7 +61,7 @@ export async function resolveOwnedStore(userId, requestedStoreId) {
 
   let query = client
     .from("stores")
-    .select("id, name, slug, is_verified, is_active")
+    .select("id, name, slug, is_verified, is_active, latitude, longitude")
     .eq("owner_id", userId)
     .order("created_at", { ascending: true });
 
@@ -131,6 +132,16 @@ export async function addInventoryItem({ userId, storeId, payload }) {
     }
     throw failed("add that product", error);
   }
+
+  // Best-effort: a demand-fulfillment hiccup must never fail the listing that
+  // triggered it, since the inventory write already succeeded.
+  fulfillNearbyDemand({
+    storeLatitude: store.latitude,
+    storeLongitude: store.longitude,
+    productVariantId: variant.id,
+  }).catch((err) => {
+    console.error("[kirana-connect-api] fulfill nearby demand failed:", err.message);
+  });
 
   return withVariantDisplay(data);
 }

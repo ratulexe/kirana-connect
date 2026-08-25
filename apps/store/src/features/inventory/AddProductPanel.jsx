@@ -14,17 +14,41 @@ import { useAddInventoryItem, useCatalogueSearch } from "./useInventory.js";
  * what keeps one canonical product comparable across every shop. Creating new
  * catalogue entries is deliberately not possible here; that is curation.
  */
-export default function AddProductPanel({ existingVariantIds = new Set(), storeId, onClose }) {
-  const [term, setTerm] = useState("");
-  const [debounced, setDebounced] = useState("");
-  const [selected, setSelected] = useState(null);
-  const [form, setForm] = useState({
-    selling_price: "",
+function formForVariant(variant) {
+  return {
+    selling_price: String(variant.mrp),
     stock_status: "in_stock",
     quantity_available: "",
     discount_percentage: "0",
     expiry_date: "",
-  });
+  };
+}
+
+const EMPTY_FORM = {
+  selling_price: "",
+  stock_status: "in_stock",
+  quantity_available: "",
+  discount_percentage: "0",
+  expiry_date: "",
+};
+
+/**
+ * `initialSelection`, when set, arrives from a "Add to store" click on the
+ * Customer demand page: the exact product/variant is already decided, so the
+ * panel opens straight on the pricing form instead of the catalogue search.
+ */
+export default function AddProductPanel({
+  existingVariantIds = new Set(),
+  storeId,
+  initialSelection = null,
+  onClose,
+}) {
+  const [term, setTerm] = useState("");
+  const [debounced, setDebounced] = useState("");
+  const [selected, setSelected] = useState(initialSelection);
+  const [form, setForm] = useState(() =>
+    initialSelection ? formForVariant(initialSelection.variant) : EMPTY_FORM,
+  );
 
   const add = useAddInventoryItem(storeId);
   const { data, isFetching, isError, isSuccess, error } = useCatalogueSearch(debounced);
@@ -37,13 +61,7 @@ export default function AddProductPanel({ existingVariantIds = new Set(), storeI
   const choose = (product, variant) => {
     setSelected({ product, variant });
     // Prefill with MRP: most shops start there and discount from it.
-    setForm({
-      selling_price: String(variant.mrp),
-      stock_status: "in_stock",
-      quantity_available: "",
-      discount_percentage: "0",
-      expiry_date: "",
-    });
+    setForm(formForVariant(variant));
   };
 
   const submit = (event) => {

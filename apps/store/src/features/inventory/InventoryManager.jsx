@@ -48,8 +48,8 @@ function Summary({ items }) {
   );
 }
 
-export default function InventoryManager({ compact = false, storeId }) {
-  const [isAdding, setIsAdding] = useState(false);
+export default function InventoryManager({ compact = false, storeId, initialSelection = null }) {
+  const [isAdding, setIsAdding] = useState(Boolean(initialSelection));
   const [productSearch, setProductSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const { data, isPending, isError, error } = useInventory(storeId);
@@ -59,6 +59,10 @@ export default function InventoryManager({ compact = false, storeId }) {
     () => new Set(items.map((item) => item.product_variant_id ?? item.variant?.id)),
     [items],
   );
+  // A demand row for a variant this store already carries has nothing left to
+  // preselect -- fall back to the normal search panel instead.
+  const panelSelection =
+    initialSelection && !existingVariantIds.has(initialSelection.variant.id) ? initialSelection : null;
   const visibleItems = useMemo(() => {
     const query = normalize(productSearch);
 
@@ -176,6 +180,7 @@ export default function InventoryManager({ compact = false, storeId }) {
           <AddProductPanel
             existingVariantIds={existingVariantIds}
             storeId={storeId}
+            initialSelection={panelSelection}
             onClose={() => setIsAdding(false)}
           />
         </div>
