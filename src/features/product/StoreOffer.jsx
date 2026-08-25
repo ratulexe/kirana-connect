@@ -2,6 +2,7 @@ import { MapPin, Navigation, Phone, Sparkles } from "lucide-react";
 import Badge from "../../components/common/Badge.jsx";
 import StockBadge from "../../components/common/StockBadge.jsx";
 import DiscountBadge from "../../components/common/DiscountBadge.jsx";
+import ExpiryBadge from "../../components/common/ExpiryBadge.jsx";
 import PriceDisplay from "../../components/common/PriceDisplay.jsx";
 import Button from "../../components/common/Button.jsx";
 import { formatDistance } from "../../utils/format.js";
@@ -47,6 +48,11 @@ export default function StoreOffer({ offer, mrp }) {
         <div className="mt-2.5 flex flex-wrap items-center gap-2">
           <StockBadge status={offer.stock_status} />
           <DiscountBadge percentage={offer.discount_percentage} />
+          <ExpiryBadge
+            expiryStatus={offer.expiry_status}
+            daysUntilExpiry={offer.days_until_expiry}
+            expiryDate={offer.expiry_date}
+          />
         </div>
 
         {store.phone ? (

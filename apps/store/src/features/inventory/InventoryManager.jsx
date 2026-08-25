@@ -15,6 +15,8 @@ const STATUS_FILTERS = [
   { value: "in_stock", label: "In stock" },
   { value: "low_stock", label: "Low stock" },
   { value: "out_of_stock", label: "Sold out" },
+  { value: "expiring_soon", label: "Expiring soon" },
+  { value: "expired", label: "Expired" },
 ];
 const EMPTY_ITEMS = [];
 
@@ -71,6 +73,9 @@ export default function InventoryManager({ compact = false, storeId }) {
         statusFilter === "all" ||
         (statusFilter === "visible" && item.is_available) ||
         (statusFilter === "hidden" && !item.is_available) ||
+        (statusFilter === "expiring_soon" &&
+          (item.expiry_status === "expiring_soon" || item.expiry_status === "expires_today")) ||
+        (statusFilter === "expired" && item.expiry_status === "expired") ||
         item.stock_status === statusFilter;
 
       return matchesSearch && matchesStatus;

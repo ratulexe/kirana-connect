@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Check, Pencil, Trash2, X } from "lucide-react";
 import Button from "../../components/Button.jsx";
 import ProductImage from "../../components/ProductImage.jsx";
-import { formatPrice, formatRelativeTime } from "../../utils/format.js";
+import { formatPrice, formatRelativeTime, formatShortDate, todayIsoDate } from "../../utils/format.js";
 import { useRemoveInventoryItem, useUpdateInventoryItem } from "./useInventory.js";
 
 const STOCK_LABELS = {
@@ -18,6 +18,47 @@ function StockPill({ status }) {
       className={`inline-flex rounded-pill px-2.5 py-1 text-meta font-semibold ${state.cls}`}
     >
       {state.label}
+    </span>
+  );
+}
+
+const EXPIRY_TONES = {
+  valid: "bg-surface-sunken text-ink-soft",
+  expiring_soon: "bg-warning-soft text-warning",
+  expires_today: "bg-warning-soft text-warning",
+  expired: "bg-danger-soft text-danger",
+  unknown: "bg-surface-sunken text-ink-muted",
+};
+
+/**
+ * Expiry belongs to this store's inventory row, never to the product or
+ * variant -- the same 500 ml pack can carry a different expiry at every shop
+ * that stocks it. Wording is deliberately factual (no "fresh guaranteed"):
+ * the date is whatever the store owner entered, not something the platform
+ * verifies.
+ */
+function expiryLabel({ expiry_status, days_until_expiry, expiry_date }) {
+  switch (expiry_status) {
+    case "expired":
+      return `Expired on ${formatShortDate(expiry_date)}`;
+    case "expires_today":
+      return "Expires today";
+    case "expiring_soon":
+      return `Expires in ${days_until_expiry} day${days_until_expiry === 1 ? "" : "s"}`;
+    case "valid":
+      return `Best before ${formatShortDate(expiry_date)}`;
+    default:
+      return "Expiry not provided";
+  }
+}
+
+function ExpiryPill({ item }) {
+  const status = item.expiry_status ?? "unknown";
+  return (
+    <span
+      className={`inline-flex rounded-pill px-2.5 py-1 text-meta font-semibold ${EXPIRY_TONES[status] ?? EXPIRY_TONES.unknown}`}
+    >
+      {expiryLabel(item)}
     </span>
   );
 }
@@ -48,6 +89,7 @@ export default function InventoryRow({ item, storeId }) {
       quantity_available: item.quantity_available ?? "",
       discount_percentage: String(item.discount_percentage ?? 0),
       is_available: item.is_available,
+      expiry_date: item.expiry_date ?? "",
     });
     setIsEditing(true);
   };
@@ -62,6 +104,7 @@ export default function InventoryRow({ item, storeId }) {
           quantity_available: draft.quantity_available === "" ? null : draft.quantity_available,
           discount_percentage: draft.discount_percentage,
           is_available: draft.is_available,
+          expiry_date: draft.expiry_date === "" ? null : draft.expiry_date,
         },
       },
       { onSuccess: () => setIsEditing(false) },
@@ -121,9 +164,15 @@ export default function InventoryRow({ item, storeId }) {
             </div>
 
             <div className="flex flex-col items-end gap-1">
-              <StockPill status={item.stock_status} />
+              <div className="flex flex-wrap items-center justify-end gap-1.5">
+                <StockPill status={item.stock_status} />
+                <ExpiryPill item={item} />
+              </div>
               {!item.is_available ? (
                 <span className="text-meta text-ink-muted">Not listed</span>
+              ) : null}
+              {item.expiry_status === "expired" ? (
+                <span className="text-meta font-semibold text-danger">Hidden from customers</span>
               ) : null}
             </div>
 
@@ -163,7 +212,7 @@ export default function InventoryRow({ item, storeId }) {
 
       {isEditing ? (
         <div className="mt-4 rounded-card border border-line bg-canvas p-4">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <label className="flex flex-col gap-1.5">
               <span className="text-meta font-semibold text-ink-soft">Your price</span>
               <input
@@ -216,7 +265,24 @@ export default function InventoryRow({ item, storeId }) {
                 className="rounded-control border border-line bg-surface px-3 py-2 text-[0.9375rem] text-ink tabular-nums focus:border-primary focus:outline-none"
               />
             </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="text-meta font-semibold text-ink-soft">
+                Best before <span className="font-normal text-ink-muted">(optional)</span>
+              </span>
+              <input
+                type="date"
+                {...field("expiry_date")}
+                className="rounded-control border border-line bg-surface px-3 py-2 text-[0.9375rem] text-ink focus:border-primary focus:outline-none"
+              />
+            </label>
           </div>
+
+          {draft.expiry_date && draft.expiry_date < todayIsoDate() ? (
+            <p className="mt-3 text-meta font-medium text-warning">
+              This date has already passed. The product will be hidden from customers.
+            </p>
+          ) : null}
 
           <label className="mt-4 inline-flex items-center gap-2 text-meta text-ink-soft">
             <input

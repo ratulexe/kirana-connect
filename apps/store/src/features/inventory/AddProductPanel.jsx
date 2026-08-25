@@ -4,7 +4,7 @@ import Button from "../../components/Button.jsx";
 import Alert from "../../components/Alert.jsx";
 import Skeleton from "../../components/Skeleton.jsx";
 import ProductImage from "../../components/ProductImage.jsx";
-import { formatPrice } from "../../utils/format.js";
+import { formatPrice, todayIsoDate } from "../../utils/format.js";
 import { useAddInventoryItem, useCatalogueSearch } from "./useInventory.js";
 
 /**
@@ -23,6 +23,7 @@ export default function AddProductPanel({ existingVariantIds = new Set(), storeI
     stock_status: "in_stock",
     quantity_available: "",
     discount_percentage: "0",
+    expiry_date: "",
   });
 
   const add = useAddInventoryItem(storeId);
@@ -41,6 +42,7 @@ export default function AddProductPanel({ existingVariantIds = new Set(), storeI
       stock_status: "in_stock",
       quantity_available: "",
       discount_percentage: "0",
+      expiry_date: "",
     });
   };
 
@@ -53,6 +55,7 @@ export default function AddProductPanel({ existingVariantIds = new Set(), storeI
         stock_status: form.stock_status,
         quantity_available: form.quantity_available === "" ? null : form.quantity_available,
         discount_percentage: form.discount_percentage,
+        expiry_date: form.expiry_date === "" ? null : form.expiry_date,
       },
       {
         onSuccess: () => {
@@ -256,7 +259,25 @@ export default function AddProductPanel({ existingVariantIds = new Set(), storeI
                 className="rounded-control border border-line bg-surface px-3 py-2 text-[0.9375rem] text-ink tabular-nums focus:border-primary focus:outline-none"
               />
             </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="text-meta font-semibold text-ink-soft">
+                Best before <span className="font-normal text-ink-muted">(optional)</span>
+              </span>
+              <input
+                type="date"
+                value={form.expiry_date}
+                onChange={(e) => setForm({ ...form, expiry_date: e.target.value })}
+                className="rounded-control border border-line bg-surface px-3 py-2 text-[0.9375rem] text-ink focus:border-primary focus:outline-none"
+              />
+            </label>
           </div>
+
+          {form.expiry_date && form.expiry_date < todayIsoDate() ? (
+            <p className="mt-3 text-meta font-medium text-warning">
+              This date has already passed. The product will be hidden from customers.
+            </p>
+          ) : null}
 
           {add.isError ? (
             <Alert tone="error" className="mt-4">

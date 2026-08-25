@@ -1,5 +1,6 @@
 import { getServiceClient } from "../config/supabase.js";
 import { httpError, notFoundError } from "../utils/httpError.js";
+import { getExpiryStatus } from "../utils/expiryStatus.js";
 
 /**
  * Store inventory for the authenticated owner.
@@ -13,7 +14,7 @@ import { httpError, notFoundError } from "../utils/httpError.js";
 
 const LINE_FIELDS = `
   id, selling_price, stock_status, quantity_available,
-  discount_percentage, is_available, last_stock_update, updated_at,
+  discount_percentage, is_available, expiry_date, last_stock_update, updated_at,
   variant:product_variants!inner (
     id, quantity, unit_code, unit_label, mrp, barcode, image_url, is_active
   ),
@@ -32,8 +33,11 @@ function failed(operation, error) {
 function withVariantDisplay(item) {
   if (!item) return item;
   const imageUrl = item.variant?.image_url ?? item.product?.image_url ?? null;
+  const { status: expiry_status, days_until_expiry } = getExpiryStatus(item.expiry_date);
   return {
     ...item,
+    expiry_status,
+    days_until_expiry,
     product_variant_id: item.variant?.id ?? item.product_variant_id,
     product: {
       ...item.product,
