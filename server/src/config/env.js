@@ -4,9 +4,15 @@ import dotenv from "dotenv";
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 
-// Resolve the .env relative to the server package so the app behaves the same
-// whether it is started from the repo root or from server/.
-dotenv.config({ path: path.resolve(currentDir, "../../.env"), quiet: true });
+// Prefer the server package's environment file, with the repository root as a
+// local-development fallback when the shared frontend environment is present.
+dotenv.config({
+  path: [
+    path.resolve(currentDir, "../../.env"),
+    path.resolve(currentDir, "../../../.env"),
+  ],
+  quiet: true,
+});
 
 const parsePort = (value, fallback) => {
   const parsed = Number.parseInt(value ?? "", 10);

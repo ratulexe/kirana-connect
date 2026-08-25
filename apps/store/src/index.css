@@ -15,22 +15,22 @@
 @theme {
   --font-sans: "Parkinsans", system-ui, sans-serif;
 
-  --color-canvas: #faf9f6;
+  --color-canvas: #f5f1ff;
   --color-surface: #ffffff;
-  --color-surface-sunken: #f4f2ed;
+  --color-surface-sunken: #ede8ff;
 
   --color-ink: #16181c;
   --color-ink-soft: #4b4f57;
   --color-ink-muted: #6a6e77;
 
-  --color-primary: #0c6b4f;
-  --color-primary-hover: #0a5942;
+  --color-primary: #5138dd;
+  --color-primary-hover: #3824b8;
   --color-primary-fg: #ffffff;
-  --color-primary-soft: #e8f2ee;
+  --color-primary-soft: #eeeaff;
 
-  --color-accent: #e0a018;
+  --color-accent: #f2aa16;
   --color-accent-fg: #402c05;
-  --color-accent-soft: #fdf4e0;
+  --color-accent-soft: #fff2cf;
 
   --color-line: #e5e2db;
   --color-line-soft: #f0eee9;
@@ -91,6 +91,7 @@
     margin: 0;
     min-height: 100dvh;
     background-color: var(--color-canvas);
+    background-image: radial-gradient(circle at 6% 4%, rgba(255, 200, 79, .31), transparent 25rem), radial-gradient(circle at 97% 22%, rgba(115, 86, 242, .23), transparent 28rem), radial-gradient(circle at 55% 95%, rgba(233, 52, 131, .12), transparent 24rem);
     color: var(--color-ink);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
@@ -117,6 +118,21 @@
 
 /* Leaflet ships its own stylesheet; these only align it with the token set. */
 @layer components {
+  .portal-grid {
+    background-image: linear-gradient(rgba(255,255,255,.11) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.11) 1px, transparent 1px);
+    background-size: 30px 30px;
+  }
+
+  .portal-float { animation: portal-float 5s ease-in-out infinite; }
+  .portal-float-slow { animation: portal-float 6.4s ease-in-out -2s infinite; }
+
+  .portal-glass {
+    border: 1px solid rgba(255,255,255,.72);
+    background: linear-gradient(135deg, rgba(255,255,255,.9), rgba(255,255,255,.64));
+    box-shadow: 0 16px 44px rgba(62, 43, 153, .12), inset 0 1px rgba(255,255,255,.8);
+    backdrop-filter: blur(16px);
+  }
+
   .leaflet-container {
     font-family: var(--font-sans);
     border-radius: var(--radius-card);
@@ -128,3 +144,5 @@
     outline-offset: 2px;
   }
 }
+
+@keyframes portal-float { 0%, 100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-11px) rotate(4deg); } }

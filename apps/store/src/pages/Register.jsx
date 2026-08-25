@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
-import { ArrowRight, MailCheck } from "lucide-react";
+import { ArrowRight, MailCheck, PackageCheck, Sparkles, TrendingUp } from "lucide-react";
 import Container from "../components/Container.jsx";
 import Card from "../components/Card.jsx";
 import Button from "../components/Button.jsx";
@@ -101,8 +101,9 @@ export default function Register() {
 
   return (
     <Container className="py-12 sm:py-16">
-      <div className="mx-auto max-w-md">
-        <Stepper steps={WIZARD_STEPS} currentIndex={0} />
+      <div className="mx-auto grid max-w-5xl items-start gap-8 lg:grid-cols-[.8fr_1.2fr]">
+        <aside className="relative order-2 overflow-hidden rounded-panel bg-gradient-to-br from-[#5138dd] via-[#714de8] to-[#e93483] p-7 text-white shadow-[0_22px_60px_rgba(77,49,182,.28)] lg:sticky lg:top-24 lg:order-1"><span className="inline-flex size-11 items-center justify-center rounded-2xl bg-[#ffd45e] text-[#362373]"><PackageCheck className="size-5" /></span><h2 className="mt-6 text-2xl font-bold tracking-tight">Build your local signal.</h2><p className="mt-3 text-body text-white/75">A few details are all it takes to turn your real shelf into a local discovery point.</p><div className="mt-8 space-y-3 text-meta font-bold text-white/90"><p className="flex items-center gap-2"><Sparkles className="size-4 text-[#ffec9d]" /> Set up in guided steps</p><p className="flex items-center gap-2"><TrendingUp className="size-4 text-[#ffec9d]" /> Make every listing count</p></div><span aria-hidden="true" className="absolute -right-10 -bottom-12 size-36 rounded-full border-[18px] border-white/12" /></aside>
+        <div className="order-1 lg:order-2"><Stepper steps={WIZARD_STEPS} currentIndex={0} />
 
         <h1 className="mt-5 text-heading text-ink">Create your account</h1>
         <p className="mt-2 text-body text-ink-muted">
@@ -201,7 +202,7 @@ export default function Register() {
             Sign in
           </Link>
         </p>
-      </div>
+        </div></div>
     </Container>
   );
 }

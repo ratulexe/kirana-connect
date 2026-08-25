@@ -9,6 +9,7 @@ import Logo from "../components/Logo.jsx";
 import { useAuth } from "../auth/useAuth.js";
 import { zodResolver } from "../lib/zodResolver.js";
 import { loginSchema } from "../features/admin/schemas.js";
+import { ShieldCheck, Sparkles, Zap } from "lucide-react";
 
 function friendlyMessage(error) {
   const raw = String(error?.message ?? "").toLowerCase();
@@ -43,11 +44,15 @@ export default function Login() {
   };
 
   return (
-    <main className="flex min-h-dvh items-center justify-center px-4 py-10">
-      <div className="w-full max-w-md">
+    <main className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-[#21165e] px-4 py-10">
+      <div aria-hidden="true" className="absolute -left-24 -top-24 size-80 rounded-full bg-[#e93483]/60 blur-3xl" />
+      <div aria-hidden="true" className="absolute -right-20 -bottom-20 size-80 rounded-full bg-[#7358ee]/65 blur-3xl" />
+      <div className="relative grid w-full max-w-4xl overflow-hidden rounded-panel border border-white/20 bg-white/10 shadow-[0_28px_90px_rgba(0,0,0,.35)] backdrop-blur-xl lg:grid-cols-[.85fr_1.15fr]">
+        <aside className="bg-gradient-to-br from-[#ff7e5d] to-[#e93483] p-7 text-white sm:p-10"><span className="inline-flex size-12 items-center justify-center rounded-2xl bg-white/20"><ShieldCheck className="size-6" /></span><h2 className="mt-8 text-3xl font-bold tracking-tight">Shape the local marketplace.</h2><p className="mt-3 text-body text-white/75">Review stores, curate products and keep the Kirana Connect network trustworthy.</p><p className="mt-10 flex items-center gap-2 text-meta font-bold"><Zap className="size-4 text-[#ffeb9a]" /> Operations, elevated.</p></aside>
+        <div className="bg-white/95 p-7 sm:p-10">
         <div className="mb-6">
           <Logo />
-          <h1 className="mt-5 text-heading text-ink">Admin sign in</h1>
+          <p className="mt-6 inline-flex items-center gap-2 text-meta font-bold tracking-[.13em] text-[#e93483] uppercase"><Sparkles className="size-3.5" /> Secure access</p><h1 className="mt-3 text-heading text-ink">Admin sign in</h1>
           <p className="mt-2 text-body text-ink-muted">
             Use a bootstrapped admin account. Public admin signup is disabled.
           </p>
@@ -93,7 +98,7 @@ export default function Login() {
             </form>
           )}
         </Card>
-      </div>
+        </div></div>
     </main>
   );
 }

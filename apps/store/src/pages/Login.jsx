@@ -6,6 +6,7 @@ import Card from "../components/Card.jsx";
 import Button from "../components/Button.jsx";
 import Alert from "../components/Alert.jsx";
 import Field, { TextInput } from "../components/Field.jsx";
+import { Sparkles, Store, Zap } from "lucide-react";
 import { useAuth } from "../auth/useAuth.js";
 import { zodResolver } from "../lib/zodResolver.js";
 import { loginSchema } from "../features/onboarding/schema.js";
@@ -119,8 +120,9 @@ export default function Login() {
 
   return (
     <Container className="py-12 sm:py-16">
-      <div className="mx-auto max-w-md">
-        <h1 className="text-heading text-ink">Sign in</h1>
+      <div className="mx-auto grid max-w-4xl items-center gap-8 lg:grid-cols-[.85fr_1.15fr]">
+        <div className="order-2 rounded-panel bg-[#21165e] p-7 text-white shadow-[0_20px_60px_rgba(37,23,102,.25)] lg:order-1"><span className="inline-flex size-11 items-center justify-center rounded-2xl bg-[#ffd45e] text-[#33216e]"><Store className="size-5" /></span><h2 className="mt-6 text-2xl font-bold tracking-tight">Put your store on the local map.</h2><p className="mt-3 text-body text-white/70">Update your shelf, keep pricing clear, and turn nearby searches into real footsteps.</p><p className="mt-7 flex items-center gap-2 text-meta font-bold text-[#ffd45e]"><Zap className="size-4" /> Your shelf. Your signal.</p></div>
+        <div className="order-1 lg:order-2"><p className="inline-flex items-center gap-2 text-meta font-bold tracking-[.13em] text-[#e93483] uppercase"><Sparkles className="size-3.5" /> Store studio</p><h1 className="mt-3 text-heading text-ink">Welcome back</h1>
         <p className="mt-2 text-body text-ink-muted">
           Manage your Kirana Connect store listing.
         </p>
@@ -205,7 +207,7 @@ export default function Login() {
             Register your store
           </Link>
         </p>
-      </div>
+        </div></div>
     </Container>
   );
 }
