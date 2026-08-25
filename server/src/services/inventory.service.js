@@ -15,7 +15,7 @@ import { getExpiryStatus } from "../utils/expiryStatus.js";
 const LINE_FIELDS = `
   id, selling_price, stock_status, quantity_available,
   discount_percentage, is_available, expiry_date, last_stock_update, updated_at,
-  variant:product_variants!inner (
+  variant:product_variants!store_products_product_variant_id_fkey (
     id, quantity, unit_code, unit_label, mrp, barcode, image_url, is_active
   ),
   product:products!inner (
