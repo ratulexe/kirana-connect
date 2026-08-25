@@ -145,13 +145,15 @@ export default function AdminLayout() {
             aria-label="Close admin navigation"
             onClick={() => setMenuOpen(false)}
           />
-          <div className="relative h-full w-72 max-w-[85vw] border-r border-line bg-surface p-4 shadow-float">
+          <div className="relative h-full w-72 max-w-[85vw] border-r border-white/10 bg-[#21165e] p-4 text-white shadow-float">
             <div className="mb-6 flex items-center justify-between gap-3">
-              <Logo />
+              <div className="rounded-card bg-white/8 p-3 [&_.border-line]:border-white/20 [&_.text-ink]:text-white [&_.text-ink-muted]:text-white/55">
+                <Logo />
+              </div>
               <button
                 type="button"
                 onClick={() => setMenuOpen(false)}
-                className="rounded-control p-2 text-ink-muted hover:bg-surface-sunken hover:text-ink"
+                className="rounded-control p-2 text-white/70 hover:bg-white/10 hover:text-white"
                 aria-label="Close admin navigation"
               >
                 <X className="size-5" aria-hidden="true" />
