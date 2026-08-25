@@ -6,7 +6,7 @@ export default function NeonBadge({ variant = 'live', className = '', children }
     new: 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white',
     trending: 'bg-gradient-to-r from-pink-500 to-rose-500 text-white',
   };
-  const labels = { live: 'LIVE', deal: 'DEAL', hot: '🔥 HOT', new: 'NEW', trending: '↑ TRENDING' };
+  const labels = { live: 'LIVE', deal: 'DEAL', hot: 'HOT', new: 'NEW', trending: '↑ TRENDING' };
   return (
     <span className={`inline-flex items-center gap-1 rounded-pill px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-widest ${styles[variant] || styles.live} ${className}`}>
       {variant === 'live' && <span className="size-1.5 rounded-full bg-white live-dot" />}

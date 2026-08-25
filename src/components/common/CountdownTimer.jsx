@@ -26,7 +26,7 @@ export default function CountdownTimer({ endsAt, className = '' }) {
         <div key={unit} className="flex items-end gap-1">
           {i > 0 && <span className="text-lg font-bold text-white/60 mb-3">:</span>}
           <div className="flex flex-col items-center">
-            <div className="min-w-[2.2rem] rounded-lg bg-[#21165e] px-2 py-1 text-center font-mono font-extrabold text-white text-lg leading-none tabular-nums">{pad(value)}</div>
+            <div className="min-w-[2.2rem] rounded-lg bg-[#21165e] px-2 py-1 text-center font-extrabold text-white text-lg leading-none tabular-nums">{pad(value)}</div>
             <span className="mt-0.5 text-[9px] font-bold uppercase tracking-widest text-white/50">{unit}</span>
           </div>
         </div>

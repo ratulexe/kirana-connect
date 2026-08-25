@@ -45,7 +45,6 @@ export default function Dashboard() {
     <div>
       <div className="admin-glow relative overflow-hidden rounded-panel bg-gradient-to-br from-[#352176] via-[#5138dd] to-[#8f5aea] p-6 text-white sm:p-8">
         <div aria-hidden="true" className="absolute -right-10 -top-14 size-52 rounded-full border-[24px] border-white/10" />
-        <div aria-hidden="true" className="admin-float absolute right-12 bottom-6 inline-flex size-11 items-center justify-center rounded-2xl bg-[#ffd45e] text-[#352176] shadow-lg"><Sparkles className="size-5" /></div>
         <div className="relative flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-meta font-bold tracking-[.14em] text-[#ffd45e] uppercase">Control centre</p>

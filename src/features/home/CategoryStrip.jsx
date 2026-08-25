@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { PackageSearch, ChevronRight, Coffee, CookingPot, Droplets, Sandwich, Sparkles, Apple } from "lucide-react";
+import { PackageSearch, ChevronRight } from "lucide-react";
 import Container from "../../components/common/Container.jsx";
 import SectionHeader from "../../components/common/SectionHeader.jsx";
 import Skeleton from "../../components/common/Skeleton.jsx";
@@ -7,6 +7,7 @@ import EmptyState from "../../components/common/EmptyState.jsx";
 import { useCategories } from "../../hooks/useCategories.js";
 import { useRevealOnScroll } from "../../animations/useRevealOnScroll.js";
 import Tilt3DCard from "../../components/common/Tilt3DCard.jsx";
+import { getCategoryIcon } from "../../utils/categoryIcons.js";
 
 const ICON_GRADIENTS = [
   'from-pink-400 to-rose-500',
@@ -18,8 +19,7 @@ const ICON_GRADIENTS = [
 ];
 
 function CategoryCard({ category, index }) {
-  const icons = [Coffee, CookingPot, Droplets, Sandwich, Apple, Sparkles];
-  const Icon = icons[category.name.length % icons.length];
+  const Icon = getCategoryIcon(category.slug);
   const gradient = ICON_GRADIENTS[index % ICON_GRADIENTS.length];
   return (
     <Link

@@ -1,9 +1,22 @@
+import { Suspense } from 'react';
 import { Outlet } from 'react-router-dom';
 import SiteHeader from './SiteHeader.jsx';
 import SiteFooter from './SiteFooter.jsx';
 import QuickActions from '../components/common/QuickActions.jsx';
 import ParticleCanvas from '../components/common/ParticleCanvas.jsx';
 import BottomNav from '../components/common/BottomNav.jsx';
+import Skeleton from '../components/common/Skeleton.jsx';
+import Container from '../components/common/Container.jsx';
+
+function PageFallback() {
+  return (
+    <Container className="py-10">
+      <Skeleton className="h-8 w-40" />
+      <Skeleton className="mt-6 h-40 rounded-card" />
+      <Skeleton className="mt-6 h-64 rounded-card" />
+    </Container>
+  );
+}
 
 export default function CustomerLayout() {
   return (
@@ -22,7 +35,9 @@ export default function CustomerLayout() {
       </a>
       <SiteHeader />
       <main id="main" className="flex-1 pb-20 md:pb-0">
-        <Outlet />
+        <Suspense fallback={<PageFallback />}>
+          <Outlet />
+        </Suspense>
       </main>
       <SiteFooter />
       <QuickActions />

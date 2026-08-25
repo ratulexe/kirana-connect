@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import Container from "../../components/common/Container.jsx";
 import { useEntranceAnimation } from "../../animations/useEntranceAnimation.js";
 import SearchBar from "../../components/common/SearchBar.jsx";
+import { usePlatformStats } from "../../hooks/useDiscovery.js";
 
 const PROMISES = [
   { icon: Store, label: "Real shelf stock" },
@@ -17,6 +18,7 @@ export default function HeroSection() {
   const heroRef = useEntranceAnimation();
   const navigate = useNavigate();
   const [termIdx, setTermIdx] = useState(0);
+  const { data: stats } = usePlatformStats();
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -76,7 +78,7 @@ export default function HeroSection() {
           
           <div className="mt-4 inline-flex items-center gap-2 rounded-pill border border-line bg-surface-sunken px-4 py-2 text-sm">
             <span className="size-2 rounded-full bg-green-500 live-dot" />
-            <span className="text-ink-muted"><strong className="text-ink">1,247</strong> products searched today</span>
+            <span className="text-ink-muted"><strong className="text-ink">{stats?.listings ?? 0}</strong> live listings right now</span>
           </div>
 
           </div>
@@ -84,11 +86,8 @@ export default function HeroSection() {
             <div className="shine-sweep hologram relative rounded-panel border border-line bg-gradient-to-br from-white to-slate-50 p-6 shadow-float sm:p-8">
               <span className="inline-flex items-center gap-1.5 rounded-pill bg-primary-soft text-primary px-3 py-1.5 text-meta font-bold"><Zap className="size-3.5 fill-current" /> LOCAL DROP</span>
               <p className="mt-8 text-4xl font-bold tracking-tight text-ink">Find it.<br />Walk in. <span className="text-primary">Win the day.</span></p>
-              <div className="mt-8 flex items-center justify-between rounded-card bg-surface-sunken p-3 border border-line"><span className="inline-flex size-11 items-center justify-center rounded-control bg-primary text-white"><Search className="size-5" /></span><span className="text-meta font-semibold text-ink-muted">Thousands of everyday finds</span><ArrowRight className="size-5 text-ink-muted" /></div>
+              <div className="mt-8 flex items-center justify-between rounded-card bg-surface-sunken p-3 border border-line"><span className="inline-flex size-11 items-center justify-center rounded-control bg-primary text-white"><Search className="size-5" /></span><span className="text-meta font-semibold text-ink-muted">{stats?.products ?? 0}+ everyday finds</span><ArrowRight className="size-5 text-ink-muted" /></div>
             </div>
-            <div className="float-orbit absolute top-1/2 -left-8 inline-flex size-11 items-center justify-center rounded-2xl bg-white text-primary shadow-lg text-xl border border-line/50">🍞</div>
-            <div className="float-orbit absolute -left-6 top-10 inline-flex size-12 items-center justify-center rounded-2xl bg-primary text-white shadow-lg"><IndianRupee className="size-6" /></div>
-            <div className="float-orbit-delayed absolute -right-5 -bottom-5 inline-flex size-14 items-center justify-center rounded-2xl bg-white text-primary shadow-lg border border-line/50"><Store className="size-6" /></div>
           </div>
         </div>
       </Container>

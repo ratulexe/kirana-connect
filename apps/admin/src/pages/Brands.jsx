@@ -205,6 +205,13 @@ export default function Brands() {
   const deleteMutation = useDeleteBrand();
   const brands = useBrands();
 
+  useEffect(() => {
+    // The form renders inline at the top of the page, above the list -- if
+    // an admin was scrolled down when they clicked Edit, it opens off
+    // screen and looks like the button did nothing.
+    if (creating || editing) window.scrollTo({ top: 0, behavior: "auto" });
+  }, [creating, editing]);
+
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-4">

@@ -12,9 +12,9 @@
    --text-display     -> text-display
    --container-content-> max-w-content
 
-   The palette is deliberately small. One deep green carries every primary
-   action, one marigold carries savings and highlights, and everything else is
-   a warm neutral. Restraint is the brand.
+   The palette is deliberately small. One electric indigo carries every
+   primary action, one marigold carries savings and highlights, and
+   everything else is a warm neutral. Restraint is the brand.
    ========================================================================== */
 
 @theme {
@@ -35,9 +35,9 @@
 
   /* An electric indigo core with mango and coral highlights. */
   --color-primary: #1b2cc1;
-  --color-primary-hover: #0f6143;
+  --color-primary-hover: #141f96;
   --color-primary-fg: #ffffff;
-  --color-primary-soft: #e4f3ea;
+  --color-primary-soft: #e7e6fa;
 
   --color-accent: #e5a12f;
   --color-accent-fg: #402c05;

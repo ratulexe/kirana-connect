@@ -2,6 +2,7 @@ import { getPublicClient } from "../config/supabase.js";
 import { notFoundError, httpError } from "../utils/httpError.js";
 import { escapeLikePattern } from "../utils/queryParams.js";
 import { removePlaceholderPieceVariants } from "../utils/productUnits.js";
+import { boundingBox, haversineKm } from "../utils/geo.js";
 
 // Every query here runs through the anon-key client, so row level security
 // still applies: inactive products and unverified stores are filtered by the
@@ -95,6 +96,52 @@ async function countProducts(filters) {
   return count ?? 0;
 }
 
+/** Products by id, in whatever order the caller's id list specifies -- used for wishlist lookups. */
+export async function listProductsByIds(ids) {
+  if (!ids.length) return [];
+
+  const { data, error } = await getPublicClient()
+    .from("products")
+    .select(productFields())
+    .in("id", ids);
+
+  if (error) throw failed("product lookup by id", error);
+
+  const bySlotOrder = new Map((data ?? []).map((product) => [product.id, withVariantSummary(product)]));
+  return ids.map((id) => bySlotOrder.get(id)).filter(Boolean);
+}
+
+/**
+ * Whether each product has a store within the customer's radius that lists
+ * it. A second query scoped to just this page's product ids, not a join on
+ * the main listing query, so pagination and the count total stay unaffected
+ * by location.
+ */
+async function attachNearbyAvailability(products, location) {
+  if (!location || products.length === 0) return products;
+
+  const box = boundingBox(location.lat, location.lng, location.radiusKm);
+  const { data, error } = await getPublicClient()
+    .from("store_products")
+    .select("product_id, store:stores!inner(latitude, longitude)")
+    .in("product_id", products.map((product) => product.id))
+    .gte("store.latitude", box.minLat)
+    .lte("store.latitude", box.maxLat)
+    .gte("store.longitude", box.minLng)
+    .lte("store.longitude", box.maxLng);
+
+  if (error) throw failed("nearby availability lookup", error);
+
+  const nearbyProductIds = new Set();
+  for (const row of data ?? []) {
+    if (!row.store) continue;
+    const distance = haversineKm(location.lat, location.lng, Number(row.store.latitude), Number(row.store.longitude));
+    if (distance <= location.radiusKm) nearbyProductIds.add(row.product_id);
+  }
+
+  return products.map((product) => ({ ...product, available_nearby: nearbyProductIds.has(product.id) }));
+}
+
 /**
  * Catalogue browse and search.
  *
@@ -110,6 +157,7 @@ export async function listProducts({
   limit,
   offset,
   availableOnly = false,
+  location = null,
 }) {
   const query = applyProductFilters(
     getPublicClient().from("products").select(productFields({ brandSlug, availableOnly, storeId }), { count: "exact" }),
@@ -135,7 +183,7 @@ export async function listProducts({
 
   const products = (data ?? []).map(({ store_products: _storeProducts, ...product }) => withVariantSummary(product));
 
-  return { products, total: count ?? 0 };
+  return { products: await attachNearbyAvailability(products, location), total: count ?? 0 };
 }
 
 export async function getProductBySlug(slug) {

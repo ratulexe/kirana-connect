@@ -31,11 +31,15 @@ function applyBoundingBox(query, column, location) {
 }
 
 /**
- * Attaches distance_km and drops anything outside the true radius.
- * Stores without coordinates are dropped when a location was supplied, since
- * their proximity is unknowable.
+ * Attaches distance_km and, by default, drops anything outside the true
+ * radius. Stores without coordinates are dropped whenever a location was
+ * supplied, since their proximity is unknowable either way.
+ *
+ * `dropOutOfRadius: false` keeps every row with its real distance attached
+ * instead -- used when a caller needs to apply its own keep/drop rule (for
+ * example, a specific store that must stay visible regardless of distance).
  */
-function withDistance(rows, location, readStore = (row) => row) {
+function withDistance(rows, location, readStore = (row) => row, { dropOutOfRadius = true } = {}) {
   if (!location) {
     return rows.map((row) => ({ ...row, distance_km: null }));
   }
@@ -52,7 +56,8 @@ function withDistance(rows, location, readStore = (row) => row) {
         Number(store.longitude),
       );
 
-      return distance > location.radiusKm ? null : { ...row, distance_km: roundKm(distance) };
+      if (dropOutOfRadius && distance > location.radiusKm) return null;
+      return { ...row, distance_km: roundKm(distance) };
     })
     .filter(Boolean);
 }
@@ -76,6 +81,119 @@ export async function findNearbyStores({ location, limit, offset }) {
   return {
     stores: stores.slice(offset, offset + limit),
     total: stores.length,
+  };
+}
+
+/**
+ * Whole-platform counts for the homepage's "by the numbers" section. Every
+ * count goes through the public client, so it is exactly what a customer
+ * could see for themselves -- unverified stores, inactive products, and
+ * unavailable listings are excluded by the same RLS policies that already
+ * govern the rest of public discovery, not a second copy of that logic.
+ */
+export async function getPlatformStats() {
+  const client = getPublicClient();
+
+  const [storesResult, productsResult, listingsResult, categoriesResult] = await Promise.all([
+    client.from("stores").select("id", { count: "exact", head: true }),
+    client.from("products").select("id", { count: "exact", head: true }),
+    client.from("store_products").select("id", { count: "exact", head: true }),
+    client.from("categories").select("id", { count: "exact", head: true }),
+  ]);
+
+  if (storesResult.error) throw failed("load store count", storesResult.error);
+  if (productsResult.error) throw failed("load product count", productsResult.error);
+  if (listingsResult.error) throw failed("load listing count", listingsResult.error);
+  if (categoriesResult.error) throw failed("load category count", categoriesResult.error);
+
+  return {
+    stores: storesResult.count ?? 0,
+    products: productsResult.count ?? 0,
+    listings: listingsResult.count ?? 0,
+    categories: categoriesResult.count ?? 0,
+  };
+}
+
+const DEAL_FIELDS = `
+  id, selling_price,
+  variant:product_variants!store_products_product_variant_id_fkey (
+    id, unit_label, mrp, image_url,
+    product:products!inner (id, name, slug, image_url)
+  ),
+  store:stores!inner (name, slug)
+`;
+
+/**
+ * Every public listing's real markdown against printed MRP, computed the
+ * same way for the single top deal and the full best-offers list so neither
+ * can show a number the other would not stand behind. Deliberately not
+ * driven by a store's own discount_percentage (a marketing number a seller
+ * can set independently of their actual price).
+ */
+function computeRealOffers(rows) {
+  const offers = [];
+
+  for (const row of rows ?? []) {
+    const mrp = Number(row.variant?.mrp);
+    const sellingPrice = Number(row.selling_price);
+    if (!Number.isFinite(mrp) || mrp <= 0 || !Number.isFinite(sellingPrice)) continue;
+
+    const savings = mrp - sellingPrice;
+    if (savings <= 0) continue;
+
+    const savingsPercentage = (savings / mrp) * 100;
+
+    offers.push({
+      product: {
+        name: row.variant.product.name,
+        slug: row.variant.product.slug,
+        unit_label: row.variant.unit_label,
+        image_url: row.variant.image_url ?? row.variant.product.image_url,
+      },
+      store: { name: row.store.name, slug: row.store.slug },
+      mrp,
+      selling_price: sellingPrice,
+      savings: Math.round(savings * 100) / 100,
+      savings_percentage: Math.round(savingsPercentage * 10) / 10,
+    });
+  }
+
+  return offers;
+}
+
+/**
+ * The single best real markdown against printed MRP currently listed
+ * anywhere public -- for the homepage's one-deal spotlight.
+ */
+export async function getTopDeal() {
+  const { data, error } = await getPublicClient().from("store_products").select(DEAL_FIELDS);
+  if (error) throw failed("load top deal", error);
+
+  const offers = computeRealOffers(data);
+  if (!offers.length) return null;
+
+  return offers.reduce((best, offer) => (offer.savings_percentage > best.savings_percentage ? offer : best));
+}
+
+/**
+ * Every listing with a genuine markdown against MRP, biggest discount first
+ * -- for a full "best offers" browse page rather than a single spotlight.
+ * A minimum threshold keeps a 2% markdown from cluttering a page whose whole
+ * point is showing real deals.
+ */
+const MIN_BEST_OFFER_PERCENT = 10;
+
+export async function listBestOffers({ limit, offset }) {
+  const { data, error } = await getPublicClient().from("store_products").select(DEAL_FIELDS);
+  if (error) throw failed("load best offers", error);
+
+  const offers = computeRealOffers(data)
+    .filter((offer) => offer.savings_percentage >= MIN_BEST_OFFER_PERCENT)
+    .sort((a, b) => b.savings_percentage - a.savings_percentage);
+
+  return {
+    offers: offers.slice(offset, offset + limit),
+    total: offers.length,
   };
 }
 
@@ -112,7 +230,7 @@ function pickVariant(product, variantId) {
   return variants[0] ?? null;
 }
 
-export async function findStoresStockingProduct({ slug, variantId, location, sort, limit }) {
+export async function findStoresStockingProduct({ slug, variantId, location, sort, limit, highlightStoreSlug }) {
   const product = await getProductBySlug(slug);
   const variant = pickVariant(product, variantId);
   if (!variant) {
@@ -131,7 +249,10 @@ export async function findStoresStockingProduct({ slug, variantId, location, sor
     .eq("product_variant_id", variant.id)
     .eq("is_available", true);
 
-  if (location) {
+  // A specific store a customer was pointed at (a "Find at X" link from a deal
+  // or search result) always stays visible, even outside their radius -- the
+  // bounding box only narrows the query when there is no such promise to keep.
+  if (location && !highlightStoreSlug) {
     query = applyBoundingBox(query, "store.", location);
   }
 
@@ -140,7 +261,11 @@ export async function findStoresStockingProduct({ slug, variantId, location, sor
 
   const mrp = Number(variant.mrp);
 
-  const offers = withDistance(data, location, (row) => row.store)
+  const offers = withDistance(data, location, (row) => row.store, { dropOutOfRadius: !highlightStoreSlug })
+    .filter((row) => {
+      if (!location || !highlightStoreSlug) return true;
+      return row.store?.slug === highlightStoreSlug || row.distance_km <= location.radiusKm;
+    })
     // Belt-and-suspenders: store_products_select_public RLS already excludes
     // expired rows, but expiry is never trusted twice through only one layer.
     .filter((row) => getExpiryStatus(row.expiry_date).status !== "expired")

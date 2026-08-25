@@ -163,12 +163,15 @@ export default function SearchResults() {
   const storeId = params.get("store_id") ?? "";
   const page = Math.max(1, Number(params.get("page") ?? 1));
   const offset = (page - 1) * PAGE_SIZE;
+  const { location, radiusKm } = useLocationStore();
 
   const { data, isPending, isError, error, isPlaceholderData } = useProductSearch({
     search,
     category,
     brand,
     storeId,
+    location,
+    radiusKm,
     limit: PAGE_SIZE,
     offset,
   });

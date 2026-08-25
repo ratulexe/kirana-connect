@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Bell, Heart, LogOut, Package, Search, ShoppingCart, Tag, UserRound } from 'lucide-react';
+import { Bell, Heart, LogOut, Search, UserRound, Zap } from 'lucide-react';
 import Container from '../components/common/Container.jsx';
 import IconButton from '../components/common/IconButton.jsx';
 import SearchBar from '../components/common/SearchBar.jsx';
@@ -8,17 +8,9 @@ import LocationControl from '../components/common/LocationControl.jsx';
 import DarkModeToggle from '../components/common/DarkModeToggle.jsx';
 import { useAuth } from '../auth/useAuth.js';
 import { useCustomerProfile } from '../features/customer/useCustomer.js';
+import { useCategories } from '../hooks/useCategories.js';
 
-const CATEGORIES = [
-  { label: 'Grocery', slug: 'grocery' },
-  { label: 'Dairy', slug: 'dairy' },
-  { label: 'Snacks', slug: 'snacks' },
-  { label: 'Beverages', slug: 'beverages' },
-  { label: 'Household', slug: 'household' },
-  { label: 'Personal Care', slug: 'personal-care' },
-  { label: 'Baby & Kids', slug: 'baby-kids' },
-  { label: 'Pet Care', slug: 'pet-care' },
-];
+const CATEGORY_NAV_LIMIT = 8;
 
 function Wordmark() {
   return (
@@ -46,6 +38,13 @@ function AccountControl() {
   const profile = useCustomerProfile();
   const [open, setOpen] = useState(false);
 
+  useEffect(() => {
+    if (!open) return undefined;
+    const close = () => setOpen(false);
+    window.addEventListener('scroll', close, { passive: true });
+    return () => window.removeEventListener('scroll', close);
+  }, [open]);
+
   if (auth.isLoading) {
     return (
       <span className="inline-flex size-9 items-center justify-center rounded-control border border-line bg-surface" aria-label="Loading account">
@@ -70,7 +69,6 @@ function AccountControl() {
 
   const MENU_ITEMS = [
     { icon: UserRound, label: 'Account', to: '/account' },
-    { icon: Package, label: 'My Orders', to: '/orders' },
     { icon: Heart, label: 'Wishlist', to: '/wishlist' },
     { icon: Bell, label: 'Notifications', to: '/notifications' },
   ];
@@ -117,6 +115,8 @@ function AccountControl() {
 
 export default function SiteHeader() {
   const navigate = useNavigate();
+  const { data: categories } = useCategories();
+  const navCategories = (categories ?? []).slice(0, CATEGORY_NAV_LIMIT);
 
   const handleSearch = (term) => {
     navigate(term ? `/search?q=${encodeURIComponent(term)}` : '/search');
@@ -125,9 +125,10 @@ export default function SiteHeader() {
   return (
     <header className="sticky top-0 z-50">
       {/* Promo strip */}
-      <div className="bg-gradient-to-r from-[#e93483] via-[#7c3aed] to-[#4f36d9] py-1.5 text-center text-[11px] font-bold tracking-wider text-white">
-        ⚡ FLASH DEALS LIVE NOW — Prices updated daily from local stores!{' '}
-        <Link to="/deals" className="underline underline-offset-2 hover:text-[#ffd45e] transition-colors">Shop Now →</Link>
+      <div className="flex items-center justify-center gap-1.5 bg-gradient-to-r from-[#e93483] via-[#7c3aed] to-[#4f36d9] py-1.5 text-center text-[11px] font-bold tracking-wider text-white">
+        <Zap className="size-3 shrink-0 fill-current" aria-hidden="true" />
+        FLASH DEALS LIVE NOW — Prices updated daily from local stores!{' '}
+        <Link to="/best-offers" className="underline underline-offset-2 hover:text-[#ffd45e] transition-colors">Shop Now →</Link>
       </div>
 
       {/* Main header */}
@@ -159,12 +160,6 @@ export default function SiteHeader() {
                 onClick={() => navigate('/search')}
               />
 
-              {/* Cart */}
-              <Link to="/cart" aria-label="Shopping cart" className="relative inline-flex size-9 items-center justify-center rounded-control border border-line bg-surface text-ink-soft transition hover:border-primary/40 hover:bg-primary-soft hover:text-primary">
-                <ShoppingCart className="size-4" />
-                <span className="absolute -top-1 -right-1 size-4 rounded-full bg-orange-500 text-[9px] font-extrabold text-white flex items-center justify-center">0</span>
-              </Link>
-
               {/* Notifications */}
               <Link to="/notifications" aria-label="Notifications" className="relative hidden sm:inline-flex size-9 items-center justify-center rounded-control border border-line bg-surface text-ink-soft transition hover:border-primary/40 hover:bg-primary-soft hover:text-primary">
                 <Bell className="size-4" />
@@ -179,21 +174,23 @@ export default function SiteHeader() {
       </div>
 
       {/* Category nav */}
-      <div className="hidden border-b border-line/50 bg-white/70 backdrop-blur-xl lg:block">
-        <Container>
-          <nav className="flex gap-0.5 py-1.5" aria-label="Category navigation">
-            {CATEGORIES.map(({ label, slug }) => (
-              <Link
-                key={slug}
-                to={`/search?category=${slug}`}
-                className="rounded-control px-3 py-1.5 text-[13px] font-semibold text-ink-muted transition-colors hover:bg-primary-soft hover:text-primary"
-              >
-                {label}
-              </Link>
-            ))}
-          </nav>
-        </Container>
-      </div>
+      {navCategories.length > 0 ? (
+        <div className="hidden border-b border-line/50 bg-white/70 backdrop-blur-xl lg:block">
+          <Container>
+            <nav className="flex gap-0.5 py-1.5" aria-label="Category navigation">
+              {navCategories.map(({ name, slug }) => (
+                <Link
+                  key={slug}
+                  to={`/search?category=${slug}`}
+                  className="rounded-control px-3 py-1.5 text-[13px] font-semibold text-ink-muted transition-colors hover:bg-primary-soft hover:text-primary"
+                >
+                  {name}
+                </Link>
+              ))}
+            </nav>
+          </Container>
+        </div>
+      ) : null}
     </header>
   );
 }

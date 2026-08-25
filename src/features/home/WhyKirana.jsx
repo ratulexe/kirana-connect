@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import Container from "../../components/common/Container.jsx";
 import AnimatedCounter from "../../components/common/AnimatedCounter.jsx";
 import { useRevealOnScroll } from "../../animations/useRevealOnScroll.js";
+import { usePlatformStats } from "../../hooks/useDiscovery.js";
 
 const FEATURES = [
   { icon: ScanSearch, title: "Search the shelf", body: "Look up the everyday things you need without guessing who might have them.", to: "/search?q=milk", label: "Start searching" },
@@ -20,6 +21,8 @@ const FEATURE_COLORS = [
 
 export default function WhyKirana() {
   const sectionRef = useRevealOnScroll();
+  const { data: stats } = usePlatformStats();
+
   return (
     <section ref={sectionRef} className="relative overflow-hidden bg-gradient-to-br from-[#2a177d] via-[#3d24af] to-[#581c87] py-14 text-white sm:py-20" aria-labelledby="why-kirana-heading">
       <div aria-hidden="true" className="hero-grid absolute inset-0 opacity-20" />
@@ -32,9 +35,9 @@ export default function WhyKirana() {
           <p className="mt-3 text-body text-white/70">Kirana Connect makes everyday shopping feel clear, colourful and close to home—without making promises that a local store cannot keep.</p>
           
           <div className="mt-6 flex flex-wrap gap-8 text-white">
-            <div><div className="text-3xl font-bold text-[#ffd45e]"><AnimatedCounter value={500} />+</div><div className="text-sm text-white/70">Stores</div></div>
-            <div><div className="text-3xl font-bold text-[#ffd45e]"><AnimatedCounter value={10000} />+</div><div className="text-sm text-white/70">Products</div></div>
-            <div><div className="text-3xl font-bold text-[#ffd45e]"><AnimatedCounter value={50000} />+</div><div className="text-sm text-white/70">Searches</div></div>
+            <div><div className="text-3xl font-bold text-[#ffd45e]"><AnimatedCounter to={stats?.stores ?? 0} suffix="+" /></div><div className="text-sm text-white/70">Stores</div></div>
+            <div><div className="text-3xl font-bold text-[#ffd45e]"><AnimatedCounter to={stats?.products ?? 0} suffix="+" /></div><div className="text-sm text-white/70">Products</div></div>
+            <div><div className="text-3xl font-bold text-[#ffd45e]"><AnimatedCounter to={stats?.listings ?? 0} suffix="+" /></div><div className="text-sm text-white/70">Live listings</div></div>
           </div>
         </div>
         <ul className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

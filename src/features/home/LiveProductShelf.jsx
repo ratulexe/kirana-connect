@@ -9,12 +9,16 @@ import Button from "../../components/common/Button.jsx";
 import NeonBadge from "../../components/common/NeonBadge.jsx";
 import { useProductSearch } from "../../hooks/useDiscovery.js";
 import { useRevealOnScroll } from "../../animations/useRevealOnScroll.js";
+import { useLocationStore } from "../../store/locationStore.js";
 
 export default function LiveProductShelf() {
   const sectionRef = useRevealOnScroll();
+  const { location, radiusKm } = useLocationStore();
   const { data, isPending, isError, error } = useProductSearch({
     search: "",
     category: "",
+    location,
+    radiusKm,
     limit: 8,
     offset: 0,
     // Keep the home shelf in sync with catalogue and image changes made in

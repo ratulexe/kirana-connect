@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Flame, Heart, MapPin, Package, Search, ShoppingCart, X, Zap } from 'lucide-react';
+import { Flame, Heart, MapPin, Package, Search, X, Zap } from 'lucide-react';
 
 const ACTIONS = [
   { label: 'Search', icon: Search, to: '/search', color: 'from-indigo-500 to-violet-600' },
-  { label: 'Cart', icon: ShoppingCart, to: '/cart', color: 'from-orange-400 to-pink-500' },
   { label: 'Wishlist', icon: Heart, to: '/wishlist', color: 'from-pink-500 to-rose-600' },
-  { label: 'Deals', icon: Flame, to: '/deals', color: 'from-red-500 to-orange-500' },
+  { label: 'Deals', icon: Flame, to: '/best-offers', color: 'from-red-500 to-orange-500' },
   { label: 'Orders', icon: Package, to: '/orders', color: 'from-emerald-500 to-teal-600' },
   { label: 'Nearby', icon: MapPin, to: '/stores', color: 'from-blue-500 to-cyan-500' },
 ];

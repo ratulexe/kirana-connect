@@ -28,7 +28,9 @@ export default function ProductCard({ product }) {
         >
           <div className="relative overflow-hidden rounded-control border border-[#eee5d7] bg-gradient-to-br from-[#fff7df] via-[#f8f4e9] to-[#e5f3ea] p-1">
             <ProductImage src={product.image_url} name={product.name} size="lg" />
-            <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-pill bg-[#fffdf8]/95 px-2 py-1 text-[.65rem] font-bold tracking-wide text-primary shadow-sm"><Sparkles className="size-2.5" /> IN STOCK</span>
+            {product.available_nearby ? (
+              <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-pill bg-[#fffdf8]/95 px-2 py-1 text-[.65rem] font-bold tracking-wide text-primary shadow-sm"><Sparkles className="size-2.5" /> AVAILABLE NEAR YOU</span>
+            ) : null}
           </div>
 
           <div className="mt-3 flex flex-1 flex-col">
@@ -44,7 +46,7 @@ export default function ProductCard({ product }) {
 
             <p className="mt-auto pt-3 text-meta text-ink-soft">
               {mrpLabel} <span className="font-semibold tabular-nums">{formatPrice(product.price_from ?? product.mrp)}</span>
-              <span className="ml-1.5 inline-flex items-center font-semibold text-primary group-hover:underline">Compare <ArrowUpRight className="ml-0.5 size-3 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" /></span>
+              <span className="ml-1.5 inline-flex items-center font-semibold text-primary group-hover:underline">View <ArrowUpRight className="ml-0.5 size-3 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" /></span>
             </p>
           </div>
         </Link>

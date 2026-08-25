@@ -1,5 +1,4 @@
 import { Navigation, Search, Store } from "lucide-react";
-import { useState } from "react";
 import Container from "../../components/common/Container.jsx";
 import SectionHeader from "../../components/common/SectionHeader.jsx";
 import { useRevealOnScroll } from "../../animations/useRevealOnScroll.js";
@@ -24,7 +23,6 @@ const STEPS = [
 
 export default function HowItWorks() {
   const sectionRef = useRevealOnScroll();
-  const [activeStep, setActiveStep] = useState(0);
 
   return (
     <section ref={sectionRef} aria-labelledby="how-it-works-heading">
@@ -39,8 +37,7 @@ export default function HowItWorks() {
           {STEPS.map(({ icon: Icon, title, body }, index) => (
             <li
               key={title}
-              onClick={() => setActiveStep(index)}
-              className={`glass-card card-lift cursor-pointer group relative overflow-hidden rounded-card p-6 transition-[border-color,box-shadow,transform] duration-200 ease-brand hover:-translate-y-1 hover:border-primary/30 hover:shadow-float ${index === activeStep ? 'neon-glow-indigo border-primary/40' : ''}`}
+              className="glass-card card-lift group relative overflow-hidden rounded-card p-6 transition-[border-color] duration-200 ease-brand hover:border-primary/30"
             >
               <div className="flex items-center gap-4">
                 <div className="relative flex size-14 items-center justify-center">

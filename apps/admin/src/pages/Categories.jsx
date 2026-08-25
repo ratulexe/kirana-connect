@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import Alert from "../components/Alert.jsx";
 import Button from "../components/Button.jsx";
@@ -90,6 +90,13 @@ export default function Categories() {
   const [creating, setCreating] = useState(false);
   const categories = useCategories();
   const update = useUpdateCategory();
+
+  useEffect(() => {
+    // The form renders inline at the top of the page, above the list -- if
+    // an admin was scrolled down when they clicked Edit, it opens off
+    // screen and looks like the button did nothing.
+    if (creating || editing) window.scrollTo({ top: 0, behavior: "auto" });
+  }, [creating, editing]);
 
   return (
     <div>

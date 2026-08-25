@@ -2,6 +2,9 @@ import {
   findNearbyStores,
   getStoreBySlug,
   findStoresStockingProduct,
+  getPlatformStats,
+  getTopDeal,
+  listBestOffers,
 } from "../services/discovery.service.js";
 import {
   optionalString,
@@ -35,6 +38,27 @@ export async function getStore(req, res) {
   res.status(200).json({ success: true, data });
 }
 
+export async function getStats(req, res) {
+  const data = await getPlatformStats();
+  res.status(200).json({ success: true, data });
+}
+
+export async function getTopDealHandler(req, res) {
+  const data = await getTopDeal();
+  res.status(200).json({ success: true, data });
+}
+
+export async function getBestOffers(req, res) {
+  const { limit, offset } = parsePagination(req.query);
+  const { offers, total } = await listBestOffers({ limit, offset });
+
+  res.status(200).json({
+    success: true,
+    data: offers,
+    meta: { total, limit, offset, returned: offers.length },
+  });
+}
+
 /**
  * The comparison endpoint: which nearby stores stock this product, and at what
  * price. Location is optional so the product page still works before the
@@ -58,6 +82,7 @@ export async function getProductOffers(req, res) {
     location,
     sort,
     limit,
+    highlightStoreSlug: optionalString(req.query.store, { field: "store" }),
   });
 
   res.status(200).json({

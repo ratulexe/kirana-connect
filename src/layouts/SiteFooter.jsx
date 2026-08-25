@@ -92,7 +92,7 @@ export default function SiteFooter() {
                 </a>
               ))}
             </div>
-            <p className="mt-5 text-xs text-ink-muted/60">Made with ❤️ for Indian neighbourhoods</p>
+            <p className="mt-5 text-xs text-ink-muted/60">Made for Indian neighbourhoods</p>
           </div>
 
           {/* Link columns */}

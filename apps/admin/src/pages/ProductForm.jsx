@@ -6,6 +6,7 @@ import Alert from "../components/Alert.jsx";
 import Button from "../components/Button.jsx";
 import Card from "../components/Card.jsx";
 import Field, { SelectInput, TextInput } from "../components/Field.jsx";
+import SearchableSelect from "../components/SearchableSelect.jsx";
 import Skeleton from "../components/Skeleton.jsx";
 import ProductMediaSection from "../components/ProductMediaSection.jsx";
 import {
@@ -469,23 +470,29 @@ export default function ProductForm({ mode }) {
 
             <Field label="Category" required error={errors.category_id?.message}>
               {(field) => (
-                <SelectInput {...field} {...register("category_id")} invalid={Boolean(errors.category_id)}>
-                  <option value="">Choose category</option>
-                  {(categories.data ?? []).map((category) => (
-                    <option key={category.id} value={category.id}>{category.name}</option>
-                  ))}
-                </SelectInput>
+                <SearchableSelect
+                  {...field}
+                  value={watchedCategory}
+                  onChange={(id) => setValue("category_id", id, { shouldValidate: true, shouldDirty: true })}
+                  options={categories.data ?? []}
+                  placeholder="Search categories..."
+                  emptyLabel="Choose category"
+                  invalid={Boolean(errors.category_id)}
+                />
               )}
             </Field>
 
             <Field label="Brand" error={errors.brand_id?.message}>
               {(field) => (
-                <SelectInput {...field} {...register("brand_id")} invalid={Boolean(errors.brand_id)}>
-                  <option value="">No brand</option>
-                  {(brands.data ?? []).map((brand) => (
-                    <option key={brand.id} value={brand.id}>{brand.name}</option>
-                  ))}
-                </SelectInput>
+                <SearchableSelect
+                  {...field}
+                  value={watchedBrand}
+                  onChange={(id) => setValue("brand_id", id, { shouldValidate: true, shouldDirty: true })}
+                  options={brands.data ?? []}
+                  placeholder="Search brands..."
+                  emptyLabel="No brand"
+                  invalid={Boolean(errors.brand_id)}
+                />
               )}
             </Field>
 

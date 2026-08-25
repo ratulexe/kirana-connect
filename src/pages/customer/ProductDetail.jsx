@@ -98,7 +98,8 @@ export default function ProductDetail() {
     variants.find((variant) => variant.is_active) ??
     variants[0] ??
     null;
-  const offers = useProductOffers({ slug, variantId: selectedVariant?.id, location, radiusKm, sort });
+  const highlightStore = params.get("store");
+  const offers = useProductOffers({ slug, variantId: selectedVariant?.id, location, radiusKm, sort, highlightStore });
   const list = offers.data?.offers ?? EMPTY_OFFERS;
   const filteredOffers = useMemo(() => {
     const query = normalize(shopSearch);
