@@ -145,6 +145,7 @@ function computeRealOffers(rows) {
 
     offers.push({
       product: {
+        id: row.variant.product.id,
         name: row.variant.product.name,
         slug: row.variant.product.slug,
         unit_label: row.variant.unit_label,
