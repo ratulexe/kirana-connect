@@ -24,7 +24,7 @@ export default function ProductGallery({ media, legacyImageUrl, productName }) {
         src: m.image_url,
         alt: m.alt_text || fallbackAlt(productName, m.media_type),
         type: m.media_type,
-        label: typeLabel(m.media_type),
+        label: m.alt_text || typeLabel(m.media_type),
       }))
     : legacyImageUrl
       ? [{ id: "legacy", src: legacyImageUrl, alt: productName, type: "front", label: "Front" }]

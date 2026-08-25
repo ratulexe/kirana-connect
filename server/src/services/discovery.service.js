@@ -2,6 +2,7 @@ import { getPublicClient } from "../config/supabase.js";
 import { notFoundError, httpError } from "../utils/httpError.js";
 import { boundingBox, haversineKm, roundKm } from "../utils/geo.js";
 import { getProductBySlug } from "./catalogue.service.js";
+import { getExpiryStatus } from "../utils/expiryStatus.js";
 
 // The nearby search runs in two stages, which is what lets the project avoid a
 // PostGIS dependency:
@@ -123,7 +124,7 @@ export async function findStoresStockingProduct({ slug, variantId, location, sor
     .select(
       `
         id, selling_price, discount_percentage, stock_status,
-        quantity_available, last_stock_update,
+        quantity_available, last_stock_update, expiry_date,
         store:stores!inner (${STORE_FIELDS})
       `,
     )
@@ -139,26 +140,34 @@ export async function findStoresStockingProduct({ slug, variantId, location, sor
 
   const mrp = Number(variant.mrp);
 
-  const offers = withDistance(data, location, (row) => row.store).map((row) => {
-    const sellingPrice = Number(row.selling_price);
-    const savings = mrp - sellingPrice;
+  const offers = withDistance(data, location, (row) => row.store)
+    // Belt-and-suspenders: store_products_select_public RLS already excludes
+    // expired rows, but expiry is never trusted twice through only one layer.
+    .filter((row) => getExpiryStatus(row.expiry_date).status !== "expired")
+    .map((row) => {
+      const sellingPrice = Number(row.selling_price);
+      const savings = mrp - sellingPrice;
+      const { status: expiry_status, days_until_expiry } = getExpiryStatus(row.expiry_date);
 
-    return {
-      store: row.store,
-      distance_km: row.distance_km,
-      selling_price: sellingPrice,
-      // The store's own advertised offer, distinct from the MRP comparison below.
-      discount_percentage: Number(row.discount_percentage),
-      // Computed against the printed price, so the customer can see the real gap.
-      savings: savings > 0 ? Math.round(savings * 100) / 100 : 0,
-      savings_percentage:
-        mrp > 0 && savings > 0 ? Math.round((savings / mrp) * 1000) / 10 : 0,
-      stock_status: row.stock_status,
-      quantity_available: row.quantity_available,
-      last_stock_update: row.last_stock_update,
-      is_cheapest: false,
-    };
-  });
+      return {
+        store: row.store,
+        distance_km: row.distance_km,
+        selling_price: sellingPrice,
+        // The store's own advertised offer, distinct from the MRP comparison below.
+        discount_percentage: Number(row.discount_percentage),
+        // Computed against the printed price, so the customer can see the real gap.
+        savings: savings > 0 ? Math.round(savings * 100) / 100 : 0,
+        savings_percentage:
+          mrp > 0 && savings > 0 ? Math.round((savings / mrp) * 1000) / 10 : 0,
+        stock_status: row.stock_status,
+        quantity_available: row.quantity_available,
+        last_stock_update: row.last_stock_update,
+        expiry_date: row.expiry_date,
+        expiry_status,
+        days_until_expiry,
+        is_cheapest: false,
+      };
+    });
 
   if (sort === "distance" && location) {
     offers.sort((a, b) => a.distance_km - b.distance_km);

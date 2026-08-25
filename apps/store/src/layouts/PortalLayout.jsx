@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   LogOut,
   MapPin,
+  Megaphone,
   Store as StoreIcon,
 } from "lucide-react";
 import Container from "../components/Container.jsx";
@@ -18,6 +19,7 @@ const STORE_NAV = [
   { to: "/status", label: "Dashboard", icon: LayoutDashboard },
   { to: "/store-details", label: "Store details", icon: StoreIcon },
   { to: "/inventory", label: "Products", icon: Boxes },
+  { to: "/customer-demand", label: "Customer demand", icon: Megaphone },
 ];
 
 export default function PortalLayout() {
@@ -107,7 +109,9 @@ export default function PortalLayout() {
               </div>
 
               <nav aria-label="Store portal navigation" className="mt-2 flex flex-wrap gap-1">
-                {STORE_NAV.filter(({ to }) => to !== "/inventory" || isApproved).map(
+                {STORE_NAV.filter(
+                  ({ to }) => (to !== "/inventory" && to !== "/customer-demand") || isApproved,
+                ).map(
                   ({ to, label, icon: Icon }) => (
                     <NavLink
                       key={to}

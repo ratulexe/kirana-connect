@@ -6,6 +6,7 @@ import Skeleton from "../../components/common/Skeleton.jsx";
 import EmptyState from "../../components/common/EmptyState.jsx";
 import Button from "../../components/common/Button.jsx";
 import StoreOffer from "../../features/product/StoreOffer.jsx";
+import RequestProduct from "../../features/product/RequestProduct.jsx";
 import ProductGallery from "../../components/product/ProductGallery.jsx";
 import BrandProducts from "../../components/product/BrandProducts.jsx";
 import { useProduct, useProductOffers } from "../../hooks/useDiscovery.js";
@@ -341,18 +342,37 @@ export default function ProductDetail() {
           {!offers.isPending && !offers.isError && list.length === 0 ? (
             <EmptyState
               icon={StoreIcon}
-              title={location ? "No shop nearby has this yet" : "No shop has this listed yet"}
+              title={location ? "Not available nearby" : "No shop has this listed yet"}
               description={
                 location
-                  ? `No verified shop within ${radiusKm} km lists this product. Try a wider radius.`
-                  : "Once a nearby shop lists this product, it will appear here with their price."
+                  ? `No verified shop within ${radiusKm} km currently lists this item.`
+                  : "Set your location to check nearby availability."
               }
               action={
-                location && radiusKm < 25 ? (
-                  <Button variant="secondary" onClick={() => setRadius(25)}>
-                    Search within 25 km
-                  </Button>
-                ) : null
+                <div className="flex flex-wrap items-center justify-center gap-3">
+                  {location && radiusKm < 25 ? (
+                    <Button variant="secondary" onClick={() => setRadius(25)}>
+                      Search within 25 km
+                    </Button>
+                  ) : null}
+                  {!location ? (
+                    <Button
+                      variant="secondary"
+                      onClick={detect}
+                      disabled={status === "locating"}
+                    >
+                      <LocateFixed className="size-4" aria-hidden="true" />
+                      {status === "locating" ? "Locating..." : "Set location"}
+                    </Button>
+                  ) : null}
+                  {selectedVariant ? (
+                    <RequestProduct
+                      productVariantId={selectedVariant.id}
+                      productLabel={`${item.name} ${selectedVariant.unit_label ?? item.unit_label}`}
+                      radiusKm={radiusKm}
+                    />
+                  ) : null}
+                </div>
               }
             />
           ) : null}

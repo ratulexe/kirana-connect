@@ -4,7 +4,7 @@ import Button from "../../components/Button.jsx";
 import Alert from "../../components/Alert.jsx";
 import Skeleton from "../../components/Skeleton.jsx";
 import ProductImage from "../../components/ProductImage.jsx";
-import { formatPrice } from "../../utils/format.js";
+import { formatPrice, todayIsoDate } from "../../utils/format.js";
 import { useAddInventoryItem, useCatalogueSearch } from "./useInventory.js";
 
 /**
@@ -14,16 +14,41 @@ import { useAddInventoryItem, useCatalogueSearch } from "./useInventory.js";
  * what keeps one canonical product comparable across every shop. Creating new
  * catalogue entries is deliberately not possible here; that is curation.
  */
-export default function AddProductPanel({ existingVariantIds = new Set(), storeId, onClose }) {
-  const [term, setTerm] = useState("");
-  const [debounced, setDebounced] = useState("");
-  const [selected, setSelected] = useState(null);
-  const [form, setForm] = useState({
-    selling_price: "",
+function formForVariant(variant) {
+  return {
+    selling_price: String(variant.mrp),
     stock_status: "in_stock",
     quantity_available: "",
     discount_percentage: "0",
-  });
+    expiry_date: "",
+  };
+}
+
+const EMPTY_FORM = {
+  selling_price: "",
+  stock_status: "in_stock",
+  quantity_available: "",
+  discount_percentage: "0",
+  expiry_date: "",
+};
+
+/**
+ * `initialSelection`, when set, arrives from a "Add to store" click on the
+ * Customer demand page: the exact product/variant is already decided, so the
+ * panel opens straight on the pricing form instead of the catalogue search.
+ */
+export default function AddProductPanel({
+  existingVariantIds = new Set(),
+  storeId,
+  initialSelection = null,
+  onClose,
+}) {
+  const [term, setTerm] = useState("");
+  const [debounced, setDebounced] = useState("");
+  const [selected, setSelected] = useState(initialSelection);
+  const [form, setForm] = useState(() =>
+    initialSelection ? formForVariant(initialSelection.variant) : EMPTY_FORM,
+  );
 
   const add = useAddInventoryItem(storeId);
   const { data, isFetching, isError, isSuccess, error } = useCatalogueSearch(debounced);
@@ -36,12 +61,7 @@ export default function AddProductPanel({ existingVariantIds = new Set(), storeI
   const choose = (product, variant) => {
     setSelected({ product, variant });
     // Prefill with MRP: most shops start there and discount from it.
-    setForm({
-      selling_price: String(variant.mrp),
-      stock_status: "in_stock",
-      quantity_available: "",
-      discount_percentage: "0",
-    });
+    setForm(formForVariant(variant));
   };
 
   const submit = (event) => {
@@ -53,6 +73,7 @@ export default function AddProductPanel({ existingVariantIds = new Set(), storeI
         stock_status: form.stock_status,
         quantity_available: form.quantity_available === "" ? null : form.quantity_available,
         discount_percentage: form.discount_percentage,
+        expiry_date: form.expiry_date === "" ? null : form.expiry_date,
       },
       {
         onSuccess: () => {
@@ -256,7 +277,25 @@ export default function AddProductPanel({ existingVariantIds = new Set(), storeI
                 className="rounded-control border border-line bg-surface px-3 py-2 text-[0.9375rem] text-ink tabular-nums focus:border-primary focus:outline-none"
               />
             </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="text-meta font-semibold text-ink-soft">
+                Best before <span className="font-normal text-ink-muted">(optional)</span>
+              </span>
+              <input
+                type="date"
+                value={form.expiry_date}
+                onChange={(e) => setForm({ ...form, expiry_date: e.target.value })}
+                className="rounded-control border border-line bg-surface px-3 py-2 text-[0.9375rem] text-ink focus:border-primary focus:outline-none"
+              />
+            </label>
           </div>
+
+          {form.expiry_date && form.expiry_date < todayIsoDate() ? (
+            <p className="mt-3 text-meta font-medium text-warning">
+              This date has already passed. The product will be hidden from customers.
+            </p>
+          ) : null}
 
           {add.isError ? (
             <Alert tone="error" className="mt-4">

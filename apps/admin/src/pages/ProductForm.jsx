@@ -24,7 +24,7 @@ import { zodResolver } from "../lib/zodResolver.js";
 const EMPTY_VARIANT = {
   quantity: 500,
   unit_code: "g",
-  mrp: 0,
+  mrp: "",
   barcode: "",
   image_url: "",
   is_active: true,
@@ -92,6 +92,11 @@ function quantityLabel(value) {
     maximumFractionDigits: 3,
     useGrouping: false,
   }).format(number);
+}
+
+function keepOnlyDigits(event) {
+  const cleaned = event.currentTarget.value.replace(/\D/g, "");
+  if (event.currentTarget.value !== cleaned) event.currentTarget.value = cleaned;
 }
 
 function unitLabel(code) {
@@ -644,10 +649,11 @@ export default function ProductForm({ mode }) {
                             {...input}
                             {...register(`variants.${index}.mrp`)}
                             invalid={Boolean(errors.variants?.[index]?.mrp)}
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            inputMode="decimal"
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            placeholder="Enter MRP"
+                            onInput={keepOnlyDigits}
                           />
                         )}
                       </Field>
@@ -728,7 +734,7 @@ export default function ProductForm({ mode }) {
         <Card className="mt-6 p-5">
           <h2 className="text-card text-ink">Pack images</h2>
           <p className="mt-1 text-meta text-ink-muted">
-            Save the product first, then add front, back side, nutrition facts, and promotional images.
+            Save the product first, then add front, back, and extra named images.
           </p>
         </Card>
       )}

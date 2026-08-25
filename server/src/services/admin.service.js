@@ -3,7 +3,12 @@ import { getServiceClient } from "../config/supabase.js";
 import { httpError, notFoundError } from "../utils/httpError.js";
 import { escapeLikePattern } from "../utils/queryParams.js";
 import { generateUniqueSlug } from "../utils/slug.js";
-import { formatUnitLabel, normalizeProductIdentity, normalizeUnitCode } from "../utils/productUnits.js";
+import {
+  formatUnitLabel,
+  normalizeProductIdentity,
+  normalizeUnitCode,
+  removePlaceholderPieceVariants,
+} from "../utils/productUnits.js";
 import { resolveImageUrl } from "./imageResolver.service.js";
 import {
   isMissingChangeRequestTable,
@@ -96,7 +101,7 @@ function variantSort(a, b) {
 }
 
 function withVariantSummary(product) {
-  const variants = [...(product.variants ?? [])].sort(variantSort);
+  const variants = removePlaceholderPieceVariants(product.variants).sort(variantSort);
   const variant = variants.find((item) => item.is_active) ?? variants[0] ?? null;
   return {
     ...product,
@@ -925,7 +930,7 @@ export async function getAdminProduct(productId) {
 
 export async function createProduct(payload) {
   const body = await normalizeProductImages(payload);
-  const variants = body.variants;
+  const variants = removePlaceholderPieceVariants(body.variants);
   delete body.variants;
 
   const variantsReady = await productVariantsSchemaReady();
@@ -966,7 +971,9 @@ export async function createProduct(payload) {
 
 export async function updateProduct(productId, patch) {
   const body = await normalizeProductImages(patch);
-  const variants = body.variants;
+  const variants = Array.isArray(body.variants)
+    ? removePlaceholderPieceVariants(body.variants)
+    : body.variants;
   delete body.variants;
 
   const variantsReady = Array.isArray(variants) ? await productVariantsSchemaReady() : true;
@@ -975,17 +982,22 @@ export async function updateProduct(productId, patch) {
   }
 
   const current = await productById(productId);
-  const duplicate = await findDuplicateProduct(
-    {
-      name: body.name ?? current.name,
-      category_id: body.category_id ?? current.category_id,
-      brand_id: body.brand_id === undefined ? current.brand_id : body.brand_id,
-    },
-    productId,
-  );
-  if (duplicate) throw duplicateProductError(duplicate);
+  const nextIdentity = {
+    name: body.name ?? current.name,
+    category_id: body.category_id ?? current.category_id,
+    brand_id: body.brand_id === undefined ? current.brand_id : body.brand_id,
+  };
+  const identityChanged =
+    normalizeProductIdentity(nextIdentity.name) !== normalizeProductIdentity(current.name) ||
+    nextIdentity.category_id !== current.category_id ||
+    (nextIdentity.brand_id ?? null) !== (current.brand_id ?? null);
 
-  if (body.name) {
+  if (identityChanged) {
+    const duplicate = await findDuplicateProduct(nextIdentity, productId);
+    if (duplicate) throw duplicateProductError(duplicate);
+  }
+
+  if (body.name && normalizeProductIdentity(body.name) !== normalizeProductIdentity(current.name)) {
     body.slug = await slugFor("products", body.name, productId);
     body.normalized_name = normalizeProductIdentity(body.name);
   }
@@ -1193,6 +1205,37 @@ export async function createProductMedia(productId, { mediaType, imageUrl, stora
   if (productError) throw failed("verify product for media", productError);
   if (!product) throw notFoundError("Product not found.");
 
+  if (["front", "back"].includes(mediaType)) {
+    const { data: existingMedia, error: existingError } = await client
+      .from("product_media")
+      .select("id, storage_path")
+      .eq("product_id", productId)
+      .eq("media_type", mediaType);
+
+    if (existingError) throw failed("load existing product media", existingError);
+
+    const existingStoragePaths = (existingMedia ?? [])
+      .map((media) => media.storage_path)
+      .filter(Boolean);
+
+    if (existingStoragePaths.length > 0) {
+      const { error: storageError } = await client.storage
+        .from(PRODUCT_IMAGE_BUCKET)
+        .remove(existingStoragePaths);
+      if (storageError) {
+        console.error("[kirana-connect-api] storage cleanup failed:", storageError.message);
+      }
+    }
+
+    if ((existingMedia ?? []).length > 0) {
+      const { error: deleteError } = await client
+        .from("product_media")
+        .delete()
+        .in("id", existingMedia.map((media) => media.id));
+      if (deleteError) throw failed("replace product media", deleteError);
+    }
+  }
+
   // If setting as primary, unset any existing primary
   if (isPrimary) {
     await client
@@ -1283,4 +1326,39 @@ export async function deleteProductMedia(mediaId) {
 
   if (error) throw failed("delete product media", error);
   return { id: media.id, deleted: true };
+}
+
+export async function deleteProduct(productId) {
+  const client = getServiceClient();
+
+  const { count: inventoryCount, error: countError } = await client
+    .from("store_products")
+    .select("id", { count: "exact", head: true })
+    .eq("product_id", productId);
+
+  if (countError) throw failed("check product inventory", countError);
+  
+  if (inventoryCount && inventoryCount > 0) {
+    throw httpError(409, "This product is currently used by one or more stores. Deactivate it instead.");
+  }
+
+  const { error } = await client
+    .from("products")
+    .delete()
+    .eq("id", productId);
+
+  if (error) throw failed("delete product", error);
+  return { id: productId, deleted: true };
+}
+
+export async function deleteBrand(brandId) {
+  const client = getServiceClient();
+
+  const { error } = await client
+    .from("brands")
+    .delete()
+    .eq("id", brandId);
+
+  if (error) throw failed("delete brand", error);
+  return { id: brandId, deleted: true };
 }

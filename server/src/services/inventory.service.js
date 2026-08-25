@@ -1,5 +1,7 @@
 import { getServiceClient } from "../config/supabase.js";
 import { httpError, notFoundError } from "../utils/httpError.js";
+import { getExpiryStatus } from "../utils/expiryStatus.js";
+import { fulfillNearbyDemand } from "./demandRequests.service.js";
 
 /**
  * Store inventory for the authenticated owner.
@@ -13,8 +15,8 @@ import { httpError, notFoundError } from "../utils/httpError.js";
 
 const LINE_FIELDS = `
   id, selling_price, stock_status, quantity_available,
-  discount_percentage, is_available, last_stock_update, updated_at,
-  variant:product_variants!inner (
+  discount_percentage, is_available, expiry_date, last_stock_update, updated_at,
+  variant:product_variants!store_products_product_variant_id_fkey (
     id, quantity, unit_code, unit_label, mrp, barcode, image_url, is_active
   ),
   product:products!inner (
@@ -32,8 +34,11 @@ function failed(operation, error) {
 function withVariantDisplay(item) {
   if (!item) return item;
   const imageUrl = item.variant?.image_url ?? item.product?.image_url ?? null;
+  const { status: expiry_status, days_until_expiry } = getExpiryStatus(item.expiry_date);
   return {
     ...item,
+    expiry_status,
+    days_until_expiry,
     product_variant_id: item.variant?.id ?? item.product_variant_id,
     product: {
       ...item.product,
@@ -56,7 +61,7 @@ export async function resolveOwnedStore(userId, requestedStoreId) {
 
   let query = client
     .from("stores")
-    .select("id, name, slug, is_verified, is_active")
+    .select("id, name, slug, is_verified, is_active, latitude, longitude")
     .eq("owner_id", userId)
     .order("created_at", { ascending: true });
 
@@ -127,6 +132,16 @@ export async function addInventoryItem({ userId, storeId, payload }) {
     }
     throw failed("add that product", error);
   }
+
+  // Best-effort: a demand-fulfillment hiccup must never fail the listing that
+  // triggered it, since the inventory write already succeeded.
+  fulfillNearbyDemand({
+    storeLatitude: store.latitude,
+    storeLongitude: store.longitude,
+    productVariantId: variant.id,
+  }).catch((err) => {
+    console.error("[kirana-connect-api] fulfill nearby demand failed:", err.message);
+  });
 
   return withVariantDisplay(data);
 }

@@ -12,6 +12,16 @@ export default function StoreDetailsStep({ defaultValues, onNext }) {
     formState: { errors },
   } = useForm({ resolver: zodResolver(storeDetailsSchema), defaultValues });
 
+  const phoneField = register("phone");
+
+  // Sanitizes on every keystroke rather than only validating on submit: a
+  // resolver-driven form only surfaces errors.phone after the fact, which
+  // would let non-digit characters or an 11th digit sit in the field.
+  const onPhoneChange = (event) => {
+    event.target.value = event.target.value.replace(/\D/g, "").slice(0, 10);
+    phoneField.onChange(event);
+  };
+
   return (
     <form onSubmit={handleSubmit(onNext)} noValidate className="flex flex-col gap-5">
       <Field label="Store name" required error={errors.name?.message}>
@@ -20,7 +30,7 @@ export default function StoreDetailsStep({ defaultValues, onNext }) {
             {...field}
             {...register("name")}
             invalid={Boolean(errors.name)}
-            placeholder="Gupta General Store"
+            placeholder="Enter your store name"
             autoComplete="organization"
           />
         )}
@@ -49,11 +59,13 @@ export default function StoreDetailsStep({ defaultValues, onNext }) {
         {(field) => (
           <TextInput
             {...field}
-            {...register("phone")}
+            {...phoneField}
+            onChange={onPhoneChange}
             invalid={Boolean(errors.phone)}
             type="tel"
-            inputMode="tel"
-            placeholder="9820011223"
+            inputMode="numeric"
+            maxLength={10}
+            placeholder="Enter your phone number"
             autoComplete="tel"
           />
         )}

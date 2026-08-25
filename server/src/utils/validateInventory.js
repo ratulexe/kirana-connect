@@ -57,6 +57,28 @@ function discount(value) {
 }
 
 /**
+ * Expiry/best-before date. Optional; when present must be a real calendar
+ * date in YYYY-MM-DD form. Past dates are allowed on purpose -- a seller may
+ * be recording stock that has already expired -- the frontend only warns.
+ */
+function expiryDate(value) {
+  if (value === null || value === "") return null;
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw badRequest("Expiry date must be a valid date (YYYY-MM-DD).");
+  }
+  const [year, month, day] = value.split("-").map(Number);
+  const check = new Date(Date.UTC(year, month - 1, day));
+  if (
+    check.getUTCFullYear() !== year ||
+    check.getUTCMonth() !== month - 1 ||
+    check.getUTCDate() !== day
+  ) {
+    throw badRequest("Expiry date must be a valid calendar date.");
+  }
+  return value;
+}
+
+/**
  * store_products_availability_coherent forbids an out-of-stock line that still
  * claims to be available. Rather than bounce the seller for a contradiction
  * they did not really intend, sold out simply implies not listed.
@@ -81,6 +103,7 @@ export function validateInventoryCreate(body) {
     quantity_available: quantity(body.quantity_available),
     discount_percentage: discount(body.discount_percentage),
     is_available: coherentAvailability(status, body.is_available),
+    expiry_date: body.expiry_date === undefined ? null : expiryDate(body.expiry_date),
   };
 }
 
@@ -104,6 +127,9 @@ export function validateInventoryUpdate(body, current) {
   }
   if (body.discount_percentage !== undefined) {
     patch.discount_percentage = discount(body.discount_percentage);
+  }
+  if (body.expiry_date !== undefined) {
+    patch.expiry_date = expiryDate(body.expiry_date);
   }
 
   const statusProvided = body.stock_status !== undefined;

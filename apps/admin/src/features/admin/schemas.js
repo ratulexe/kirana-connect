@@ -8,6 +8,12 @@ const optionalText = (max) =>
     .optional()
     .or(z.literal(""));
 
+const optionalLongText = z
+  .string()
+  .trim()
+  .optional()
+  .or(z.literal(""));
+
 const optionalUrl = z
   .string()
   .trim()
@@ -48,7 +54,7 @@ const variantSchema = z.object({
   unit_code: z.string().refine((value) => unitCodes.includes(value), "Choose a unit"),
   mrp: z.preprocess(
     (value) => (value === "" || value === null ? undefined : value),
-    z.coerce.number({ error: "Enter the MRP" }).min(0, "MRP cannot be negative"),
+    z.coerce.number({ error: "Enter MRP" }).positive("Enter MRP"),
   ),
   barcode: optionalText(120),
   image_url: optionalUrl,
@@ -64,7 +70,7 @@ export const productSchema = z.object({
   name: z.string().trim().min(2, "Enter a product name").max(120, "Name is too long"),
   category_id: z.string().uuid("Choose a category"),
   brand_id: z.string().optional().or(z.literal("")),
-  description: optionalText(500),
+  description: optionalLongText,
   image_url: optionalUrl,
   variants: z.array(variantSchema).min(1, "Add at least one variant"),
   is_active: z.boolean(),

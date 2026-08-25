@@ -5,11 +5,13 @@ import routes from "./routes/index.js";
 import { notFound } from "./middleware/notFound.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
+const VERCEL_PREVIEW_PATTERN = /^https:\/\/[\w-]+\.vercel\.app$/;
+
 const corsOptions = {
   origin(origin, callback) {
     // Requests without an Origin header (curl, health probes, server-to-server)
     // are not browser cross-origin requests, so CORS does not apply to them.
-    if (!origin || env.clientUrls.includes(origin)) {
+    if (!origin || env.clientUrls.includes(origin) || VERCEL_PREVIEW_PATTERN.test(origin)) {
       callback(null, true);
       return;
     }

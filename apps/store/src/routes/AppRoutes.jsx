@@ -8,6 +8,7 @@ import Onboarding from "../pages/Onboarding.jsx";
 import Status from "../pages/Status.jsx";
 import StoreDetails from "../pages/StoreDetails.jsx";
 import Inventory from "../pages/Inventory.jsx";
+import CustomerDemand from "../pages/CustomerDemand.jsx";
 import NotFound from "../pages/NotFound.jsx";
 
 export default function AppRoutes() {
@@ -24,6 +25,7 @@ export default function AppRoutes() {
           <Route path="status" element={<Status />} />
           <Route path="store-details" element={<StoreDetails />} />
           <Route path="inventory" element={<Inventory />} />
+          <Route path="customer-demand" element={<CustomerDemand />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />

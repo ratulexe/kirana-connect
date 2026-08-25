@@ -16,6 +16,33 @@ export function formatPrice(value) {
   }).format(amount);
 }
 
+const SHORT_DATE = new Intl.DateTimeFormat("en-IN", {
+  day: "numeric",
+  month: "short",
+  timeZone: "UTC",
+});
+
+/**
+ * Formats an ISO `YYYY-MM-DD` (Postgres `date`) as e.g. "28 Aug". Forced to
+ * UTC so the calendar date read out never shifts a day against the reader's
+ * local timezone.
+ */
+export function formatShortDate(isoDate) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(isoDate ?? ""));
+  if (!match) return "";
+  const [, year, month, day] = match;
+  const utcDate = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+  return SHORT_DATE.format(utcDate);
+}
+
+/** Today as YYYY-MM-DD in the reader's local timezone, for <input type="date"> comparisons. */
+export function todayIsoDate() {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${day}`;
+}
+
 /** Relative time for "stock last updated", kept coarse on purpose. */
 export function formatRelativeTime(value) {
   const then = new Date(value).getTime();
