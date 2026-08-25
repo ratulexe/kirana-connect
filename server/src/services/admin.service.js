@@ -273,7 +273,10 @@ async function updateProductRecord(productId, body) {
       continue;
     }
 
-    if (error?.code === "23505") throw httpError(409, "A product with that name, barcode or slug already exists.");
+    if (error?.code === "23505") {
+      console.error("[kirana-connect-api] admin update product unique violation:", error.message, error.details);
+      throw httpError(409, "A product with that name, barcode or slug already exists.");
+    }
     if (error) throw failed("update product", error);
     if (!data) throw notFoundError("Product not found.");
     return preferLegacyFields ? withLegacyVariant(data) : withVariantSummary(data);
@@ -307,7 +310,10 @@ async function insertProductRecord(body) {
       continue;
     }
 
-    if (error?.code === "23505") throw httpError(409, "A product with that name, barcode or slug already exists.");
+    if (error?.code === "23505") {
+      console.error("[kirana-connect-api] admin create product unique violation:", error.message, error.details);
+      throw httpError(409, "A product with that name, barcode or slug already exists.");
+    }
     if (error) throw failed("create product", error);
     return preferLegacyFields ? withLegacyVariant(data) : withVariantSummary(data);
   }
@@ -955,8 +961,24 @@ export async function createProduct(payload) {
   if (!variantsReady) return productById(data.id);
 
   const rows = await variantRows(data.id, variants);
-  const insertRows = rows.map((row) => ({ ...row, id: row.id ?? randomUUID() }));
-  const { error: variantError } = await getServiceClient().from("product_variants").insert(insertRows);
+  // Upsert, not insert: creating the product row above can itself cause a
+  // placeholder variant to appear for it (a live default-variant trigger,
+  // not part of any migration in this repo) before this code ever runs. A
+  // plain insert then collides with that placeholder on
+  // product_variants_product_unit_unique (product_id, unit_label). Upserting
+  // on that same constraint heals the placeholder into the real variant
+  // instead of erroring, and behaves exactly like a plain insert when there
+  // is nothing to collide with.
+  // Every row here is a fresh variant on a fresh product, so none carries a
+  // client id; strip the key rather than leave it undefined, since Supabase
+  // sends an explicit null (not "column omitted") for an undefined value in
+  // a batch write, which fails product_variants.id's not-null constraint.
+  const { error: variantError } = await getServiceClient()
+    .from("product_variants")
+    .upsert(
+      rows.map(({ id: _id, ...row }) => row),
+      { onConflict: "product_id,unit_label" },
+    );
   if (variantError) {
     if (isMissingVariantsShape(variantError)) return productById(data.id);
     await getServiceClient().from("products").delete().eq("id", data.id);
@@ -1002,21 +1024,19 @@ export async function updateProduct(productId, patch) {
     body.normalized_name = normalizeProductIdentity(body.name);
   }
 
-  if (Array.isArray(variants) && variants.length > 0) {
-    const first = variants.find((variant) => variant.is_active) ?? variants[0];
-    body.unit_label = formatUnitLabel(first.quantity, first.unit_code);
-    body.mrp = first.mrp;
-    body.barcode = textValue(first.barcode);
-    if (!body.image_url && first.image_url) body.image_url = first.image_url;
-  }
-
+  // products.unit_label/mrp/barcode/image_url are deliberately NOT set here
+  // from the incoming (not-yet-saved) variants. The product_variants_sync_
+  // product_legacy_fields trigger already keeps those columns aligned with
+  // the real, persisted "chosen" variant after the writes below land -- and
+  // writing a value here that doesn't correspond to any saved variant yet is
+  // exactly what used to race a live default-variant trigger (see the
+  // upsert comment below) into creating a placeholder variant with that same
+  // not-yet-real unit_label, which then collided with the real insert.
   await updateProductRecord(productId, body);
 
   if (Array.isArray(variants) && variantsReady) {
     const rows = await variantRows(productId, variants);
-    const inserts = rows
-      .filter((variant) => !variant.id)
-      .map((variant) => ({ ...variant, id: randomUUID() }));
+    const inserts = rows.filter((variant) => !variant.id);
     const updates = rows.filter((variant) => variant.id);
 
     for (const row of updates) {
@@ -1034,9 +1054,16 @@ export async function updateProduct(productId, patch) {
     }
 
     if (inserts.length > 0) {
+      // Upsert, not insert: see the comment on the equivalent call in
+      // createProduct. Editing this product can itself have left (or can
+      // concurrently leave) a placeholder variant occupying the exact
+      // unit_label a genuinely new variant is about to take.
       const { error: insertError } = await getServiceClient()
         .from("product_variants")
-        .insert(inserts);
+        .upsert(
+          inserts.map(({ id: _id, ...row }) => row),
+          { onConflict: "product_id,unit_label" },
+        );
       if (insertError?.code === "23505") {
         throw httpError(409, "A variant with that size or barcode already exists.");
       }
