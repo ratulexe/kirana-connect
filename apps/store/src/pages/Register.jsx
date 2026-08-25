@@ -126,7 +126,7 @@ export default function Register() {
                     {...register("fullName")}
                     invalid={Boolean(errors.fullName)}
                     autoComplete="name"
-                    placeholder="Ramesh Gupta"
+                    placeholder="Enter your full name"
                   />
                 )}
               </Field>
