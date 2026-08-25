@@ -50,7 +50,7 @@ language sql
 immutable
 as $$
   select array[
-    'mg', 'g', 'kg', 'ml', 'l',
+    'mg', 'g', 'kg', 'ml', 'l', 'page', 'pages',
     'pc', 'pcs', 'pair', 'dozen',
     'pack', 'packet', 'pouch', 'sachet', 'bottle', 'can', 'jar', 'box',
     'carton', 'roll', 'tray', 'tube', 'bar', 'set', 'strip', 'sheet', 'bag',

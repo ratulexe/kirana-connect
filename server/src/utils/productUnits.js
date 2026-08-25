@@ -4,6 +4,8 @@ export const UNIT_OPTIONS = [
   { code: "kg", label: "kg" },
   { code: "ml", label: "ml" },
   { code: "l", label: "L" },
+  { code: "page", label: "page" },
+  { code: "pages", label: "pages" },
   { code: "pc", label: "pc" },
   { code: "pcs", label: "pcs" },
   { code: "pair", label: "pair" },
