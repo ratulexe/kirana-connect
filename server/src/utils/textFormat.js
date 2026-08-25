@@ -1,9 +1,11 @@
 /**
- * Normalizes a product name to sentence case.
+ * Normalizes a product name to title case, independent of how the admin typed
+ * it: "britannia milk bikis" and "BRITANNIA MILK BIKIS" both save as
+ * "Britannia Milk Bikis".
  * 1. Trims leading/trailing whitespace
  * 2. Collapses repeated internal spaces
  * 3. Lowercases the string
- * 4. Uppercases the first alphabetic character
+ * 4. Uppercases the first letter of every word
  */
 export function normalizeProductName(input) {
   if (typeof input !== "string") return input;
@@ -11,16 +13,9 @@ export function normalizeProductName(input) {
   let normalized = input.trim().replace(/\s+/g, " ");
   if (!normalized) return normalized;
 
-  normalized = normalized.toLowerCase();
-
-  const match = normalized.match(/[a-z]/i);
-  if (match) {
-    const idx = match.index;
-    normalized =
-      normalized.substring(0, idx) +
-      normalized.charAt(idx).toUpperCase() +
-      normalized.substring(idx + 1);
-  }
+  normalized = normalized
+    .toLowerCase()
+    .replace(/(^|\s)([a-z])/g, (_match, boundary, letter) => boundary + letter.toUpperCase());
 
   return normalized;
 }
