@@ -1,16 +1,12 @@
-import { Link, useLocation, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import Container from "../components/Container.jsx";
 import Button from "../components/Button.jsx";
-import InventoryManager from "../features/inventory/InventoryManager.jsx";
+import DemandManager from "../features/demand/DemandManager.jsx";
 
-export default function Inventory() {
+export default function CustomerDemand() {
   const [searchParams] = useSearchParams();
   const storeId = searchParams.get("store_id") ?? undefined;
-  const routerLocation = useLocation();
-  // Arrives from a "Add to store" click on the Customer demand page, so the
-  // add-product panel can open with that exact variant already chosen.
-  const demandSelection = routerLocation.state?.demandSelection ?? null;
 
   return (
     <Container className="py-10 sm:py-12">
@@ -20,7 +16,7 @@ export default function Inventory() {
           Back to dashboard
         </Button>
       </div>
-      <InventoryManager compact storeId={storeId} initialSelection={demandSelection} />
+      <DemandManager storeId={storeId} />
     </Container>
   );
 }

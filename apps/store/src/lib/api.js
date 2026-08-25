@@ -93,4 +93,7 @@ export const api = {
   // The catalogue is public, so this one deliberately carries no token.
   searchCatalogue: ({ q, limit = 12, signal }) =>
     request("/products", { auth: false, signal, params: { q, limit } }),
+
+  getStoreDemand: ({ storeId, signal }) =>
+    request("/store-demand", { signal, params: { store_id: storeId } }),
 };

@@ -15,6 +15,12 @@ const phoneRule = z
   .trim()
   .regex(/^[0-9+\-\s()]{6,20}$/, "Enter a valid phone number");
 
+/** Store phone is shown directly to customers, so it is kept to plain digits, up to 10. */
+const storePhoneRule = z
+  .string()
+  .trim()
+  .regex(/^[0-9]{1,10}$/, "Enter up to 10 digits, numbers only");
+
 export const accountSchema = z
   .object({
     fullName: z
@@ -52,7 +58,7 @@ export const storeDetailsSchema = z.object({
     .pipe(z.string().max(500, "Keep the description under 500 characters"))
     .optional()
     .or(z.literal("")),
-  phone: phoneRule.optional().or(z.literal("")),
+  phone: storePhoneRule.optional().or(z.literal("")),
 });
 
 export const ownerDetailsSchema = z.object({
