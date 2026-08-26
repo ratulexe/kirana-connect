@@ -17,9 +17,9 @@ function OfferCard({ offer }) {
     <li>
       <Link
         to={`/product/${offer.product.slug}?store=${encodeURIComponent(offer.store.slug)}`}
-        className="group relative flex h-full flex-col overflow-hidden rounded-card border border-[#e4dccd] bg-[#fffdf8] p-3 shadow-[0_8px_24px_rgba(51,65,48,.07)] transition duration-200 hover:-translate-y-1 hover:border-primary/35 hover:shadow-[0_16px_30px_rgba(21,122,85,.14)]"
+        className="group relative flex h-full flex-col overflow-hidden rounded-card border border-line bg-surface p-3 shadow-[0_8px_24px_rgba(51,65,48,.07)] transition duration-200 hover:-translate-y-1 hover:border-primary/35 hover:shadow-[0_16px_30px_rgba(21,122,85,.14)]"
       >
-        <div className="relative overflow-hidden rounded-control border border-[#eee5d7] bg-gradient-to-br from-[#fff7df] via-[#f8f4e9] to-[#e5f3ea] p-1">
+        <div className="relative overflow-hidden rounded-control border border-line-soft bg-gradient-to-br from-[#fff7df] via-[#f8f4e9] to-[#e5f3ea] p-1">
           <ProductImage src={offer.product.image_url} name={offer.product.name} size="lg" />
           <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-pill bg-red-500 px-2 py-1 text-[.65rem] font-bold tracking-wide text-white shadow-sm">
             <BadgePercent className="size-2.5" /> {offPercentage}% OFF
@@ -63,7 +63,7 @@ export default function BestOffersPage() {
 
   return (
     <Container className="py-10 sm:py-14">
-      <section className="relative overflow-hidden rounded-panel bg-gradient-to-br from-[#e11d48] via-[#f43f5e] to-[#be123c] p-7 text-white shadow-lg sm:p-10">
+      <section className="relative overflow-hidden rounded-panel bg-gradient-to-br from-[#e93483] via-[#7c3aed] to-[#4f36d9] p-7 text-white shadow-lg sm:p-10">
         <div aria-hidden="true" className="absolute -left-12 top-1/2 size-72 -translate-y-1/2 rounded-full bg-white/20 blur-3xl" />
         <div className="relative">
           <p className="inline-flex items-center gap-2 text-meta font-bold tracking-[.13em] text-[#ffec9d] uppercase">

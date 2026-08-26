@@ -29,9 +29,9 @@ export default function LiveProductShelf() {
   const products = data?.products ?? [];
 
   return (
-    <section ref={sectionRef} className="relative mt-14 overflow-hidden border-y border-[#e7dfd0] bg-gradient-to-b from-[#f7f0e2] via-[#fbf8f1] to-[#e9f3ec] py-14 sm:mt-20 sm:py-20" aria-labelledby="live-products-heading">
-      <div aria-hidden="true" className="absolute -right-20 top-0 size-80 rounded-full bg-[#eab14b]/25 blur-3xl" />
-      <div aria-hidden="true" className="absolute -left-24 bottom-0 size-72 rounded-full bg-[#2c8c67]/15 blur-3xl" />
+    <section ref={sectionRef} className="relative mt-14 overflow-hidden border-y border-line bg-white py-14 sm:mt-20 sm:py-20" aria-labelledby="live-products-heading">
+      <div aria-hidden="true" className="absolute -right-20 top-0 size-80 rounded-full bg-[#eab14b]/10 blur-3xl" />
+      <div aria-hidden="true" className="absolute -left-24 bottom-0 size-72 rounded-full bg-[#2c8c67]/8 blur-3xl" />
       <Container className="relative">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -42,7 +42,7 @@ export default function LiveProductShelf() {
               description="Real products from the live catalogue. Open any item to compare nearby shop prices."
             />
           </div>
-          <Button as={Link} to="/search" variant="secondary" size="sm" className="border-primary/20 bg-[#fffdf8] hover:border-primary">
+          <Button as={Link} to="/search" variant="secondary" size="sm" className="border-primary/20 bg-surface hover:border-primary">
             Browse all products
           </Button>
         </div>

@@ -19,17 +19,17 @@ export default function ProductCard({ product }) {
 
   return (
     <li className="relative h-full">
-      <article className="group relative flex h-full flex-col overflow-hidden rounded-card border border-[#e4dccd] bg-[#fffdf8] p-3 shadow-[0_8px_24px_rgba(51,65,48,.07)] transition duration-200 hover:-translate-y-1 hover:border-primary/35 hover:shadow-[0_16px_30px_rgba(21,122,85,.14)]">
+      <article className="group relative flex h-full flex-col overflow-hidden rounded-card border border-line bg-surface p-3 shadow-[0_8px_24px_rgba(51,65,48,.07)] transition duration-200 hover:-translate-y-1 hover:border-primary/35 hover:shadow-[0_16px_30px_rgba(21,122,85,.14)]">
         <WishlistButton productId={product.id} className="absolute top-5 right-5 z-20 shadow-sm" />
         <Link
           to={`/product/${product.slug}`}
           className="flex h-full flex-col rounded-control focus-visible:outline-offset-4"
           aria-label={`View ${product.name}`}
         >
-          <div className="relative overflow-hidden rounded-control border border-[#eee5d7] bg-gradient-to-br from-[#fff7df] via-[#f8f4e9] to-[#e5f3ea] p-1">
+          <div className="relative overflow-hidden rounded-control border border-line-soft bg-gradient-to-br from-[#fff7df] via-[#f8f4e9] to-[#e5f3ea] p-1">
             <ProductImage src={product.image_url} name={product.name} size="lg" />
             {product.available_nearby ? (
-              <span className="absolute top-2 left-2 inline-flex max-w-[calc(100%-2.75rem)] items-center gap-1 truncate rounded-pill bg-[#fffdf8]/95 px-2 py-1 text-[.65rem] font-bold tracking-wide text-primary shadow-sm">
+              <span className="absolute top-2 left-2 inline-flex max-w-[calc(100%-2.75rem)] items-center gap-1 truncate rounded-pill bg-surface/95 px-2 py-1 text-[.65rem] font-bold tracking-wide text-primary shadow-sm">
                 <Sparkles className="size-2.5 shrink-0" /> <span className="truncate">AVAILABLE NEARBY</span>
               </span>
             ) : null}

@@ -24,30 +24,29 @@ export default function WhyKirana() {
   const { data: stats } = usePlatformStats();
 
   return (
-    <section ref={sectionRef} className="relative overflow-hidden bg-gradient-to-br from-[#2a177d] via-[#3d24af] to-[#581c87] py-14 text-white sm:py-20" aria-labelledby="why-kirana-heading">
-      <div aria-hidden="true" className="hero-grid absolute inset-0 opacity-20" />
-      <div aria-hidden="true" className="absolute -left-20 bottom-0 size-72 rounded-full bg-[#e93483]/30 blur-3xl" />
-      <div aria-hidden="true" className="absolute -right-20 top-0 size-72 rounded-full bg-[#ffd45e]/20 blur-3xl" />
+    <section ref={sectionRef} className="relative overflow-hidden bg-white py-14 sm:py-20" aria-labelledby="why-kirana-heading">
+      <div aria-hidden="true" className="absolute -left-20 bottom-0 size-72 rounded-full bg-[#e93483]/8 blur-3xl" />
+      <div aria-hidden="true" className="absolute -right-20 top-0 size-72 rounded-full bg-[#eab14b]/10 blur-3xl" />
       <Container className="relative">
         <div className="max-w-2xl">
-          <p className="text-meta font-bold tracking-[.14em] text-[#ffd45e] uppercase">Local shopping, upgraded</p>
-          <h2 id="why-kirana-heading" className="mt-2 text-heading text-white">All the speed of knowing. All the joy of local.</h2>
-          <p className="mt-3 text-body text-white/70">Kirana Connect makes everyday shopping feel clear, colourful and close to home—without making promises that a local store cannot keep.</p>
-          
-          <div className="mt-6 flex flex-wrap gap-8 text-white">
-            <div><div className="text-3xl font-bold text-[#ffd45e]"><AnimatedCounter to={stats?.stores ?? 0} suffix="+" /></div><div className="text-sm text-white/70">Stores</div></div>
-            <div><div className="text-3xl font-bold text-[#ffd45e]"><AnimatedCounter to={stats?.products ?? 0} suffix="+" /></div><div className="text-sm text-white/70">Products</div></div>
-            <div><div className="text-3xl font-bold text-[#ffd45e]"><AnimatedCounter to={stats?.listings ?? 0} suffix="+" /></div><div className="text-sm text-white/70">Live listings</div></div>
+          <p className="text-meta font-bold tracking-[.14em] text-accent uppercase">Local shopping, upgraded</p>
+          <h2 id="why-kirana-heading" className="mt-2 text-heading text-ink">All the speed of knowing. All the joy of local.</h2>
+          <p className="mt-3 text-body text-ink-muted">Kirana Connect makes everyday shopping feel clear, colourful and close to home—without making promises that a local store cannot keep.</p>
+
+          <div className="mt-6 flex flex-wrap gap-8">
+            <div><div className="text-3xl font-bold text-primary"><AnimatedCounter to={stats?.stores ?? 0} suffix="+" /></div><div className="text-sm text-ink-muted">Stores</div></div>
+            <div><div className="text-3xl font-bold text-primary"><AnimatedCounter to={stats?.products ?? 0} suffix="+" /></div><div className="text-sm text-ink-muted">Products</div></div>
+            <div><div className="text-3xl font-bold text-primary"><AnimatedCounter to={stats?.listings ?? 0} suffix="+" /></div><div className="text-sm text-ink-muted">Live listings</div></div>
           </div>
         </div>
         <ul className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {FEATURES.map(({ icon: Icon, title, body, to, label }, index) => (
             <li key={title}>
-              <Link to={to} className="hologram group block h-full rounded-card border border-white/12 bg-white/8 p-5 backdrop-blur-sm transition duration-300 hover:-translate-y-1 hover:bg-white/14 hover:shadow-[0_18px_35px_rgba(0,0,0,.18)]">
+              <Link to={to} className="card-lift group block h-full rounded-card border border-line bg-surface p-5 transition duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-float">
                 <span className={`inline-flex size-11 items-center justify-center rounded-2xl bg-gradient-to-br ${FEATURE_COLORS[index]} text-white transition duration-300 group-hover:rotate-6 group-hover:scale-110`}><Icon className="size-5" /></span>
-                <h3 className="mt-5 text-card">{title}</h3>
-                <p className="mt-1.5 text-meta text-white/65">{body}</p>
-                <span className="mt-5 inline-flex items-center gap-1 text-meta font-bold text-[#ffd45e] group-hover:gap-2">{label}<ArrowRight className="size-3.5" /></span>
+                <h3 className="mt-5 text-card text-ink">{title}</h3>
+                <p className="mt-1.5 text-meta text-ink-muted">{body}</p>
+                <span className="mt-5 inline-flex items-center gap-1 text-meta font-bold text-primary group-hover:gap-2">{label}<ArrowRight className="size-3.5" /></span>
               </Link>
             </li>
           ))}

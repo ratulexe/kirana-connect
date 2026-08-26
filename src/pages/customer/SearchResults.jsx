@@ -1,13 +1,16 @@
-import { useEffect, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
-import { LocateFixed, MapPin, PackageSearch, SearchX, Store } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { ArrowLeft, ArrowRight, Clock3, LayoutGrid, LocateFixed, MapPin, PackageSearch, SearchX, Store } from "lucide-react";
 import Container from "../../components/common/Container.jsx";
 import Skeleton from "../../components/common/Skeleton.jsx";
 import EmptyState from "../../components/common/EmptyState.jsx";
 import Button from "../../components/common/Button.jsx";
+import ConsumerSearchBar from "../../components/common/ConsumerSearchBar.jsx";
 import ProductCard from "../../components/products/ProductCard.jsx";
 import { useNearbyStores, useProductSearch } from "../../hooks/useDiscovery.js";
 import { useCategories } from "../../hooks/useCategories.js";
+import { useDebouncedValue } from "../../hooks/useDebouncedValue.js";
+import { useRecentSearches } from "../../hooks/useRecentSearches.js";
 import { useLocationStore } from "../../store/locationStore.js";
 import { formatDistance } from "../../utils/format.js";
 import { recordConsumerSearchEvent } from "../../services/searchEvents.js";
@@ -64,6 +67,106 @@ function CategoryFilter({ active, onSelect }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+/**
+ * Pre-type suggestion: the device's own recent searches, one tap to redo.
+ * There is no "popular searches" chip alongside it -- that would need a
+ * backend aggregation of search_events that does not exist yet, and
+ * inventing the numbers is exactly the kind of dark pattern this pass rules
+ * out. Only shown while the field is empty, and only once there is history.
+ */
+function RecentSearches({ terms, onSelect, onClear }) {
+  if (!terms.length) return null;
+
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="flex items-center gap-1.5 text-meta font-semibold text-ink-muted">
+          <Clock3 className="size-3.5" aria-hidden="true" />
+          Recent searches
+        </h2>
+        <button
+          type="button"
+          onClick={onClear}
+          className="text-meta font-semibold text-ink-muted transition-colors hover:text-ink"
+        >
+          Clear
+        </button>
+      </div>
+      <ul className="mt-2 flex flex-wrap gap-2">
+        {terms.map((term) => (
+          <li key={term}>
+            <button
+              type="button"
+              onClick={() => onSelect(term)}
+              className="rounded-pill border border-line bg-surface px-3.5 py-1.5 text-meta font-semibold text-ink-soft transition-colors hover:border-primary/40 hover:bg-primary-soft hover:text-primary"
+            >
+              {term}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/**
+ * "Did you mean this category / this shop" -- shown above the raw product
+ * grid whenever the typed query matches a category name or a nearby store's
+ * name, each with an arrow to jump straight there. Store matching reuses the
+ * same nearby-stores list StoreFilter already fetches (location-gated, same
+ * as everywhere else in this app) rather than a separate "search all shops"
+ * endpoint that doesn't exist yet.
+ */
+function MatchSuggestions({ query, onSelectCategory, onSelectStore }) {
+  const { data: categories } = useCategories();
+  const { location, radiusKm } = useLocationStore();
+  const stores = useNearbyStores({ location, radiusKm, limit: 30 });
+
+  const term = query.trim().toLowerCase();
+  if (term.length < 2) return null;
+
+  const matchedCategory = categories?.find((category) => category.name.toLowerCase().includes(term));
+  const matchedStores = (stores.data?.stores ?? [])
+    .filter((store) => store.name.toLowerCase().includes(term))
+    .slice(0, 3);
+
+  if (!matchedCategory && matchedStores.length === 0) return null;
+
+  return (
+    <div className="mb-6 divide-y divide-line-soft overflow-hidden rounded-card border border-line bg-surface">
+      {matchedCategory ? (
+        <button
+          type="button"
+          onClick={() => onSelectCategory(matchedCategory.slug)}
+          className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left transition-colors hover:bg-surface-sunken"
+        >
+          <span className="flex items-center gap-2.5 text-[0.9375rem] font-semibold text-ink">
+            <LayoutGrid className="size-4 shrink-0 text-primary" aria-hidden="true" />
+            {matchedCategory.name}
+            <span className="text-meta font-normal text-ink-muted">in Categories</span>
+          </span>
+          <ArrowRight className="size-4 shrink-0 text-ink-muted" aria-hidden="true" />
+        </button>
+      ) : null}
+      {matchedStores.map((store) => (
+        <button
+          key={store.id}
+          type="button"
+          onClick={() => onSelectStore(store.id)}
+          className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left transition-colors hover:bg-surface-sunken"
+        >
+          <span className="flex items-center gap-2.5 text-[0.9375rem] font-semibold text-ink">
+            <Store className="size-4 shrink-0 text-primary" aria-hidden="true" />
+            {store.name}
+            <span className="text-meta font-normal text-ink-muted">in Shops</span>
+          </span>
+          <ArrowRight className="size-4 shrink-0 text-ink-muted" aria-hidden="true" />
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -157,6 +260,7 @@ function StoreFilter({ activeStoreId, onSelect, onClear }) {
 }
 
 export default function SearchResults() {
+  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
 
   const search = params.get("q") ?? "";
@@ -166,8 +270,9 @@ export default function SearchResults() {
   const page = Math.max(1, Number(params.get("page") ?? 1));
   const offset = (page - 1) * PAGE_SIZE;
   const { location, radiusKm } = useLocationStore();
+  const { recent: recentSearches, addSearch: addRecentSearch, clear: clearRecentSearches } = useRecentSearches();
 
-  const { data, isPending, isError, error, isPlaceholderData } = useProductSearch({
+  const { data, isPending, isFetching, isError, error, isPlaceholderData } = useProductSearch({
     search,
     category,
     brand,
@@ -178,7 +283,7 @@ export default function SearchResults() {
     offset,
   });
 
-  const update = (changes) => {
+  const update = (changes, { replace = false } = {}) => {
     const next = new URLSearchParams(params);
     for (const [key, value] of Object.entries(changes)) {
       if (value) next.set(key, value);
@@ -187,8 +292,28 @@ export default function SearchResults() {
     // Any change to the query resets paging; page 3 of a different search is
     // never what someone means.
     if (!("page" in changes)) next.delete("page");
-    setParams(next);
+    setParams(next, { replace });
   };
+
+  // Search-as-you-type: the field itself is instant (never debounced), only
+  // the URL/query it drives is. `replace: true` on the resulting URL update
+  // is what keeps four keystrokes from becoming four entries the back button
+  // has to fight through -- a plain `setParams` call here defaults to push.
+  const [queryInput, setQueryInput] = useState(search);
+  const debouncedQuery = useDebouncedValue(queryInput, 220);
+
+  // Keeps the field in sync with URL changes that did not originate from
+  // typing here -- a quick-search chip elsewhere, browser back/forward, or a
+  // fresh /search?q=... link.
+  useEffect(() => {
+    setQueryInput(search);
+  }, [search]);
+
+  useEffect(() => {
+    if (debouncedQuery === search) return;
+    update({ q: debouncedQuery || null }, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedQuery]);
 
   const products = data?.products ?? [];
   const total = data?.meta?.total ?? 0;
@@ -217,6 +342,7 @@ export default function SearchResults() {
     if (isPending || isError || isPlaceholderData) return;
     if (loggedSearchRef.current === trimmed) return;
     loggedSearchRef.current = trimmed;
+    addRecentSearch(trimmed);
 
     // Only link a product/category when the search unambiguously resolved to
     // exactly one catalogue product -- never guessed from free text.
@@ -236,12 +362,66 @@ export default function SearchResults() {
   }, [search, isPending, isError, isPlaceholderData, data]);
 
   return (
-    <Container className="py-8 sm:py-12">
-      <StoreFilter
-        activeStoreId={storeId}
-        onSelect={(id) => update({ store_id: id })}
-        onClear={() => update({ store_id: null })}
-      />
+    <>
+      {/*
+        /search owns the entire top bar on this route -- SiteHeader renders
+        nothing here (see the onSearchPage check there), so this single
+        compact row (back button + the live search field) replaces the
+        promo strip/logo/category-nav stack entirely, the way Zepto/
+        Instamart's search screen does. Sticky at the very top since there
+        is no site header above it to offset for anymore.
+      */}
+      <div className="sticky top-0 z-50 border-b border-line bg-white/95 shadow-[0_6px_24px_rgba(49,36,118,.05)] backdrop-blur-2xl">
+        <Container className="flex items-center gap-2 py-3">
+          <button
+            type="button"
+            onClick={() => navigate("/")}
+            aria-label="Back to home"
+            className="inline-flex size-11 shrink-0 items-center justify-center rounded-full border border-line bg-surface text-ink-soft transition-colors hover:border-primary/40 hover:bg-primary-soft hover:text-primary"
+          >
+            <ArrowLeft className="size-5" aria-hidden="true" />
+          </button>
+          <ConsumerSearchBar
+            mode="live"
+            size="md"
+            value={queryInput}
+            onChange={setQueryInput}
+            isLoading={isFetching}
+            autoFocus={false}
+            className="flex-1 border border-line bg-white shadow-float"
+          />
+        </Container>
+      </div>
+
+      <Container className="py-6 sm:py-8">
+      {search ? (
+        <MatchSuggestions
+          query={search}
+          onSelectCategory={(slug) => update({ category: slug })}
+          onSelectStore={(id) => update({ store_id: id })}
+        />
+      ) : null}
+
+      {!search ? (
+        <div className="mt-6">
+          <RecentSearches
+            terms={recentSearches}
+            onSelect={(term) => {
+              setQueryInput(term);
+              update({ q: term });
+            }}
+            onClear={clearRecentSearches}
+          />
+        </div>
+      ) : null}
+
+      <div className="mt-6">
+        <StoreFilter
+          activeStoreId={storeId}
+          onSelect={(id) => update({ store_id: id })}
+          onClear={() => update({ store_id: null })}
+        />
+      </div>
 
       <div className="mt-6">
         <CategoryFilter active={category} onSelect={(slug) => update({ category: slug })} />
@@ -333,6 +513,7 @@ export default function SearchResults() {
           </Button>
         </nav>
       ) : null}
-    </Container>
+      </Container>
+    </>
   );
 }

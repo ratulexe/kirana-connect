@@ -68,12 +68,14 @@ export default function Gateway() {
     <div className="flex min-h-dvh flex-col justify-center py-14 sm:py-20">
       <Container>
         <div className="mx-auto max-w-2xl text-center">
-          <p className="inline-flex items-baseline gap-1 text-meta font-bold tracking-widest text-ink-muted uppercase">
-            <span className="text-ink">Kirana</span>
-            <span className="gradient-text">Connect</span>
+          <p
+            className="font-brand text-[3rem] leading-none font-normal text-ink sm:text-[3.5rem]"
+            aria-label="Kirana Connect"
+          >
+            Kirana <span className="text-primary">Connect</span>
           </p>
-          <h1 className="mt-3 text-heading text-balance text-ink">Welcome to Kirana Connect</h1>
-          <p className="mt-3 text-body text-ink-muted">Choose how you want to use Kirana Connect.</p>
+          <h1 className="mt-4 text-heading text-balance text-ink">Choose how you want to use Kirana Connect</h1>
+          <p className="mt-3 text-body text-ink-muted">One platform, two ways in -- shop nearby, or plan your next business.</p>
         </div>
 
         <div className="mx-auto mt-10 grid max-w-4xl gap-5 sm:grid-cols-2">

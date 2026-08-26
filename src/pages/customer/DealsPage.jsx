@@ -12,7 +12,7 @@ export default function DealsPage() {
 
   return (
     <Container className="py-10 sm:py-14">
-      <section className="relative overflow-hidden rounded-panel bg-gradient-to-br from-[#e11d48] via-[#f43f5e] to-[#be123c] p-7 text-white shadow-lg sm:p-10">
+      <section className="relative overflow-hidden rounded-panel bg-gradient-to-br from-[#e93483] via-[#7c3aed] to-[#4f36d9] p-7 text-white shadow-lg sm:p-10">
         <div aria-hidden="true" className="absolute -left-12 top-1/2 size-72 -translate-y-1/2 rounded-full bg-white/20 blur-3xl" />
         <div className="relative"><p className="inline-flex items-center gap-2 text-meta font-bold tracking-[.13em] text-[#ffec9d] uppercase"><Sparkles className="size-3.5" /> Live catalogue</p><h1 className="mt-3 text-heading text-white">Today&apos;s local finds</h1><p className="mt-2 max-w-xl text-body text-white/75">Explore real catalogue items, then open one to compare the prices listed by nearby shops.</p></div>
       </section>

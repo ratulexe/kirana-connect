@@ -15,6 +15,7 @@
 
 @theme {
   --font-sans: "Parkinsans", system-ui, sans-serif;
+  --font-brand: "Birthstone", cursive;
 
   --color-canvas: #faf7f0;
   --color-surface: #fffdf8;
