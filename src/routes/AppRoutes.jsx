@@ -15,6 +15,8 @@ const DealsPage = lazy(() => import('../pages/customer/DealsPage.jsx'));
 const BestOffersPage = lazy(() => import('../pages/customer/BestOffersPage.jsx'));
 const WishlistPage = lazy(() => import('../pages/customer/WishlistPage.jsx'));
 const OrdersPage = lazy(() => import('../pages/customer/OrdersPage.jsx'));
+const ReservedPage = lazy(() => import('../pages/customer/ReservedPage.jsx'));
+const CategoriesPage = lazy(() => import('../pages/customer/CategoriesPage.jsx'));
 const NotificationsPage = lazy(() => import('../pages/customer/NotificationsPage.jsx'));
 const StoresPage = lazy(() => import('../pages/customer/StoresPage.jsx'));
 const TrendingPage = lazy(() => import('../pages/customer/TrendingPage.jsx'));
@@ -37,6 +39,8 @@ export default function AppRoutes() {
         <Route path="best-offers" element={<BestOffersPage />} />
         <Route path="wishlist" element={<WishlistPage />} />
         <Route path="orders" element={<OrdersPage />} />
+        <Route path="reserved" element={<ReservedPage />} />
+        <Route path="categories" element={<CategoriesPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
         <Route path="stores" element={<StoresPage />} />
         <Route path="trending" element={<TrendingPage />} />

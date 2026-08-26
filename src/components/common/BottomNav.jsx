@@ -1,11 +1,17 @@
 import { Link, useLocation } from 'react-router-dom';
-import { House, Package, Search, Tag, UserRound } from 'lucide-react';
+import { BookmarkCheck, House, LayoutGrid, Tag, UserRound } from 'lucide-react';
 
+// The header's own search icon (mobile, sm:hidden) already opens /search --
+// this tab used to duplicate that, so it's "Categories" instead: a browse
+// entry point search doesn't cover. "Orders" is "Reserved": Kirana Connect
+// doesn't place orders (see OrdersPage.jsx), so a tab named "Orders" always
+// pointed at an empty state; "Reserved" names the feature that's actually
+// planned for that slot (see ReservedPage.jsx).
 const TABS = [
   { label: 'Home', icon: House, to: '/' },
-  { label: 'Search', icon: Search, to: '/search' },
+  { label: 'Categories', icon: LayoutGrid, to: '/categories' },
   { label: 'Deals', icon: Tag, to: '/best-offers' },
-  { label: 'Orders', icon: Package, to: '/orders' },
+  { label: 'Reserved', icon: BookmarkCheck, to: '/reserved' },
   { label: 'Account', icon: UserRound, to: '/account' },
 ];
 

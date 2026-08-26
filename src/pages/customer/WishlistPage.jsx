@@ -17,7 +17,6 @@ export default function WishlistPage() {
       <Container>
         <div className="mb-8">
           <h1 className="text-heading text-ink flex items-center gap-3">
-            <Heart className="size-8 text-pink-500 fill-current" />
             My Wishlist
           </h1>
           <p className="text-ink-muted mt-1">{ids.length} saved {ids.length === 1 ? 'item' : 'items'}</p>

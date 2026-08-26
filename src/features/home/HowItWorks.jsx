@@ -8,16 +8,19 @@ const STEPS = [
     icon: Search,
     title: "Search the item",
     body: "Type what you need. Kirana Connect looks across the catalogue every nearby shop stocks from.",
+    style: "from-amber-400 to-orange-500",
   },
   {
     icon: Store,
     title: "Compare the shops",
     body: "See which stores have it right now, what each one charges, and how much you save against MRP.",
+    style: "from-indigo-500 to-violet-600",
   },
   {
     icon: Navigation,
     title: "Walk in and buy",
     body: "Pick a shop, get directions, and pay at the counter. No cart, no waiting for a delivery slot.",
+    style: "from-emerald-400 to-teal-600",
   },
 ];
 
@@ -34,24 +37,29 @@ export default function HowItWorks() {
         />
 
         <ol className="mt-6 grid gap-3 md:grid-cols-3">
-          {STEPS.map(({ icon: Icon, title, body }, index) => (
+          {STEPS.map(({ icon: Icon, title, body, style }, index) => (
             <li
               key={title}
-              className="glass-card card-lift group relative overflow-hidden rounded-card p-6 transition-[border-color] duration-200 ease-brand hover:border-primary/30"
+              className={`card-lift group relative isolate overflow-hidden rounded-card bg-gradient-to-br ${style} p-6 text-white shadow-[0_16px_32px_rgba(53,38,126,.18)] transition duration-300 hover:-translate-y-1`}
             >
-              <div className="flex items-center gap-4">
-                <div className="relative flex size-14 items-center justify-center">
-                  <div className="absolute inset-0 rounded-full border-4 border-primary/20 animate-spin-slow border-dashed" />
-                  <span className="relative inline-flex size-10 items-center justify-center rounded-full bg-gradient-to-br from-primary to-[#7c3aed] text-white transition-transform duration-200 group-hover:scale-110">
-                    <Icon className="size-5" aria-hidden="true" />
-                  </span>
-                </div>
-                <span className="text-meta font-semibold tabular-nums text-ink-muted">
+              <span
+                aria-hidden="true"
+                className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,.22)_1px,transparent_1px)] bg-size-[10px_10px] opacity-50"
+              />
+              <div className="relative z-10 flex items-center gap-4">
+                <span className="inline-flex size-11 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm transition-transform duration-300 group-hover:scale-110">
+                  <Icon className="size-5" aria-hidden="true" />
+                </span>
+                <span className="text-meta font-semibold tabular-nums text-white/80">
                   Step {index + 1}
                 </span>
               </div>
-              <h3 className="mt-4 text-card text-ink">{title}</h3>
-              <p className="mt-1.5 text-body text-ink-muted">{body}</p>
+              <h3 className="relative z-10 mt-4 text-card text-white">{title}</h3>
+              <p className="relative z-10 mt-1.5 text-body text-white/85">{body}</p>
+              <span
+                aria-hidden="true"
+                className="absolute -right-6 -bottom-8 z-0 size-28 rounded-full border-[16px] border-white/15"
+              />
             </li>
           ))}
         </ol>

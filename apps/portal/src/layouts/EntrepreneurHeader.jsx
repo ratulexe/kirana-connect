@@ -14,18 +14,15 @@ export default function EntrepreneurHeader() {
         <div className="flex h-16 items-center justify-between gap-4">
           <Link
             to="/entrepreneur"
-            className="group inline-flex shrink-0 items-baseline gap-1 rounded-control py-2"
-            aria-label="Kirana Connect, go to Entrepreneur home"
+            className="group inline-flex shrink-0 items-center rounded-control py-2"
+            aria-label="Kirana Connect Business, go to Entrepreneur home"
           >
-            <span className="relative text-[1.0625rem] font-bold tracking-tight text-ink sm:text-[1.1875rem]">
-              Kirana
+            <span className="relative font-brand text-[1.75rem] leading-none font-normal text-ink sm:text-[2rem]">
+              Kirana Connect <span className="text-primary">Business</span>
               <span
                 aria-hidden="true"
-                className="absolute -top-0.5 right-[1.5px] size-[5px] rounded-pill bg-accent live-dot transition-transform duration-200 ease-brand group-hover:scale-125"
+                className="absolute top-0 right-[-0.5rem] size-[5px] rounded-pill bg-accent live-dot transition-transform duration-200 ease-brand group-hover:scale-125"
               />
-            </span>
-            <span className="gradient-text text-[1.0625rem] font-bold tracking-tight sm:text-[1.1875rem]">
-              Connect
             </span>
           </Link>
 

@@ -19,11 +19,12 @@
 
 @theme {
   --font-sans: "Parkinsans", system-ui, sans-serif;
+  /* Wordmark only -- never body copy or controls. */
+  --font-brand: "Birthstone", cursive;
 
   /* Surfaces ------------------------------------------------------------- */
-  /* Warm off-white rather than pure white: reads as paper, not as a dashboard. */
-  --color-canvas: #faf7f0;
-  --color-surface: #fffdf8;
+  --color-canvas: #ffffff;
+  --color-surface: #ffffff;
   --color-surface-sunken: #f3ecdf;
 
   /* Foreground ----------------------------------------------------------- */
@@ -111,9 +112,6 @@
     margin: 0;
     min-height: 100dvh;
     background-color: var(--color-canvas);
-    background-image: radial-gradient(circle at 10% 0%, rgba(21, 122, 85, 0.08), transparent 40rem),
-                      radial-gradient(circle at 90% 10%, rgba(229, 161, 47, 0.09), transparent 40rem),
-                      radial-gradient(circle at 50% 100%, rgba(130, 92, 48, 0.05), transparent 40rem);
     color: var(--color-ink);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
@@ -231,6 +229,24 @@
 
   .no-scrollbar::-webkit-scrollbar {
     display: none;
+  }
+
+  /* The search bar's own loading indicator: a short dash travelling along
+     the bottom edge, not a spinner inside the field. Lives on its own
+     absolutely-positioned track (see ConsumerSearchBar.jsx) so it never
+     interacts with the field's box-shadow/overflow. Picked up automatically
+     by the global prefers-reduced-motion rule above (it targets `*`). */
+  @keyframes kc-search-dash {
+    0% {
+      left: -25%;
+    }
+    100% {
+      left: 100%;
+    }
+  }
+
+  .kc-search-dash {
+    animation: kc-search-dash 750ms cubic-bezier(0.4, 0, 0.2, 1) infinite;
   }
 }
 

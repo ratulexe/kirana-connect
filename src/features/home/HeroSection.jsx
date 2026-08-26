@@ -1,93 +1,111 @@
-import { ArrowRight, IndianRupee, MapPin, Search, Sparkles, Store, Zap } from "lucide-react";
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import {
+  ArrowRight,
+  IndianRupee,
+  MapPinned,
+  Navigation,
+  PackageSearch,
+  ShieldCheck,
+  Sparkles,
+  Store,
+  Tag,
+} from "lucide-react";
+import { Link } from "react-router-dom";
 import Container from "../../components/common/Container.jsx";
+import Button from "../../components/common/Button.jsx";
 import { useEntranceAnimation } from "../../animations/useEntranceAnimation.js";
-import SearchBar from "../../components/common/SearchBar.jsx";
 import { usePlatformStats } from "../../hooks/useDiscovery.js";
+import { useCategories } from "../../hooks/useCategories.js";
+import { getCategoryIcon } from "../../utils/categoryIcons.js";
 
-const PROMISES = [
-  { icon: Store, label: "Real shelf stock" },
-  { icon: IndianRupee, label: "Shop-by-shop prices" },
-  { icon: MapPin, label: "Walking distance" },
+const PRODUCT_POINTS = [
+  { icon: PackageSearch, label: "Compare nearby availability" },
+  { icon: IndianRupee, label: "Check price store by store" },
+  { icon: ShieldCheck, label: "Visit the shop with confidence" },
 ];
 
-const SEARCH_TERMS = ['milk', 'atta', 'chips', 'cold drinks', 'bread', 'dahi', 'tea'];
+const STORE_POINTS = [
+  { icon: MapPinned, label: "Local store discovery" },
+  { icon: Tag, label: "Real participating store prices" },
+  { icon: Navigation, label: "Easy go-to-store journey" },
+];
+
+function PointList({ points }) {
+  return (
+    <ul className="mt-5 space-y-2.5">
+      {points.map(({ icon: Icon, label }) => (
+        <li key={label} className="flex items-center gap-2.5 text-meta font-medium text-ink-soft">
+          <Icon className="size-4 shrink-0 text-primary" aria-hidden="true" />
+          {label}
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export default function HeroSection() {
   const heroRef = useEntranceAnimation();
-  const navigate = useNavigate();
-  const [termIdx, setTermIdx] = useState(0);
   const { data: stats } = usePlatformStats();
+  const { data: categories } = useCategories();
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTermIdx((prev) => (prev + 1) % SEARCH_TERMS.length);
-    }, 3000);
-    return () => clearInterval(timer);
-  }, []);
+  // Real category photos already surfaced elsewhere on the home page
+  // (CategoryStrip) -- reused here as the card's product visual rather than
+  // any new or hotlinked image.
+  const productChips = (categories ?? []).filter((category) => category.sample_image_url).slice(0, 3);
+  const storeChips = (categories ?? []).slice(0, 4);
 
   return (
     <section className="relative isolate overflow-hidden bg-white text-ink border-b border-line">
       <div aria-hidden="true" className="hero-grid absolute inset-0 opacity-[0.03]" />
-      <div aria-hidden="true" className="absolute -left-20 top-16 size-80 rounded-full bg-primary opacity-[0.08] blur-3xl" />
-      <div aria-hidden="true" className="absolute -right-16 -top-20 size-96 rounded-full bg-pink-500 opacity-[0.05] blur-3xl" />
-      <div aria-hidden="true" className="absolute left-1/3 bottom-0 size-72 rounded-full bg-yellow-400 opacity-[0.1] blur-3xl" />
       <Container className="relative py-14 sm:py-20 lg:py-24">
-        <div ref={heroRef} className="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-[1.15fr_.85fr] lg:gap-16">
-          <div className="text-center lg:text-left">
-          <p
+        <div ref={heroRef} className="mx-auto max-w-6xl text-center">
+          <h1
             data-animate
             className="inline-flex items-center gap-2 rounded-pill border border-line bg-surface-sunken px-3 py-1.5 text-meta font-semibold text-primary"
           >
             <Sparkles aria-hidden="true" className="size-3.5 text-primary" />
             Your neighbourhood, now searchable
-          </p>
-
-          <h1 data-animate className="mt-6 text-display text-balance text-ink">
-            Your local market,
-            <span className="text-primary gradient-text"> lit up.</span>
           </h1>
 
-          <p
-            data-animate
-            className="mx-auto mt-5 max-w-xl text-pretty text-body text-ink-muted sm:text-[1.0625rem] lg:mx-0"
-          >
-            Search any everyday item and see which kirana stores near you actually stock it
-            today, with each shop&apos;s own price side by side. Then simply walk in.
-          </p>
+          <div className="mt-8 grid gap-6 text-left lg:grid-cols-2 lg:gap-6">
+            {/* Card 1 -- find products */}
+            <article
+              data-animate
+              className="relative flex flex-col overflow-hidden rounded-panel border border-line bg-primary-soft p-6 shadow-float sm:p-8"
+            >
+              <h2 className="text-heading text-ink text-balance">Know where to buy.</h2>
+              <p className="mt-3 text-body text-ink-soft">
+                Search everyday items and instantly see which nearby kirana stores have them.
+              </p>
 
-          <div data-animate className="mx-auto mt-7 max-w-xl lg:mx-0">
-            <SearchBar size="lg" showSubmit={false} placeholder={`Search for ${SEARCH_TERMS[termIdx]}...`} onSubmit={(term) => navigate(term ? `/search?q=${encodeURIComponent(term)}` : "/search")} className="border border-line bg-white shadow-float" />
-            <div className="mt-4 flex flex-wrap justify-center gap-2 lg:justify-start">
-              {["Milk", "Chips", "Atta", "Cold drinks"].map((item) => <button key={item} type="button" onClick={() => navigate(`/search?q=${item}`)} className="rounded-pill border border-line bg-surface px-3 py-1.5 text-meta font-semibold text-ink-muted transition hover:-translate-y-0.5 hover:bg-primary-soft hover:text-primary hover:border-primary/30">{item}</button>)}
-            </div>
-          </div>
+              <PointList points={PRODUCT_POINTS} />
 
-          <ul
-            data-animate
-            className="mt-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-2.5 lg:justify-start"
-          >
-            {PROMISES.map(({ icon: Icon, label }) => (
-              <li key={label} className="inline-flex items-center gap-2 text-meta text-ink-muted">
-                <Icon className="size-4 text-primary" aria-hidden="true" />
-                {label}
-              </li>
-            ))}
-          </ul>
-          
-          <div className="mt-4 inline-flex items-center gap-2 rounded-pill border border-line bg-surface-sunken px-4 py-2 text-sm">
-            <span className="size-2 rounded-full bg-green-500 live-dot" />
-            <span className="text-ink-muted"><strong className="text-ink">{stats?.listings ?? 0}</strong> live listings right now</span>
-          </div>
+              <Button as={Link} to="/search" className="mt-6 self-start">
+                Search nearby products
+                <ArrowRight className="size-4" aria-hidden="true" />
+              </Button>
 
-          </div>
-          <div data-animate className="relative mx-auto w-full max-w-sm lg:max-w-none">
-            <div className="shine-sweep hologram relative rounded-panel border border-line bg-gradient-to-br from-white to-slate-50 p-6 shadow-float sm:p-8">
-              <span className="inline-flex items-center gap-1.5 rounded-pill bg-primary-soft text-primary px-3 py-1.5 text-meta font-bold"><Zap className="size-3.5 fill-current" /> LOCAL DROP</span>
-              <p className="mt-8 text-4xl font-bold tracking-tight text-ink">Find it.<br />Walk in. <span className="text-primary">Win the day.</span></p>
-              <div className="mt-8 flex items-center justify-between rounded-card bg-surface-sunken p-3 border border-line"><span className="inline-flex size-11 items-center justify-center rounded-control bg-primary text-white"><Search className="size-5" /></span><span className="text-meta font-semibold text-ink-muted">{stats?.products ?? 0}+ everyday finds</span><ArrowRight className="size-5 text-ink-muted" /></div>
-            </div>
+              
+            </article>
+
+            {/* Card 2 -- compare stores */}
+            <article
+              data-animate
+              className="relative flex flex-col overflow-hidden rounded-panel border border-line bg-accent-soft p-6 shadow-float sm:p-8"
+            >
+              <h2 className="text-heading text-ink text-balance">Compare before you go.</h2>
+              <p className="mt-3 text-body text-ink-soft">
+                See local prices, discover store options, and choose the best nearby match.
+              </p>
+
+              <PointList points={STORE_POINTS} />
+
+              <Button as={Link} to="/stores" className="mt-6 self-start">
+                Explore nearby stores
+                <ArrowRight className="size-4" aria-hidden="true" />
+              </Button>
+
+
+            </article>
           </div>
         </div>
       </Container>

@@ -49,14 +49,52 @@ function withVariantSummary(product) {
   };
 }
 
+/**
+ * One representative product image per category, for the home page's
+ * image-first category tiles. `categories.image_url` is never populated
+ * today (confirmed against the seed data), so this is the honest fallback
+ * the design calls for: a real photo of something actually in that
+ * category, never a fabricated or hot-linked asset. Two small columns
+ * (`category_id`, `image_url`) across the whole catalogue is a cheap
+ * query at this data size -- the first non-null image per category is
+ * kept, everything else is discarded client-side.
+ */
+async function sampleImagesByCategory(client, categoryIds) {
+  if (categoryIds.length === 0) return new Map();
+
+  const { data, error } = await client
+    .from("products")
+    .select("category_id, image_url")
+    .in("category_id", categoryIds)
+    .not("image_url", "is", null)
+    .order("category_id", { ascending: true });
+
+  if (error) throw failed("category sample image lookup", error);
+
+  const byCategory = new Map();
+  for (const row of data ?? []) {
+    if (!byCategory.has(row.category_id)) byCategory.set(row.category_id, row.image_url);
+  }
+  return byCategory;
+}
+
 export async function listCategories() {
-  const { data, error } = await getPublicClient()
+  const client = getPublicClient();
+  const { data, error } = await client
     .from("categories")
     .select("id, name, slug, description, image_url")
     .order("name", { ascending: true });
 
   if (error) throw failed("category lookup", error);
-  return data;
+
+  const sampleImages = await sampleImagesByCategory(client, data.map((category) => category.id));
+
+  // Additive only: every existing consumer of `image_url` keeps working
+  // unchanged. `sample_image_url` is the new field the category tiles read.
+  return data.map((category) => ({
+    ...category,
+    sample_image_url: category.image_url ?? sampleImages.get(category.id) ?? null,
+  }));
 }
 
 export async function listBrands() {

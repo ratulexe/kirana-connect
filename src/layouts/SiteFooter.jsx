@@ -77,8 +77,8 @@ export default function SiteFooter() {
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
           {/* Brand col */}
           <div>
-            <p className="text-[1.1rem] font-black tracking-tight text-ink">
-              Kirana <span className="gradient-text">Connect</span>
+            <p className="font-brand text-[1.75rem] leading-none font-normal text-ink">
+              Kirana <span className="text-primary">Connect</span>
             </p>
             <p className="mt-3 max-w-xs text-sm text-ink-muted leading-relaxed">
               Find what your neighbourhood shops actually have on the shelf, and what they charge for it.

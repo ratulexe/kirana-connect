@@ -57,9 +57,6 @@ export default function DealOfTheDay() {
                       <Package className="size-20 text-white/40" aria-hidden="true" />
                     )}
                   </div>
-                  <div className="float-orbit absolute -right-4 -top-4 size-16 rounded-2xl bg-[#ffd45e] flex items-center justify-center">
-                    <span className="text-xs font-black text-[#1a0f4f] text-center leading-tight">{offPercentage}%<br />OFF</span>
-                  </div>
                   <div aria-hidden className="absolute inset-0 rounded-full animate-spin-slow border-2 border-dashed border-white/10" />
                 </div>
               </div>
