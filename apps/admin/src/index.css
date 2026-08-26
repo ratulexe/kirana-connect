@@ -2,6 +2,7 @@
 
 @theme {
   --font-sans: "Parkinsans", system-ui, sans-serif;
+  --font-brand: "Birthstone", cursive;
 
   --color-canvas: #f4f0ff;
   --color-surface: #ffffff;

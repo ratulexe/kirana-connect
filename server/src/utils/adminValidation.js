@@ -250,7 +250,7 @@ export function validateBusinessCategoryUpdate(body) {
 export function validateBrandCreate(body) {
   requireObject(body);
   return {
-    name: cleanString(body.name, "name", { required: true, max: TEXT_LIMITS.name }),
+    name: normalizeProductName(cleanString(body.name, "name", { required: true, max: TEXT_LIMITS.name })),
     logo_url: optionalUrl(body.logo_url, "logo_url"),
   };
 }
@@ -259,7 +259,7 @@ export function validateBrandUpdate(body) {
   requireObject(body);
   const patch = {};
   if (body.name !== undefined) {
-    patch.name = cleanString(body.name, "name", { required: true, max: TEXT_LIMITS.name });
+    patch.name = normalizeProductName(cleanString(body.name, "name", { required: true, max: TEXT_LIMITS.name }));
   }
   if (body.logo_url !== undefined) patch.logo_url = optionalUrl(body.logo_url, "logo_url");
   return requireAtLeastOne(patch);

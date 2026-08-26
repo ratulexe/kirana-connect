@@ -12,6 +12,7 @@ import ProductMediaSection from "../components/ProductMediaSection.jsx";
 import {
   useBrands,
   useCategories,
+  useCreateBrand,
   useCreateProduct,
   useProduct,
   useProducts,
@@ -208,6 +209,7 @@ export default function ProductForm({ mode }) {
   const product = useProduct(isEdit ? productId : null);
   const categories = useCategories();
   const brands = useBrands();
+  const createBrand = useCreateBrand();
   const create = useCreateProduct();
   const update = useUpdateProduct();
   const uploadImage = useUploadProductImage();
@@ -492,6 +494,8 @@ export default function ProductForm({ mode }) {
                   placeholder="Search brands..."
                   emptyLabel="No brand"
                   invalid={Boolean(errors.brand_id)}
+                  createLabel="brand"
+                  onCreate={(name) => createBrand.mutateAsync({ name, logo_url: null }).then((r) => r.data)}
                 />
               )}
             </Field>
