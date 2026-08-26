@@ -14,11 +14,29 @@ import { getExpiryStatus } from "../utils/expiryStatus.js";
 const STORE_FIELDS = `
   id, name, slug, description, phone,
   address_line_1, address_line_2, locality, city, state, postal_code,
-  latitude, longitude
+  latitude, longitude,
+  business_category_links:store_business_categories (
+    is_primary,
+    business_category:business_categories (id, name, slug)
+  )
 `;
 
 function failed(operation, error) {
   return httpError(502, `Supabase ${operation} failed: ${error.message}`);
+}
+
+/**
+ * Reshapes the raw store_business_categories embed into the clean public
+ * shape: primary_business_category (or null) and the full business_categories
+ * list. A store nobody has classified yet returns null/[] here, never a
+ * fabricated default -- that is a valid, permanent "Unclassified" state.
+ */
+function shapeBusinessCategories(store) {
+  if (!store) return store;
+  const { business_category_links: links, ...rest } = store;
+  const categories = (links ?? []).map((link) => link.business_category).filter(Boolean);
+  const primary = (links ?? []).find((link) => link.is_primary)?.business_category ?? null;
+  return { ...rest, business_categories: categories, primary_business_category: primary };
 }
 
 function applyBoundingBox(query, column, location) {
@@ -72,7 +90,7 @@ export async function findNearbyStores({ location, limit, offset }) {
   const { data, error } = await query.order("name", { ascending: true });
   if (error) throw failed("nearby store lookup", error);
 
-  const stores = withDistance(data, location);
+  const stores = withDistance((data ?? []).map(shapeBusinessCategories), location);
 
   if (location) {
     stores.sort((a, b) => a.distance_km - b.distance_km);
@@ -210,6 +228,8 @@ export async function getStoreBySlug(slug) {
   if (error) throw failed("store lookup", error);
   if (!store) throw notFoundError(`No store found with slug "${slug}"`);
 
+  const shapedStore = shapeBusinessCategories(store);
+
   const { data: hours, error: hoursError } = await client
     .from("store_hours")
     .select("day_of_week, opens_at, closes_at, is_closed")
@@ -218,7 +238,7 @@ export async function getStoreBySlug(slug) {
 
   if (hoursError) throw failed("store hours lookup", hoursError);
 
-  return { ...store, hours };
+  return { ...shapedStore, hours };
 }
 
 /**
@@ -261,8 +281,9 @@ export async function findStoresStockingProduct({ slug, variantId, location, sor
   if (error) throw failed("store product lookup", error);
 
   const mrp = Number(variant.mrp);
+  const shapedRows = (data ?? []).map((row) => ({ ...row, store: shapeBusinessCategories(row.store) }));
 
-  const offers = withDistance(data, location, (row) => row.store, { dropOutOfRadius: !highlightStoreSlug })
+  const offers = withDistance(shapedRows, location, (row) => row.store, { dropOutOfRadius: !highlightStoreSlug })
     .filter((row) => {
       if (!location || !highlightStoreSlug) return true;
       return row.store?.slug === highlightStoreSlug || row.distance_km <= location.radiusKm;

@@ -113,17 +113,25 @@ export async function listProductsByIds(ids) {
 
 /**
  * Whether each product has a store within the customer's radius that lists
- * it. A second query scoped to just this page's product ids, not a join on
- * the main listing query, so pagination and the count total stay unaffected
- * by location.
+ * it, plus how many distinct stores that covers in total. One query scoped
+ * to just this page's product ids, not a join on the main listing query, so
+ * pagination and the count total stay unaffected by location -- the distinct
+ * store count is read off this same query rather than a second one, since
+ * search-event instrumentation needs it too and must not add its own query.
+ *
+ * nearbyStoreCount is null when there is no location -- the figure is then
+ * genuinely unknown -- but 0 when there is a location and simply no matching
+ * products to check: zero products can never be stocked by any store, so
+ * that is a real, calculable zero, not an unknown.
  */
 async function attachNearbyAvailability(products, location) {
-  if (!location || products.length === 0) return products;
+  if (!location) return { products, nearbyStoreCount: null };
+  if (products.length === 0) return { products, nearbyStoreCount: 0 };
 
   const box = boundingBox(location.lat, location.lng, location.radiusKm);
   const { data, error } = await getPublicClient()
     .from("store_products")
-    .select("product_id, store:stores!inner(latitude, longitude)")
+    .select("product_id, store:stores!inner(id, latitude, longitude)")
     .in("product_id", products.map((product) => product.id))
     .gte("store.latitude", box.minLat)
     .lte("store.latitude", box.maxLat)
@@ -133,13 +141,20 @@ async function attachNearbyAvailability(products, location) {
   if (error) throw failed("nearby availability lookup", error);
 
   const nearbyProductIds = new Set();
+  const nearbyStoreIds = new Set();
   for (const row of data ?? []) {
     if (!row.store) continue;
     const distance = haversineKm(location.lat, location.lng, Number(row.store.latitude), Number(row.store.longitude));
-    if (distance <= location.radiusKm) nearbyProductIds.add(row.product_id);
+    if (distance <= location.radiusKm) {
+      nearbyProductIds.add(row.product_id);
+      nearbyStoreIds.add(row.store.id);
+    }
   }
 
-  return products.map((product) => ({ ...product, available_nearby: nearbyProductIds.has(product.id) }));
+  return {
+    products: products.map((product) => ({ ...product, available_nearby: nearbyProductIds.has(product.id) })),
+    nearbyStoreCount: nearbyStoreIds.size,
+  };
 }
 
 /**
@@ -176,14 +191,16 @@ export async function listProducts({
       return {
         products: [],
         total: await countProducts({ search, categorySlug, brandSlug, storeId, availableOnly }),
+        nearbyStoreCount: null,
       };
     }
     throw failed("product search", error);
   }
 
   const products = (data ?? []).map(({ store_products: _storeProducts, ...product }) => withVariantSummary(product));
+  const annotated = await attachNearbyAvailability(products, location);
 
-  return { products: await attachNearbyAvailability(products, location), total: count ?? 0 };
+  return { products: annotated.products, total: count ?? 0, nearbyStoreCount: annotated.nearbyStoreCount };
 }
 
 export async function getProductBySlug(slug) {

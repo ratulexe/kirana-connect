@@ -24,16 +24,30 @@ import {
   updateStoreState,
   uploadProductImage,
   resolveProductImageInput,
+  setStoreBusinessCategoriesAsAdmin,
 } from "../services/admin.service.js";
+import {
+  listAllBusinessCategories,
+  createBusinessCategory,
+  updateBusinessCategory,
+  listProductCategoryMappings,
+  replaceProductCategoryMappings,
+} from "../services/businessCategories.service.js";
 import {
   validateAdminStorePatch,
   validateBrandCreate,
   validateBrandUpdate,
+  validateBusinessCategoryCreate,
+  validateBusinessCategoryUpdate,
   validateCategoryCreate,
   validateCategoryUpdate,
   validateProductCreate,
   validateProductUpdate,
 } from "../utils/adminValidation.js";
+import {
+  validateStoreBusinessCategoriesUpdate,
+  validateProductCategoryMappingUpdate,
+} from "../utils/validateBusinessCategories.js";
 import { badRequest } from "../utils/httpError.js";
 import { optionalString, parsePagination } from "../utils/queryParams.js";
 import { uuidField } from "../utils/validateInventory.js";
@@ -216,6 +230,48 @@ export async function patchCategory(req, res) {
     uuidField(req.params.categoryId, "Category"),
     validateCategoryUpdate(req.body),
   );
+  res.status(200).json({ success: true, data });
+}
+
+export async function getBusinessCategories(req, res) {
+  const data = await listAllBusinessCategories();
+  res.status(200).json({ success: true, data });
+}
+
+export async function postBusinessCategory(req, res) {
+  const data = await createBusinessCategory(validateBusinessCategoryCreate(req.body));
+  res.status(201).json({ success: true, data });
+}
+
+export async function patchBusinessCategory(req, res) {
+  const data = await updateBusinessCategory(
+    uuidField(req.params.categoryId, "Business category"),
+    validateBusinessCategoryUpdate(req.body),
+  );
+  res.status(200).json({ success: true, data });
+}
+
+export async function getProductCategoryMappings(req, res) {
+  const data = await listProductCategoryMappings(uuidField(req.params.categoryId, "Business category"));
+  res.status(200).json({ success: true, data });
+}
+
+export async function putProductCategoryMappings(req, res) {
+  const productCategoryIds = validateProductCategoryMappingUpdate(req.body);
+  const data = await replaceProductCategoryMappings(
+    uuidField(req.params.categoryId, "Business category"),
+    productCategoryIds,
+  );
+  res.status(200).json({ success: true, data });
+}
+
+export async function putStoreBusinessCategoriesAdmin(req, res) {
+  const { categoryIds, primaryCategoryId } = validateStoreBusinessCategoriesUpdate(req.body);
+  const data = await setStoreBusinessCategoriesAsAdmin({
+    storeId: uuidField(req.params.storeId, "Store"),
+    categoryIds,
+    primaryCategoryId,
+  });
   res.status(200).json({ success: true, data });
 }
 

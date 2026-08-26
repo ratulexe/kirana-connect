@@ -14,13 +14,16 @@ import {
   getSellers,
   getStore,
   getStores,
+  getBusinessCategories,
   patchBrand, deleteBrandHandler,
+  patchBusinessCategory,
   patchCategory,
   patchProduct,
   patchStore,
   postApproveStore,
   postApproveStoreChange,
   postBrand,
+  postBusinessCategory,
   postCategory,
   postProductImage,
   postProduct,
@@ -28,6 +31,9 @@ import {
   postRejectStore,
   postRejectStoreChange,
   postResolveProductImage,
+  putStoreBusinessCategoriesAdmin,
+  getProductCategoryMappings,
+  putProductCategoryMappings,
 } from "../controllers/admin.controller.js";
 import { asyncHandler } from "../utils/httpError.js";
 
@@ -48,6 +54,7 @@ router.post("/stores/:storeId/approve", asyncHandler(postApproveStore));
 router.post("/stores/:storeId/reject", asyncHandler(postRejectStore));
 router.post("/store-changes/:changeId/approve", asyncHandler(postApproveStoreChange));
 router.post("/store-changes/:changeId/reject", asyncHandler(postRejectStoreChange));
+router.put("/stores/:storeId/business-categories", asyncHandler(putStoreBusinessCategoriesAdmin));
 
 router.get("/sellers", asyncHandler(getSellers));
 
@@ -67,6 +74,12 @@ router.delete("/products/:productId", asyncHandler(deleteProductHandler));
 router.get("/categories", asyncHandler(getCategories));
 router.post("/categories", asyncHandler(postCategory));
 router.patch("/categories/:categoryId", asyncHandler(patchCategory));
+
+router.get("/business-categories", asyncHandler(getBusinessCategories));
+router.post("/business-categories", asyncHandler(postBusinessCategory));
+router.patch("/business-categories/:categoryId", asyncHandler(patchBusinessCategory));
+router.get("/business-categories/:categoryId/product-category-mappings", asyncHandler(getProductCategoryMappings));
+router.put("/business-categories/:categoryId/product-category-mappings", asyncHandler(putProductCategoryMappings));
 
 router.get("/brands", asyncHandler(getBrands));
 router.post("/brands", asyncHandler(postBrand));

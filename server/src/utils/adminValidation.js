@@ -221,6 +221,32 @@ export function validateCategoryUpdate(body) {
   return requireAtLeastOne(patch);
 }
 
+export function validateBusinessCategoryCreate(body) {
+  requireObject(body);
+  return {
+    name: cleanString(body.name, "name", { required: true, max: TEXT_LIMITS.name }),
+    description: cleanString(body.description, "description", {
+      max: TEXT_LIMITS.description,
+    }),
+  };
+}
+
+export function validateBusinessCategoryUpdate(body) {
+  requireObject(body);
+  const patch = {};
+  if (body.name !== undefined) {
+    patch.name = cleanString(body.name, "name", { required: true, max: TEXT_LIMITS.name });
+  }
+  if (body.description !== undefined) {
+    patch.description = cleanString(body.description, "description", {
+      max: TEXT_LIMITS.description,
+    });
+  }
+  const isActive = optionalBoolean(body.is_active, "is_active");
+  if (isActive !== undefined) patch.is_active = isActive;
+  return requireAtLeastOne(patch);
+}
+
 export function validateBrandCreate(body) {
   requireObject(body);
   return {

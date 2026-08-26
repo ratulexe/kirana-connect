@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { LocateFixed, MapPin, PackageSearch, SearchX, Store } from "lucide-react";
 import Container from "../../components/common/Container.jsx";
@@ -9,6 +10,7 @@ import { useNearbyStores, useProductSearch } from "../../hooks/useDiscovery.js";
 import { useCategories } from "../../hooks/useCategories.js";
 import { useLocationStore } from "../../store/locationStore.js";
 import { formatDistance } from "../../utils/format.js";
+import { recordConsumerSearchEvent } from "../../services/searchEvents.js";
 
 const PAGE_SIZE = 24;
 
@@ -190,7 +192,48 @@ export default function SearchResults() {
 
   const products = data?.products ?? [];
   const total = data?.meta?.total ?? 0;
+  const nearbyStoreCount = data?.meta?.nearby_store_count ?? null;
   const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  // One intentional completed search -> one search event, no more, no less.
+  // Keyed on the trimmed search text only, not on category/brand/store/page,
+  // so changing a filter or turning a page on the same search text never
+  // logs again. The ref survives React StrictMode's dev-only double effect
+  // invocation (same component instance, not a real remount), so the second
+  // invocation always finds loggedSearchRef already set and skips -- the same
+  // pattern ScrollToTop.jsx uses for its own once-per-value guard. Clearing
+  // the ref when the query goes empty means a later re-search of the exact
+  // same term is correctly treated as a new event rather than suppressed.
+  const loggedSearchRef = useRef(null);
+  useEffect(() => {
+    const trimmed = search.trim();
+    if (!trimmed) {
+      loggedSearchRef.current = null;
+      return;
+    }
+    // isPlaceholderData means `data` is still the PREVIOUS query's result
+    // shown while this one loads -- waiting it out avoids logging a new
+    // search's event using the old search's total/products.
+    if (isPending || isError || isPlaceholderData) return;
+    if (loggedSearchRef.current === trimmed) return;
+    loggedSearchRef.current = trimmed;
+
+    // Only link a product/category when the search unambiguously resolved to
+    // exactly one catalogue product -- never guessed from free text.
+    const singleMatch = total === 1 && products.length === 1 ? products[0] : null;
+
+    recordConsumerSearchEvent({
+      search_query: trimmed,
+      result_count: total,
+      available_store_count: location ? nearbyStoreCount : null,
+      radius_km: location ? radiusKm : null,
+      lat: location?.lat ?? null,
+      lng: location?.lng ?? null,
+      product_id: singleMatch?.id ?? null,
+      category_id: singleMatch?.category?.id ?? null,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, isPending, isError, isPlaceholderData, data]);
 
   return (
     <Container className="py-8 sm:py-12">

@@ -25,6 +25,7 @@ import {
   useOnboardingStatus,
   useSubmitStoreChange,
 } from "../features/onboarding/useOnboarding.js";
+import BusinessCategoryPanel from "../features/businessCategories/BusinessCategoryPanel.jsx";
 
 const EDIT_STEPS = ["Owner", "Store", "Address", "Hours", "Review"];
 
@@ -356,6 +357,16 @@ export default function StoreDetails() {
             ))}
           </div>
         </Card>
+
+        {isApproved ? (
+          <div className="mt-4">
+            <BusinessCategoryPanel
+              storeId={store.id}
+              primaryBusinessCategory={store.primary_business_category}
+              businessCategories={store.business_categories}
+            />
+          </div>
+        ) : null}
       </div>
     </Container>
   );

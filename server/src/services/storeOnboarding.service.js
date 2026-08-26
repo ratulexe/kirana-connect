@@ -6,6 +6,7 @@ import {
   memoryPendingChangeByStoreId,
   upsertMemoryStoreChange,
 } from "./storeChangeRequests.memory.js";
+import { fetchBusinessCategoriesForStores, setOwnStoreBusinessCategories } from "./businessCategories.service.js";
 
 /**
  * Store onboarding.
@@ -135,16 +136,30 @@ async function pendingChangesByStoreIds(client, storeIds) {
 }
 
 async function withStoreReviewState(client, stores) {
-  const [hours, pendingChanges] = await Promise.all([
-    Promise.all((stores ?? []).map((store) => fetchStoreHours(client, store.id))),
-    pendingChangesByStoreIds(client, (stores ?? []).map((store) => store.id)),
+  const storeIds = (stores ?? []).map((store) => store.id);
+  const [hours, pendingChanges, businessCategories] = await Promise.all([
+    Promise.all(storeIds.map((id) => fetchStoreHours(client, id))),
+    pendingChangesByStoreIds(client, storeIds),
+    fetchBusinessCategoriesForStores(client, storeIds),
   ]);
 
   return (stores ?? []).map((store, index) => ({
     ...store,
     hours: hours[index] ?? [],
     pending_change: pendingChanges.get(store.id) ?? null,
+    ...(businessCategories.get(store.id) ?? { primary_business_category: null, business_categories: [] }),
   }));
+}
+
+/**
+ * Sets the authenticated owner's store business categories. Immediate
+ * effect, unlike the change-request flow submitStoreChangeRequest uses for
+ * name/address/hours: classification is not a public-trust fact that needs
+ * admin review before it takes effect, it is the same kind of owner-direct
+ * data as inventory or opening hours.
+ */
+export async function updateOwnStoreBusinessCategories({ userId, storeId, categoryIds, primaryCategoryId }) {
+  return setOwnStoreBusinessCategories({ userId, storeId, categoryIds, primaryCategoryId });
 }
 
 /**

@@ -10,6 +10,7 @@ import Sellers from "../pages/Sellers.jsx";
 import Products from "../pages/Products.jsx";
 import ProductForm from "../pages/ProductForm.jsx";
 import Categories from "../pages/Categories.jsx";
+import BusinessCategories from "../pages/BusinessCategories.jsx";
 import Brands from "../pages/Brands.jsx";
 import NotFound from "../pages/NotFound.jsx";
 
@@ -29,6 +30,7 @@ export default function AppRoutes() {
           <Route path="products/new" element={<ProductForm mode="create" />} />
           <Route path="products/:productId/edit" element={<ProductForm mode="edit" />} />
           <Route path="categories" element={<Categories />} />
+          <Route path="business-categories" element={<BusinessCategories />} />
           <Route path="brands" element={<Brands />} />
           <Route path="*" element={<NotFound />} />
         </Route>

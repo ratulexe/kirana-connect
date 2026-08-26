@@ -8,6 +8,7 @@ import {
   LogOut,
   Menu,
   Package,
+  Store,
   Tags,
   Users,
   X,
@@ -26,6 +27,7 @@ const NAV = [
   { to: "/sellers", label: "Sellers", icon: Users },
   { to: "/products", label: "Products", icon: Package },
   { to: "/categories", label: "Categories", icon: FolderTree },
+  { to: "/business-categories", label: "Business Categories", icon: Store },
   { to: "/brands", label: "Brands", icon: Tags },
 ];
 

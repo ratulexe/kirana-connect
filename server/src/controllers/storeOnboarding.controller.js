@@ -2,9 +2,11 @@ import {
   getOnboardingStatus,
   createStoreApplication,
   submitStoreChangeRequest,
+  updateOwnStoreBusinessCategories,
 } from "../services/storeOnboarding.service.js";
 import { geocodeIndianAddress } from "../services/geocoding.service.js";
 import { validateStoreRegistration } from "../utils/validateStoreRegistration.js";
+import { validateStoreBusinessCategoriesUpdate } from "../utils/validateBusinessCategories.js";
 import { optionalString } from "../utils/queryParams.js";
 import { uuidField } from "../utils/validateInventory.js";
 
@@ -52,4 +54,17 @@ export async function submitStoreChange(req, res) {
   });
 
   res.status(202).json({ success: true, data });
+}
+
+export async function putStoreBusinessCategories(req, res) {
+  const { categoryIds, primaryCategoryId } = validateStoreBusinessCategoriesUpdate(req.body);
+
+  const data = await updateOwnStoreBusinessCategories({
+    userId: req.user.id,
+    storeId: uuidField(req.params.storeId, "Store"),
+    categoryIds,
+    primaryCategoryId,
+  });
+
+  res.status(200).json({ success: true, data });
 }

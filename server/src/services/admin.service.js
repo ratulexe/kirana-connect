@@ -18,6 +18,7 @@ import {
   memoryPendingChangeCount,
   memoryPendingChanges,
 } from "./storeChangeRequests.memory.js";
+import { fetchStoreBusinessCategories, adminSetStoreBusinessCategories } from "./businessCategories.service.js";
 
 const STORE_FIELDS = `
   id, owner_id, name, slug, description, phone,
@@ -468,10 +469,20 @@ async function pendingChangeByStoreId(storeId) {
 async function storeWithDetails(store) {
   const [owned] = await withOwners([store]);
   const [detailed] = await withHours([owned]);
+  const [pendingChange, businessCategories] = await Promise.all([
+    pendingChangeByStoreId(store.id),
+    fetchStoreBusinessCategories(getServiceClient(), store.id),
+  ]);
   return {
     ...detailed,
-    pending_change: await pendingChangeByStoreId(store.id),
+    pending_change: pendingChange,
+    ...businessCategories,
   };
+}
+
+/** Admin override: classify or reclassify any store, no ownership check. */
+export async function setStoreBusinessCategoriesAsAdmin({ storeId, categoryIds, primaryCategoryId }) {
+  return adminSetStoreBusinessCategories({ storeId, categoryIds, primaryCategoryId });
 }
 
 function storePatchFromPayload(payload) {

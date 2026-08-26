@@ -32,3 +32,12 @@ dist-ssr
 server/.env
 !.env.example
 !server/.env.example
+
+# Claude Code local tooling: launch.json is fine to keep, but a worktree
+# created by an agent run is a second full checkout with its own branch --
+# never something that belongs inside a commit to this repo.
+.claude/
+
+# Supabase CLI local project cache -- regenerated on every `supabase` command,
+# machine-specific, never meant to be committed.
+supabase/.temp/

@@ -121,7 +121,6 @@ export default function SiteFooter() {
                 </a>
               </li>
               <li><span className="text-sm text-ink-muted/60">How it works for sellers</span></li>
-              <li><span className="text-sm text-ink-muted/60">Pricing & plans</span></li>
             </ul>
 
             {/* Newsletter */}

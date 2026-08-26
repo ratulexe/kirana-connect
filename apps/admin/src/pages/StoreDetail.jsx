@@ -13,6 +13,7 @@ import {
   useStore,
   useUpdateStore,
 } from "../features/admin/useAdmin.js";
+import BusinessCategoryAssignment from "../features/admin/BusinessCategoryAssignment.jsx";
 import { formatDate } from "../utils/format.js";
 
 const DAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -187,6 +188,14 @@ export default function StoreDetail() {
           ))}
         </div>
       </Card>
+
+      <div className="mt-4">
+        <BusinessCategoryAssignment
+          storeId={data.id}
+          primaryBusinessCategory={data.primary_business_category}
+          businessCategories={data.business_categories}
+        />
+      </div>
 
       {pendingChange ? (
         <Card className="mt-4 p-5">

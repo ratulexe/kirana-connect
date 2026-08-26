@@ -85,6 +85,12 @@ export const categorySchema = z.object({
   is_active: z.boolean(),
 });
 
+export const businessCategorySchema = z.object({
+  name: z.string().trim().min(2, "Enter a business category name").max(120, "Name is too long"),
+  description: optionalText(500),
+  is_active: z.boolean(),
+});
+
 export const brandSchema = z.object({
   name: z.string().trim().min(2, "Enter a brand name").max(120, "Name is too long"),
   logo_url: optionalUrl,
