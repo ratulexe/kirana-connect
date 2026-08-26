@@ -8,6 +8,7 @@ import {
   normalizeProductIdentity,
   normalizeUnitCode,
   removePlaceholderPieceVariants,
+  sizeRank,
 } from "../utils/productUnits.js";
 import { resolveImageUrl } from "./imageResolver.service.js";
 import {
@@ -39,7 +40,7 @@ const PRODUCT_FIELDS = `
   category:categories (id, name, slug),
   brand:brands (id, name, slug, logo_url),
   variants:product_variants (
-    id, product_id, quantity, unit_code, unit_label, mrp, barcode, image_url,
+    id, product_id, quantity, unit_code, unit_label, size_label, color, mrp, barcode, image_url,
     is_active, created_at, updated_at
   )
 `;
@@ -95,6 +96,9 @@ function textValue(value) {
 
 function variantSort(a, b) {
   if (a.is_active !== b.is_active) return a.is_active ? -1 : 1;
+  const rankA = sizeRank(a.size_label);
+  const rankB = sizeRank(b.size_label);
+  if (rankA !== null && rankB !== null && rankA !== rankB) return rankA - rankB;
   if (a.created_at && b.created_at && a.created_at !== b.created_at) {
     return new Date(a.created_at) - new Date(b.created_at);
   }
@@ -239,7 +243,12 @@ async function variantRows(productId, variants) {
       product_id: productId,
       quantity: variant.quantity,
       unit_code: variant.unit_code,
+      // The DB trigger (set_product_variant_unit_label) recomputes this on
+      // every insert/update from quantity+unit_code, or from size_label/color
+      // when present -- what's sent here is only ever a starting value.
       unit_label: formatUnitLabel(variant.quantity, variant.unit_code),
+      size_label: variant.size_label ?? null,
+      color: variant.color ?? null,
       mrp: variant.mrp,
       barcode: textValue(variant.barcode),
       image_url: await resolvedImageUrl(variant.image_url),

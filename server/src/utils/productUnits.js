@@ -86,6 +86,20 @@ export function removePlaceholderPieceVariants(variants) {
   return hasMeasuredSize ? rows.filter((variant) => !isPlaceholderPieceVariant(variant)) : rows;
 }
 
+// Two independent size scales (apparel, furniture) sharing one rank space is
+// fine -- variants are only ever sorted within a single product, which uses
+// exactly one category's vocabulary, so the scales never get compared against
+// each other.
+const SIZE_RANK = new Map(
+  ["xs", "s", "m", "l", "xl", "xxl", "xxxl", "small", "medium", "large"].map((label, index) => [label, index]),
+);
+
+export function sizeRank(label) {
+  if (!label) return null;
+  const rank = SIZE_RANK.get(String(label).trim().toLowerCase());
+  return rank === undefined ? null : rank;
+}
+
 export function normalizeProductIdentity(value) {
   return String(value ?? "")
     .trim()
