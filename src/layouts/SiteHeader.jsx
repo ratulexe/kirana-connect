@@ -132,7 +132,7 @@ export default function SiteHeader() {
       </div>
 
       {/* Main header */}
-      <div className="border-b border-white/40 bg-white/85 shadow-[0_6px_24px_rgba(49,36,118,.05)] backdrop-blur-2xl">
+      <div className="relative z-10 border-b border-white/40 bg-white/85 shadow-[0_6px_24px_rgba(49,36,118,.05)] backdrop-blur-2xl">
         <Container>
           <div className="flex h-14 items-center gap-3 lg:h-16 lg:gap-6">
             <Wordmark />

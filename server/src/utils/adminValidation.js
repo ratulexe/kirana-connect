@@ -11,6 +11,8 @@ const TEXT_LIMITS = {
   barcode: 120,
   unit_label: 60,
   unit_code: 24,
+  size_label: 20,
+  color: 60,
 };
 
 function requireObject(body) {
@@ -103,10 +105,23 @@ function validateVariant(value, index, { existing = false, productId } = {}) {
   }
   const quantity = positiveQuantity(value.quantity, `Variant ${index + 1} quantity`);
   const code = unitCode(value.unit_code);
+  // Sized categories (Fashion, Furniture) replace the quantity+unit label
+  // with a size (and optional color) picked from the category's own list --
+  // see apps/admin/src/features/admin/variantConfig.js for the source of
+  // truth on which categories use this and what their choices are. The
+  // server doesn't re-validate against that specific list (it's UI-driven,
+  // not a security boundary); it just stores whatever non-blank size/color
+  // text arrives and lets it own the display label.
+  const sizeLabel =
+    cleanString(value.size_label, `Variant ${index + 1} size`, { max: TEXT_LIMITS.size_label }) || null;
+  const colorRaw = cleanString(value.color, `Variant ${index + 1} color`, { max: TEXT_LIMITS.color });
+  const color = colorRaw ? normalizeProductName(colorRaw) : null;
   const variant = {
     quantity,
     unit_code: code,
-    unit_label: formatUnitLabel(quantity, code),
+    size_label: sizeLabel,
+    color,
+    unit_label: sizeLabel ? sizeLabel + (color ? ` - ${color}` : "") : formatUnitLabel(quantity, code),
     mrp: money(value.mrp, `Variant ${index + 1} MRP`),
     barcode: cleanString(value.barcode, `Variant ${index + 1} barcode`, { max: TEXT_LIMITS.barcode }),
     image_url: optionalUrl(value.image_url, "image_url"),
@@ -129,7 +144,10 @@ function validateVariants(value, { existing = false, productId } = {}) {
   const seen = new Set();
   const barcodes = new Set();
   for (const variant of variants) {
-    const key = `${variant.quantity}:${variant.unit_code}`;
+    // Includes size/color: two Fashion variants both default to 1 pc, so
+    // quantity+unit alone would falsely flag every second size as a
+    // duplicate of the first.
+    const key = `${variant.quantity}:${variant.unit_code}:${(variant.size_label ?? "").toLowerCase()}:${(variant.color ?? "").toLowerCase()}`;
     if (seen.has(key)) throw badRequest(`${variant.unit_label} is already listed for this product.`);
     seen.add(key);
 
@@ -221,10 +239,36 @@ export function validateCategoryUpdate(body) {
   return requireAtLeastOne(patch);
 }
 
-export function validateBrandCreate(body) {
+export function validateBusinessCategoryCreate(body) {
   requireObject(body);
   return {
     name: cleanString(body.name, "name", { required: true, max: TEXT_LIMITS.name }),
+    description: cleanString(body.description, "description", {
+      max: TEXT_LIMITS.description,
+    }),
+  };
+}
+
+export function validateBusinessCategoryUpdate(body) {
+  requireObject(body);
+  const patch = {};
+  if (body.name !== undefined) {
+    patch.name = cleanString(body.name, "name", { required: true, max: TEXT_LIMITS.name });
+  }
+  if (body.description !== undefined) {
+    patch.description = cleanString(body.description, "description", {
+      max: TEXT_LIMITS.description,
+    });
+  }
+  const isActive = optionalBoolean(body.is_active, "is_active");
+  if (isActive !== undefined) patch.is_active = isActive;
+  return requireAtLeastOne(patch);
+}
+
+export function validateBrandCreate(body) {
+  requireObject(body);
+  return {
+    name: normalizeProductName(cleanString(body.name, "name", { required: true, max: TEXT_LIMITS.name })),
     logo_url: optionalUrl(body.logo_url, "logo_url"),
   };
 }
@@ -233,7 +277,7 @@ export function validateBrandUpdate(body) {
   requireObject(body);
   const patch = {};
   if (body.name !== undefined) {
-    patch.name = cleanString(body.name, "name", { required: true, max: TEXT_LIMITS.name });
+    patch.name = normalizeProductName(cleanString(body.name, "name", { required: true, max: TEXT_LIMITS.name }));
   }
   if (body.logo_url !== undefined) patch.logo_url = optionalUrl(body.logo_url, "logo_url");
   return requireAtLeastOne(patch);

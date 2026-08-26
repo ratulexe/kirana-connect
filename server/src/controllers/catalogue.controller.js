@@ -25,7 +25,7 @@ export async function getBrands(req, res) {
 export async function getProducts(req, res) {
   const { limit, offset } = parsePagination(req.query);
 
-  const { products, total } = await listProducts({
+  const { products, total, nearbyStoreCount } = await listProducts({
     search: optionalString(req.query.q, { field: "q" }),
     categorySlug: optionalString(req.query.category, { field: "category" }),
     brandSlug: optionalString(req.query.brand, { field: "brand" }),
@@ -39,7 +39,7 @@ export async function getProducts(req, res) {
   res.status(200).json({
     success: true,
     data: products,
-    meta: { total, limit, offset, returned: products.length },
+    meta: { total, limit, offset, returned: products.length, nearby_store_count: nearbyStoreCount },
   });
 }
 

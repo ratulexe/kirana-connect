@@ -15,6 +15,8 @@ export const adminKeys = {
   productMedia: (productId) => ["admin", "products", productId, "media"],
   categories: ["admin", "categories"],
   brands: ["admin", "brands"],
+  businessCategories: ["admin", "business-categories"],
+  productCategoryMappings: (categoryId) => ["admin", "business-categories", categoryId, "product-category-mappings"],
 };
 
 export function useAdminMe(options) {
@@ -105,6 +107,13 @@ export function useBrands() {
   });
 }
 
+export function useBusinessCategories() {
+  return useQuery({
+    queryKey: adminKeys.businessCategories,
+    queryFn: ({ signal }) => api.businessCategories({ signal }).then((r) => r.data),
+  });
+}
+
 function useAdminMutation(fn, invalidations) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -180,6 +189,38 @@ export const useCreateCategory = () =>
 
 export const useUpdateCategory = () =>
   useAdminMutation(({ id, body }) => api.updateCategory(id, body), [adminKeys.categories]);
+
+export const useCreateBusinessCategory = () =>
+  useAdminMutation((body) => api.createBusinessCategory(body), [adminKeys.businessCategories]);
+
+export const useUpdateBusinessCategory = () =>
+  useAdminMutation(({ id, body }) => api.updateBusinessCategory(id, body), [adminKeys.businessCategories]);
+
+export const useUpdateStoreBusinessCategories = () =>
+  useAdminMutation(({ storeId, categoryIds, primaryCategoryId }) =>
+    api.updateStoreBusinessCategories(storeId, {
+      category_ids: categoryIds,
+      primary_category_id: primaryCategoryId,
+    }), [adminKeys.dashboard, ["admin", "stores"]]);
+
+export function useProductCategoryMappings(categoryId) {
+  return useQuery({
+    queryKey: adminKeys.productCategoryMappings(categoryId),
+    queryFn: ({ signal }) => api.productCategoryMappings(categoryId, { signal }).then((r) => r.data),
+    enabled: Boolean(categoryId),
+  });
+}
+
+export const useUpdateProductCategoryMappings = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ categoryId, productCategoryIds }) =>
+      api.updateProductCategoryMappings(categoryId, productCategoryIds).then((r) => r.data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.productCategoryMappings(variables.categoryId) });
+    },
+  });
+};
 
 export const useCreateBrand = () =>
   useAdminMutation((body) => api.createBrand(body), [adminKeys.brands]);

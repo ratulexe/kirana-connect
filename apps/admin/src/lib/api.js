@@ -2,6 +2,15 @@ import { supabase } from "./supabase.js";
 
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000").replace(/\/$/, "");
 
+// A production build with no VITE_API_BASE_URL set would otherwise fail
+// silently -- every request would target an unreachable localhost with no
+// clue why. This is a diagnostic only; behaviour is unchanged.
+if (import.meta.env.PROD && !import.meta.env.VITE_API_BASE_URL) {
+  console.warn(
+    "[kirana-connect-admin] VITE_API_BASE_URL is not set in this production build -- API calls will target localhost:5000 and fail. Set it in the Vercel project's environment variables.",
+  );
+}
+
 export class ApiError extends Error {
   constructor(message, status, data) {
     super(message);
@@ -152,6 +161,19 @@ export const api = {
   categories: (options) => request("/categories", options),
   createCategory: (body) => request("/categories", { method: "POST", body }),
   updateCategory: (id, body) => request(`/categories/${id}`, { method: "PATCH", body }),
+
+  businessCategories: (options) => request("/business-categories", options),
+  createBusinessCategory: (body) => request("/business-categories", { method: "POST", body }),
+  updateBusinessCategory: (id, body) => request(`/business-categories/${id}`, { method: "PATCH", body }),
+  updateStoreBusinessCategories: (storeId, body) =>
+    request(`/stores/${storeId}/business-categories`, { method: "PUT", body }),
+  productCategoryMappings: (categoryId, options) =>
+    request(`/business-categories/${categoryId}/product-category-mappings`, options),
+  updateProductCategoryMappings: (categoryId, productCategoryIds) =>
+    request(`/business-categories/${categoryId}/product-category-mappings`, {
+      method: "PUT",
+      body: { product_category_ids: productCategoryIds },
+    }),
 
   brands: (options) => request("/brands", options),
   createBrand: (body) => request("/brands", { method: "POST", body }),

@@ -360,7 +360,7 @@ export default function LocationControl({ className, compact = false }) {
       {isOpen ? (
         <div
           className={cn(
-            "z-50 max-h-[80dvh] overflow-y-auto overflow-x-hidden rounded-card border border-line bg-surface p-4 shadow-float",
+            "z-[60] max-h-[80dvh] overflow-y-auto overflow-x-hidden rounded-card border border-line bg-surface p-4 shadow-float",
             compact
               ? "fixed top-16 right-3 left-3"
               : "absolute right-0 mt-2 w-[min(24rem,calc(100vw-2rem))]",

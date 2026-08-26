@@ -54,6 +54,10 @@ const variantSchema = z.object({
     z.coerce.number({ error: "Enter a quantity" }).positive("Quantity must be greater than zero"),
   ),
   unit_code: z.string().refine((value) => unitCodes.includes(value), "Choose a unit"),
+  // Sized categories (Fashion, Furniture) use these instead of quantity+unit
+  // for the visible label -- see apps/admin/src/features/admin/variantConfig.js.
+  size_label: optionalText(20),
+  color: optionalText(60),
   mrp: z.preprocess(
     (value) => (value === "" || value === null ? undefined : value),
     z.coerce.number({ error: "Enter MRP" }).positive("Enter MRP"),
@@ -82,6 +86,12 @@ export const categorySchema = z.object({
   name: z.string().trim().min(2, "Enter a category name").max(120, "Name is too long"),
   description: optionalText(500),
   image_url: optionalUrl,
+  is_active: z.boolean(),
+});
+
+export const businessCategorySchema = z.object({
+  name: z.string().trim().min(2, "Enter a business category name").max(120, "Name is too long"),
+  description: optionalText(500),
   is_active: z.boolean(),
 });
 

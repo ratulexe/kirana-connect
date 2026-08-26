@@ -15,10 +15,18 @@ supabase/
   README.md
   migrations/
     20260822102000_initial_schema.sql
+    20260825150000_business_categories.sql
   seed/
     01_catalogue.sql        categories, brands, canonical products
     02_demo_stores.sql      demo stores, hours and priced inventory
+    03_business_categories.sql   initial business-category taxonomy
 ```
+
+`business_categories` / `store_business_categories` classify what kind of
+business a store *is* (Grocery Store, Dairy Store, ...) -- separate from
+`categories`, which classifies what a *product* is (Dairy and Eggs,
+Beverages). A store's classification is never inferred from what it stocks;
+it stays unclassified until a store owner or admin sets it explicitly.
 
 The migration is a normal Supabase CLI migration and is also safe to paste into
 the Supabase SQL Editor. It is written to be idempotent: types are created

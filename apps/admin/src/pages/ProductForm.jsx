@@ -9,9 +9,11 @@ import Field, { SelectInput, TextInput } from "../components/Field.jsx";
 import SearchableSelect from "../components/SearchableSelect.jsx";
 import Skeleton from "../components/Skeleton.jsx";
 import ProductMediaSection from "../components/ProductMediaSection.jsx";
+import { sizedVariantConfigForSlug } from "../features/admin/variantConfig.js";
 import {
   useBrands,
   useCategories,
+  useCreateBrand,
   useCreateProduct,
   useProduct,
   useProducts,
@@ -25,6 +27,22 @@ import { zodResolver } from "../lib/zodResolver.js";
 const EMPTY_VARIANT = {
   quantity: 500,
   unit_code: "g",
+  size_label: "",
+  color: "",
+  mrp: "",
+  barcode: "",
+  image_url: "",
+  is_active: true,
+};
+
+// Sized categories (Fashion, Furniture) don't have a physical quantity --
+// the row still needs one to satisfy the shared quantity/unit_code columns,
+// so it's fixed at "1 pc" and hidden from the UI (see variantConfig.js).
+const EMPTY_SIZED_VARIANT = {
+  quantity: 1,
+  unit_code: "pc",
+  size_label: "",
+  color: "",
   mrp: "",
   barcode: "",
   image_url: "",
@@ -105,10 +123,14 @@ function unitLabel(code) {
 }
 
 function variantLabel(variant) {
+  if (variant?.size_label) {
+    return variant.color ? `${variant.size_label} - ${variant.color}` : variant.size_label;
+  }
   return `${quantityLabel(variant?.quantity)} ${unitLabel(variant?.unit_code)}`.trim();
 }
 
 function variantSizeKey(variant) {
+  if (variant?.size_label) return `size:${variant.size_label.toLowerCase()}:${(variant.color ?? "").toLowerCase()}`;
   const quantity = Number(variant?.quantity);
   const unitCode = variant?.unit_code;
   if (!Number.isFinite(quantity) || quantity <= 0 || !unitCode) return "";
@@ -131,6 +153,8 @@ function toPayload(values) {
     variants: values.variants.map((variant) => ({
       ...variant,
       id: cleanVariantId(variant.id),
+      size_label: variant.size_label || null,
+      color: variant.color || null,
       barcode: variant.barcode || null,
       image_url: variant.image_url || null,
     })),
@@ -208,6 +232,7 @@ export default function ProductForm({ mode }) {
   const product = useProduct(isEdit ? productId : null);
   const categories = useCategories();
   const brands = useBrands();
+  const createBrand = useCreateBrand();
   const create = useCreateProduct();
   const update = useUpdateProduct();
   const uploadImage = useUploadProductImage();
@@ -224,6 +249,7 @@ export default function ProductForm({ mode }) {
     handleSubmit,
     reset,
     setValue,
+    getValues,
     watch,
     formState: { errors, isSubmitting },
   } = useForm({ resolver: zodResolver(productSchema), defaultValues: DEFAULTS });
@@ -235,6 +261,8 @@ export default function ProductForm({ mode }) {
   const watchedBrand = watch("brand_id");
   const watchedVariants = watch("variants");
   const imageUrl = watch("image_url");
+  const categorySlug = categories.data?.find((category) => category.id === watchedCategory)?.slug;
+  const sizedConfig = sizedVariantConfigForSlug(categorySlug);
   const duplicateNameSearch = normalize(watchedName);
   const duplicateNameProducts = useProducts(
     { q: duplicateNameSearch, limit: 8 },
@@ -279,6 +307,18 @@ export default function ProductForm({ mode }) {
     if (duplicateMatches.length === 0) setDuplicateError(false);
   }, [duplicateMatches.length]);
 
+  // Sized categories hide Quantity/Unit, but the columns are still there
+  // underneath -- keep them clean (1 pc) instead of whatever a prior,
+  // non-sized category left behind, so a category switch never submits a
+  // stale "500 g" alongside a real size.
+  useEffect(() => {
+    if (!sizedConfig) return;
+    (getValues("variants") ?? []).forEach((variant, index) => {
+      if (Number(variant.quantity) !== 1) setValue(`variants.${index}.quantity`, 1);
+      if (variant.unit_code !== "pc") setValue(`variants.${index}.unit_code`, "pc");
+    });
+  }, [sizedConfig, getValues, setValue]);
+
   useEffect(() => () => {
     if (localPreview) URL.revokeObjectURL(localPreview);
   }, [localPreview]);
@@ -295,6 +335,8 @@ export default function ProductForm({ mode }) {
         id: variant.id,
         quantity: Number(variant.quantity ?? 1),
         unit_code: variant.unit_code ?? "pc",
+        size_label: variant.size_label ?? "",
+        color: variant.color ?? "",
         mrp: Number(variant.mrp ?? 0),
         barcode: variant.barcode ?? "",
         image_url: variant.image_url ?? "",
@@ -366,6 +408,10 @@ export default function ProductForm({ mode }) {
       setSubmitError(`${duplicateVariantLabels.join(", ")} appears more than once.`);
       return;
     }
+    if (sizedConfig && values.variants.some((variant) => !variant.size_label)) {
+      setSubmitError("Choose a size for every variant.");
+      return;
+    }
 
     try {
       const body = toPayload(values);
@@ -388,6 +434,13 @@ export default function ProductForm({ mode }) {
   };
 
   const addVariant = () => {
+    if (sizedConfig) {
+      const usedSizes = new Set((watchedVariants ?? []).map((variant) => (variant.size_label ?? "").toLowerCase()));
+      const nextOption = sizedConfig.sizeOptions.find((size) => !usedSizes.has(size.toLowerCase()));
+      append({ ...EMPTY_SIZED_VARIANT, size_label: nextOption ?? "" });
+      return;
+    }
+
     const usedSizes = new Set((watchedVariants ?? []).map(variantSizeKey).filter(Boolean));
     const suggestions = [
       { quantity: 500, unit_code: "g" },
@@ -492,6 +545,8 @@ export default function ProductForm({ mode }) {
                   placeholder="Search brands..."
                   emptyLabel="No brand"
                   invalid={Boolean(errors.brand_id)}
+                  createLabel="brand"
+                  onCreate={(name) => createBrand.mutateAsync({ name, logo_url: null }).then((r) => r.data)}
                 />
               )}
             </Field>
@@ -622,33 +677,69 @@ export default function ProductForm({ mode }) {
 
                     <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                       <input type="hidden" {...register(`variants.${index}.id`)} />
-                      <Field label="Quantity" required error={errors.variants?.[index]?.quantity?.message}>
-                        {(input) => (
-                          <TextInput
-                            {...input}
-                            {...register(`variants.${index}.quantity`)}
-                            invalid={Boolean(errors.variants?.[index]?.quantity)}
-                            type="number"
-                            min="0.001"
-                            step="0.001"
-                            inputMode="decimal"
-                          />
-                        )}
-                      </Field>
+                      {sizedConfig ? (
+                        <>
+                          <input type="hidden" {...register(`variants.${index}.quantity`)} />
+                          <input type="hidden" {...register(`variants.${index}.unit_code`)} />
+                          <Field label="Size" required error={errors.variants?.[index]?.size_label?.message}>
+                            {(input) => (
+                              <SelectInput
+                                {...input}
+                                {...register(`variants.${index}.size_label`)}
+                                invalid={Boolean(errors.variants?.[index]?.size_label)}
+                              >
+                                <option value="">Choose a size</option>
+                                {sizedConfig.sizeOptions.map((size) => (
+                                  <option key={size} value={size}>{size}</option>
+                                ))}
+                              </SelectInput>
+                            )}
+                          </Field>
 
-                      <Field label="Unit" required error={errors.variants?.[index]?.unit_code?.message}>
-                        {(input) => (
-                          <SelectInput
-                            {...input}
-                            {...register(`variants.${index}.unit_code`)}
-                            invalid={Boolean(errors.variants?.[index]?.unit_code)}
-                          >
-                            {UNIT_OPTIONS.map((unit) => (
-                              <option key={unit.code} value={unit.code}>{unit.label}</option>
-                            ))}
-                          </SelectInput>
-                        )}
-                      </Field>
+                          {sizedConfig.hasColor ? (
+                            <Field label="Color" error={errors.variants?.[index]?.color?.message}>
+                              {(input) => (
+                                <TextInput
+                                  {...input}
+                                  {...register(`variants.${index}.color`)}
+                                  invalid={Boolean(errors.variants?.[index]?.color)}
+                                  placeholder="Optional, e.g. Navy Blue"
+                                />
+                              )}
+                            </Field>
+                          ) : null}
+                        </>
+                      ) : (
+                        <>
+                          <Field label="Quantity" required error={errors.variants?.[index]?.quantity?.message}>
+                            {(input) => (
+                              <TextInput
+                                {...input}
+                                {...register(`variants.${index}.quantity`)}
+                                invalid={Boolean(errors.variants?.[index]?.quantity)}
+                                type="number"
+                                min="0.001"
+                                step="0.001"
+                                inputMode="decimal"
+                              />
+                            )}
+                          </Field>
+
+                          <Field label="Unit" required error={errors.variants?.[index]?.unit_code?.message}>
+                            {(input) => (
+                              <SelectInput
+                                {...input}
+                                {...register(`variants.${index}.unit_code`)}
+                                invalid={Boolean(errors.variants?.[index]?.unit_code)}
+                              >
+                                {UNIT_OPTIONS.map((unit) => (
+                                  <option key={unit.code} value={unit.code}>{unit.label}</option>
+                                ))}
+                              </SelectInput>
+                            )}
+                          </Field>
+                        </>
+                      )}
 
                       <Field label="MRP" required error={errors.variants?.[index]?.mrp?.message}>
                         {(input) => (

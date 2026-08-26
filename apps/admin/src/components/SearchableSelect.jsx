@@ -1,11 +1,16 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { ChevronDown, Search, X } from "lucide-react";
+import { ChevronDown, Plus, Search, X } from "lucide-react";
 import { cn } from "../lib/cn.js";
 
 /**
  * A searchable dropdown for option lists too long to scan as a plain
  * <select> -- brands and categories grow over time as sellers add new ones,
  * and a native select with 50+ entries has no way to filter.
+ *
+ * `onCreate` is optional: when passed, typing a name that doesn't already
+ * exist offers to create it inline instead of forcing the admin out to a
+ * separate page and back. Left unset (as for categories, which are more
+ * curated) the dropdown is select-only, same as before.
  */
 export default function SearchableSelect({
   value,
@@ -16,9 +21,13 @@ export default function SearchableSelect({
   invalid,
   id,
   "aria-describedby": describedBy,
+  onCreate,
+  createLabel = "item",
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
   const rootRef = useRef(null);
   const searchRef = useRef(null);
   const listboxId = useId();
@@ -30,6 +39,10 @@ export default function SearchableSelect({
     if (!term) return options;
     return options.filter((option) => option.name.toLowerCase().includes(term));
   }, [options, query]);
+
+  const trimmedQuery = query.trim();
+  const hasExactMatch = options.some((option) => option.name.toLowerCase() === trimmedQuery.toLowerCase());
+  const canCreate = Boolean(onCreate) && trimmedQuery.length > 0 && !hasExactMatch;
 
   useEffect(() => {
     if (!open) return undefined;
@@ -56,6 +69,19 @@ export default function SearchableSelect({
   const choose = (optionId) => {
     onChange(optionId);
     setOpen(false);
+  };
+
+  const handleCreate = async () => {
+    setCreateError("");
+    setCreating(true);
+    try {
+      const created = await onCreate(trimmedQuery);
+      choose(created.id);
+    } catch (error) {
+      setCreateError(error?.message ?? `Could not add this ${createLabel}.`);
+    } finally {
+      setCreating(false);
+    }
   };
 
   return (
@@ -89,7 +115,10 @@ export default function SearchableSelect({
               ref={searchRef}
               type="text"
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setCreateError("");
+              }}
               placeholder={placeholder}
               className="min-w-0 flex-1 bg-transparent text-[0.9375rem] text-ink outline-none placeholder:text-ink-muted"
             />
@@ -118,7 +147,7 @@ export default function SearchableSelect({
                 {emptyLabel}
               </button>
             </li>
-            {filtered.length === 0 ? (
+            {filtered.length === 0 && !canCreate ? (
               <li className="px-3 py-2 text-meta text-ink-muted">No matches</li>
             ) : (
               filtered.map((option) => (
@@ -136,6 +165,25 @@ export default function SearchableSelect({
                 </li>
               ))
             )}
+
+            {canCreate ? (
+              <li className={filtered.length > 0 ? "border-t border-line-soft" : undefined}>
+                <button
+                  type="button"
+                  onClick={handleCreate}
+                  disabled={creating}
+                  className="flex w-full items-center gap-1.5 px-3 py-2 text-left text-[0.9375rem] font-semibold text-primary hover:bg-primary-soft disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Plus className="size-4 shrink-0" aria-hidden="true" />
+                  {creating ? `Adding "${trimmedQuery}"...` : `Add "${trimmedQuery}" as a new ${createLabel}`}
+                </button>
+                {createError ? (
+                  <p role="alert" className="px-3 pb-2 text-meta text-danger">
+                    {createError}
+                  </p>
+                ) : null}
+              </li>
+            ) : null}
           </ul>
         </div>
       ) : null}

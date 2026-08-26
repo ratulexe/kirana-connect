@@ -4,6 +4,15 @@ const BASE_URL = (
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000"
 ).replace(/\/$/, "");
 
+// A production build with no VITE_API_BASE_URL set would otherwise fail
+// silently -- every request would target an unreachable localhost with no
+// clue why. This is a diagnostic only; behaviour is unchanged.
+if (import.meta.env.PROD && !import.meta.env.VITE_API_BASE_URL) {
+  console.warn(
+    "[kirana-connect-store] VITE_API_BASE_URL is not set in this production build -- API calls will target localhost:5000 and fail. Set it in the Vercel project's environment variables.",
+  );
+}
+
 export class ApiError extends Error {
   constructor(message, status, data) {
     super(message);
@@ -96,4 +105,10 @@ export const api = {
 
   getStoreDemand: ({ storeId, signal }) =>
     request("/store-demand", { signal, params: { store_id: storeId } }),
+
+  // Public taxonomy, so no token is required to read it.
+  getBusinessCategories: ({ signal } = {}) =>
+    request("/business-categories", { auth: false, signal }),
+  updateStoreBusinessCategories: (storeId, body) =>
+    request(`/store-onboarding/stores/${storeId}/business-categories`, { method: "PUT", body }),
 };

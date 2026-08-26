@@ -1,0 +1,177 @@
+/* source() scopes Tailwind's automatic class detection to this app. Without it
+   the scanner walks the repository root and pulls sibling apps' classes into
+   this bundle, and vice versa. */
+@import "tailwindcss" source("../src");
+
+/* ==========================================================================
+   Kirana Connect - Portal
+   --------------------------------------------------------------------------
+   Same brand tokens as the Consumer app, so the two read as one product.
+   The Portal itself carries almost none of the consumer shell's decorative
+   flourishes (no neon glow, hologram sweep, flash-deal animation, ...): it
+   is a platform-selection and business-advisory surface, not a storefront,
+   and should read as calm and analytical rather than vibrant and playful.
+   ========================================================================== */
+
+@theme {
+  --font-sans: "Parkinsans", system-ui, sans-serif;
+
+  --color-canvas: #faf7f0;
+  --color-surface: #fffdf8;
+  --color-surface-sunken: #f3ecdf;
+
+  --color-ink: #19352a;
+  --color-ink-soft: #365044;
+  --color-ink-muted: #617168;
+
+  --color-primary: #1b2cc1;
+  --color-primary-hover: #141f96;
+  --color-primary-fg: #ffffff;
+  --color-primary-soft: #e7e6fa;
+
+  --color-accent: #e5a12f;
+  --color-accent-fg: #402c05;
+  --color-accent-soft: #fff3cf;
+
+  --color-line: #ddd5c7;
+  --color-line-soft: #eee7dc;
+
+  --color-success: #187048;
+  --color-success-soft: #e6f4ee;
+  --color-warning: #925708;
+  --color-warning-soft: #fcf1e0;
+  --color-danger: #b23b30;
+  --color-danger-soft: #fbeceb;
+
+  --radius-control: 0.625rem;
+  --radius-card: 1rem;
+  --radius-panel: 1.5rem;
+  --radius-pill: 62.4375rem;
+
+  --shadow-subtle: 0 1px 2px rgba(22, 24, 28, 0.04);
+  --shadow-raised: 0 1px 2px rgba(22, 24, 28, 0.04), 0 4px 12px rgba(22, 24, 28, 0.05);
+  --shadow-float: 0 2px 4px rgba(22, 24, 28, 0.04), 0 12px 32px rgba(22, 24, 28, 0.09);
+
+  --container-content: 75rem;
+
+  --ease-brand: cubic-bezier(0.22, 0.61, 0.36, 1);
+
+  --text-display: clamp(2.25rem, 1.35rem + 3.6vw, 4rem);
+  --text-display--line-height: 1.03;
+  --text-display--letter-spacing: -0.035em;
+  --text-display--font-weight: 700;
+
+  --text-heading: clamp(1.75rem, 1.25rem + 2vw, 2.5rem);
+  --text-heading--line-height: 1.1;
+  --text-heading--letter-spacing: -0.025em;
+  --text-heading--font-weight: 700;
+
+  --text-section: clamp(1.375rem, 1.15rem + 0.9vw, 1.75rem);
+  --text-section--line-height: 1.2;
+  --text-section--letter-spacing: -0.02em;
+  --text-section--font-weight: 600;
+
+  --text-card: 1.0625rem;
+  --text-card--line-height: 1.35;
+  --text-card--letter-spacing: -0.011em;
+  --text-card--font-weight: 600;
+
+  --text-body: 1rem;
+  --text-body--line-height: 1.6;
+
+  --text-meta: 0.8125rem;
+  --text-meta--line-height: 1.45;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  .gradient-text {
+    background: linear-gradient(135deg, #ffd45e 0%, #ff7b54 33%, #e93483 66%, #4f36d9 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-size: 200% 200%;
+    animation: gradient-shift 4s ease infinite;
+  }
+
+  .live-dot {
+    animation: live-pulse 1.5s ease-in-out infinite;
+  }
+}
+
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6); }
+  50% { opacity: 0.7; box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+}
+
+/* LoadingInsight's three staggered dots. Respects reduced-motion by holding
+   a steady mid-opacity instead of bouncing. */
+.loading-dot {
+  animation: loading-dot-bounce 1.05s ease-in-out infinite;
+}
+
+@keyframes loading-dot-bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.35; }
+  40% { transform: translateY(-6px); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-dot {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
+/*
+ * Print Report (Overview tab). Every analysis tab panel already stays
+ * mounted in the DOM at all times (see EntrepreneurAnalysis.jsx) with only
+ * a `hidden` class toggling visibility on screen -- printing is therefore
+ * just overriding that class, plus hiding interactive-only chrome (nav
+ * chrome, the AI Advisor's chat controls, buttons). No JS print library, no
+ * separate print route.
+ */
+@media print {
+  .print-hide {
+    display: none !important;
+  }
+
+  .analysis-tabpanel.hidden {
+    display: block !important;
+  }
+}

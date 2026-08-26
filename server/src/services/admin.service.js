@@ -8,6 +8,7 @@ import {
   normalizeProductIdentity,
   normalizeUnitCode,
   removePlaceholderPieceVariants,
+  sizeRank,
 } from "../utils/productUnits.js";
 import { resolveImageUrl } from "./imageResolver.service.js";
 import {
@@ -18,6 +19,7 @@ import {
   memoryPendingChangeCount,
   memoryPendingChanges,
 } from "./storeChangeRequests.memory.js";
+import { fetchStoreBusinessCategories, adminSetStoreBusinessCategories } from "./businessCategories.service.js";
 
 const STORE_FIELDS = `
   id, owner_id, name, slug, description, phone,
@@ -38,7 +40,7 @@ const PRODUCT_FIELDS = `
   category:categories (id, name, slug),
   brand:brands (id, name, slug, logo_url),
   variants:product_variants (
-    id, product_id, quantity, unit_code, unit_label, mrp, barcode, image_url,
+    id, product_id, quantity, unit_code, unit_label, size_label, color, mrp, barcode, image_url,
     is_active, created_at, updated_at
   )
 `;
@@ -94,6 +96,9 @@ function textValue(value) {
 
 function variantSort(a, b) {
   if (a.is_active !== b.is_active) return a.is_active ? -1 : 1;
+  const rankA = sizeRank(a.size_label);
+  const rankB = sizeRank(b.size_label);
+  if (rankA !== null && rankB !== null && rankA !== rankB) return rankA - rankB;
   if (a.created_at && b.created_at && a.created_at !== b.created_at) {
     return new Date(a.created_at) - new Date(b.created_at);
   }
@@ -238,7 +243,12 @@ async function variantRows(productId, variants) {
       product_id: productId,
       quantity: variant.quantity,
       unit_code: variant.unit_code,
+      // The DB trigger (set_product_variant_unit_label) recomputes this on
+      // every insert/update from quantity+unit_code, or from size_label/color
+      // when present -- what's sent here is only ever a starting value.
       unit_label: formatUnitLabel(variant.quantity, variant.unit_code),
+      size_label: variant.size_label ?? null,
+      color: variant.color ?? null,
       mrp: variant.mrp,
       barcode: textValue(variant.barcode),
       image_url: await resolvedImageUrl(variant.image_url),
@@ -468,10 +478,20 @@ async function pendingChangeByStoreId(storeId) {
 async function storeWithDetails(store) {
   const [owned] = await withOwners([store]);
   const [detailed] = await withHours([owned]);
+  const [pendingChange, businessCategories] = await Promise.all([
+    pendingChangeByStoreId(store.id),
+    fetchStoreBusinessCategories(getServiceClient(), store.id),
+  ]);
   return {
     ...detailed,
-    pending_change: await pendingChangeByStoreId(store.id),
+    pending_change: pendingChange,
+    ...businessCategories,
   };
+}
+
+/** Admin override: classify or reclassify any store, no ownership check. */
+export async function setStoreBusinessCategoriesAsAdmin({ storeId, categoryIds, primaryCategoryId }) {
+  return adminSetStoreBusinessCategories({ storeId, categoryIds, primaryCategoryId });
 }
 
 function storePatchFromPayload(payload) {
