@@ -9,7 +9,7 @@ import Logo from "../components/Logo.jsx";
 import { useAuth } from "../auth/useAuth.js";
 import { zodResolver } from "../lib/zodResolver.js";
 import { loginSchema } from "../features/admin/schemas.js";
-import { ShieldCheck, Sparkles, Zap } from "lucide-react";
+import { ShieldCheck, Zap } from "lucide-react";
 
 function friendlyMessage(error) {
   const raw = String(error?.message ?? "").toLowerCase();

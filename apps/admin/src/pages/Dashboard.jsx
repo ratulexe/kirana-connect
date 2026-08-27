@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowUpRight, BadgeCheck, Building2, Layers3, Package, Sparkles, Store, Users } from "lucide-react";
+import { ArrowUpRight, BadgeCheck, Building2, Layers3, Package, Store, Users } from "lucide-react";
 import Alert from "../components/Alert.jsx";
 import Button from "../components/Button.jsx";
 import Card from "../components/Card.jsx";
