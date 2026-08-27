@@ -4,6 +4,24 @@ A working prototype that helps a first-time entrepreneur decide *where* and *wha
 real nearby-store data — while also helping shoppers find and reserve products at the kirana
 stores that actually stock them.
 
+## Live Prototype
+
+> **Kirana Connect is a working multi-portal prototype connecting consumers,
+> local stores, entrepreneurs, and administrators through one ecosystem.**
+
+| Platform | Live Demo |
+| --- | --- |
+| Kirana Connect — Main Portal | https://kirana-connect-portal.vercel.app |
+| Consumer Platform | https://kirana-connect-one.vercel.app |
+| Store Portal | https://kirana-connect-store.vercel.app |
+| Admin Portal | https://kirana-connect-admin.vercel.app |
+| Kirana Connect Business | https://kirana-connect-portal.vercel.app/entrepreneur |
+
+**Backend:** Render  
+**Database & Authentication:** Supabase
+
+> Evaluator credentials are available in the [Evaluator Demo](#evaluator-demo) section.
+
 ## Problem
 
 First-time, rural, and marginalized entrepreneurs can access government concessional finance
