@@ -1,5 +1,5 @@
 import { createContext, useEffect, useMemo, useState } from "react";
-import { supabase, isSupabaseConfigured } from "../lib/supabase.js";
+import { supabase, isSupabaseConfigured, passwordResetRedirectUrl } from "../lib/supabase.js";
 
 export const AuthContext = createContext(null);
 
@@ -45,6 +45,19 @@ export function AuthProvider({ children }) {
       },
       async signOut() {
         await supabase.auth.signOut();
+      },
+
+      async requestPasswordReset(email) {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: passwordResetRedirectUrl,
+        });
+        if (error) throw error;
+      },
+
+      async updatePassword(password) {
+        const { data, error } = await supabase.auth.updateUser({ password });
+        if (error) throw error;
+        return data.user;
       },
     }),
     [session, isLoading],

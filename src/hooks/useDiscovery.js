@@ -7,6 +7,7 @@ import {
   fetchProductOffers,
   fetchPlatformStats,
   fetchTopDeal,
+  fetchHomepageMoments,
   fetchBestOffers,
 } from "../services/catalogue.js";
 
@@ -18,6 +19,7 @@ export const discoveryKeys = {
   nearbyStores: (params) => ["nearby-stores", params],
   stats: ["platform-stats"],
   topDeal: ["top-deal"],
+  homepageMoments: ["homepage-moments"],
   bestOffers: (params) => ["best-offers", params],
 };
 
@@ -33,6 +35,14 @@ export function useTopDeal() {
   return useQuery({
     queryKey: discoveryKeys.topDeal,
     queryFn: ({ signal }) => fetchTopDeal({ signal }),
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useHomepageMoments() {
+  return useQuery({
+    queryKey: discoveryKeys.homepageMoments,
+    queryFn: ({ signal }) => fetchHomepageMoments({ signal }),
     staleTime: 5 * 60_000,
   });
 }
@@ -113,12 +123,18 @@ export function useProductsByIds(ids) {
   });
 }
 
+/**
+ * variantId is optional: when the caller has not pinned an exact size (no
+ * `?variant=` in the URL, no size button clicked yet), the backend itself
+ * picks whichever size actually has a nearby store, rather than this hook
+ * forcing a default here -- see findStoresStockingProduct's pickVariant.
+ */
 export function useProductOffers({ slug, variantId, location, radiusKm, sort, highlightStore }) {
   const params = { lat: location?.lat, lng: location?.lng, radiusKm, sort, highlightStore };
 
   return useQuery({
     queryKey: discoveryKeys.offers(slug, variantId, params),
     queryFn: ({ signal }) => fetchProductOffers({ slug, variantId, location, radiusKm, sort, highlightStore, signal }),
-    enabled: Boolean(slug && variantId),
+    enabled: Boolean(slug),
   });
 }

@@ -33,6 +33,7 @@ import {
   listProductCategoryMappings,
   replaceProductCategoryMappings,
 } from "../services/businessCategories.service.js";
+import { listMomentImages, setMomentImage } from "../services/homepageMoments.service.js";
 import {
   validateAdminStorePatch,
   validateBrandCreate,
@@ -217,6 +218,17 @@ export async function postResolveProductImage(req, res) {
 
 export async function getCategories(req, res) {
   const data = await listAdminCategories();
+  res.status(200).json({ success: true, data });
+}
+
+export async function getHomepageMoments(req, res) {
+  const data = await listMomentImages();
+  res.status(200).json({ success: true, data });
+}
+
+export async function putHomepageMoment(req, res) {
+  const imageUrl = typeof req.body?.image_url === "string" ? req.body.image_url.trim() : "";
+  const data = await setMomentImage(req.params.slug, imageUrl || null);
   res.status(200).json({ success: true, data });
 }
 

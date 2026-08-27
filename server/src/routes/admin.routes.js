@@ -15,6 +15,8 @@ import {
   getStore,
   getStores,
   getBusinessCategories,
+  getHomepageMoments,
+  putHomepageMoment,
   patchBrand, deleteBrandHandler,
   patchBusinessCategory,
   patchCategory,
@@ -80,6 +82,9 @@ router.post("/business-categories", asyncHandler(postBusinessCategory));
 router.patch("/business-categories/:categoryId", asyncHandler(patchBusinessCategory));
 router.get("/business-categories/:categoryId/product-category-mappings", asyncHandler(getProductCategoryMappings));
 router.put("/business-categories/:categoryId/product-category-mappings", asyncHandler(putProductCategoryMappings));
+
+router.get("/homepage-moments", asyncHandler(getHomepageMoments));
+router.put("/homepage-moments/:slug", asyncHandler(putHomepageMoment));
 
 router.get("/brands", asyncHandler(getBrands));
 router.post("/brands", asyncHandler(postBrand));

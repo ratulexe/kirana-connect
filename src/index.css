@@ -19,9 +19,6 @@
 
 @theme {
   --font-sans: "Parkinsans", system-ui, sans-serif;
-  /* Wordmark only -- never body copy or controls. */
-  --font-brand: "Birthstone", cursive;
-
   /* Surfaces ------------------------------------------------------------- */
   --color-canvas: #ffffff;
   --color-surface: #ffffff;
@@ -356,6 +353,24 @@
   100% { transform: scale(1); }
 }
 
+/* Reservation success tick: circle draws, then the check draws over its
+   tail, then one small settle pulse. Picked up automatically by the global
+   prefers-reduced-motion rule (it zeroes animation-duration for `*`), so
+   reduced motion just shows the finished mark instantly with no extra code
+   here. */
+@keyframes kc-tick-circle {
+  from { stroke-dashoffset: 283; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes kc-tick-check {
+  from { stroke-dashoffset: 60; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes kc-tick-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+
 @layer utilities {
   .animate-slide-up { animation: slide-up 0.4s cubic-bezier(0.16,1,0.3,1) both; }
   .animate-bounce-in { animation: bounce-in 0.5s cubic-bezier(0.16,1,0.3,1) both; }
@@ -365,6 +380,60 @@
   .scrollbar-neon::-webkit-scrollbar { height: 4px; background: transparent; }
   .scrollbar-neon::-webkit-scrollbar-thumb { background: linear-gradient(90deg, #4f36d9, #e93483); border-radius: 4px; }
   .bg-dark-glass { background: rgba(8,4,18,0.7); backdrop-filter: blur(20px); }
+
+  /* App loading screen (AppLoader.jsx): "Kirana" then "Connect" fade up
+     into place, a progress bar underneath that fills once from empty to
+     full -- reaching 100% is what tells App.jsx (via onAnimationEnd) to
+     swap in the real app, not an independent timer. Plain CSS animations
+     (not GSAP) on purpose -- no JS timing to get wrong, and the global
+     prefers-reduced-motion rule above already neutralises all three for
+     free since it targets every animation-duration. */
+  .kc-loader-word {
+    opacity: 0;
+    animation: kc-loader-word-in 450ms ease-out forwards;
+  }
+
+  .kc-loader-track {
+    position: relative;
+    width: 8rem;
+    height: 4px;
+    border-radius: var(--radius-pill);
+    background-color: color-mix(in srgb, var(--color-ink) 12%, transparent);
+    overflow: hidden;
+  }
+
+  .kc-loader-track::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    border-radius: var(--radius-pill);
+    background: #1b2cc1;
+    animation: kc-loader-fill 1.3s ease-in-out forwards;
+  }
+
+  .kc-loader-content-in {
+    animation: kc-loader-fade-in 400ms ease-out both;
+  }
+}
+
+@keyframes kc-loader-word-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Plays once (no infinite loop) and stays at 100% (`forwards`) -- the
+   .kc-loader-track's onAnimationEnd handler in App.jsx fires the instant
+   this reaches `to`, which is what actually reveals the real app. */
+@keyframes kc-loader-fill {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+@keyframes kc-loader-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @layer base {

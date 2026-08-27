@@ -2,7 +2,6 @@
 
 @theme {
   --font-sans: "Parkinsans", system-ui, sans-serif;
-  --font-brand: "Birthstone", cursive;
 
   --color-canvas: #f4f0ff;
   --color-surface: #ffffff;
@@ -100,6 +99,68 @@
   .admin-glow { box-shadow: 0 20px 60px rgba(54, 37, 153, .16); }
   .admin-float { animation: admin-float 6s ease-in-out infinite; }
   .admin-glass { border: 1px solid rgba(255,255,255,.76); background: linear-gradient(135deg, rgba(255,255,255,.88), rgba(255,255,255,.62)); box-shadow: 0 16px 44px rgba(65,44,148,.11), inset 0 1px rgba(255,255,255,.8); backdrop-filter: blur(16px); }
+
+  /* Wordmark accent dot, same treatment across every Kirana Connect app. */
+  .live-dot {
+    animation: live-pulse 1.5s ease-in-out infinite;
+  }
+
+  /* App loading screen (AppLoader.jsx): "Kirana" then "Connect" then
+     "Admin" fade up into place, a progress bar underneath that fills once
+     from empty to full -- reaching 100% is what tells App.jsx (via
+     onAnimationEnd) to swap in the real app, not an independent timer.
+     Plain CSS animations (not GSAP) on purpose -- no JS timing to get
+     wrong, and the global prefers-reduced-motion rule above already
+     neutralises all three for free since it targets every
+     animation-duration. */
+  .kc-loader-word {
+    opacity: 0;
+    animation: kc-loader-word-in 450ms ease-out forwards;
+  }
+
+  .kc-loader-track {
+    position: relative;
+    width: 8rem;
+    height: 4px;
+    border-radius: var(--radius-pill);
+    background-color: color-mix(in srgb, var(--color-ink) 12%, transparent);
+    overflow: hidden;
+  }
+
+  .kc-loader-track::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    border-radius: var(--radius-pill);
+    background: #1b2cc1;
+    animation: kc-loader-fill 1.3s ease-in-out forwards;
+  }
+
+  .kc-loader-content-in {
+    animation: kc-loader-fade-in 400ms ease-out both;
+  }
 }
 
 @keyframes admin-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6); }
+  50% { opacity: 0.7; box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+}
+
+@keyframes kc-loader-word-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes kc-loader-fill {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+@keyframes kc-loader-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

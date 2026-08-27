@@ -164,6 +164,7 @@ export default function Login() {
                     invalid={Boolean(errors.password)}
                     type="password"
                     autoComplete="current-password"
+                    placeholder="Enter your password"
                   />
                 )}
               </Field>
@@ -194,6 +195,13 @@ export default function Login() {
                   </Button>
                 </div>
               </div>
+
+              <Link
+                to="/forgot-password"
+                className="text-center text-meta font-semibold text-primary hover:text-primary-hover"
+              >
+                Forgot password
+              </Link>
             </form>
           )}
         </Card>

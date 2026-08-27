@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import Alert from "../components/Alert.jsx";
 import Button from "../components/Button.jsx";
@@ -52,7 +52,7 @@ export default function Login() {
         <div className="bg-white/95 p-7 sm:p-10">
         <div className="mb-6">
           <Logo />
-          <p className="mt-6 inline-flex items-center gap-2 text-meta font-bold tracking-[.13em] text-[#e93483] uppercase"><Sparkles className="size-3.5" /> Secure access</p><h1 className="mt-3 text-heading text-ink">Admin sign in</h1>
+          <h1 className="mt-3 text-heading text-ink">Admin sign in</h1>
           <p className="mt-2 text-body text-ink-muted">
             Use a bootstrapped admin account. Public admin signup is disabled.
           </p>
@@ -95,6 +95,13 @@ export default function Login() {
               <Button type="submit" size="lg" fullWidth isLoading={isSubmitting}>
                 {isSubmitting ? "Signing in..." : "Sign in"}
               </Button>
+
+              <Link
+                to="/forgot-password"
+                className="text-center text-meta font-semibold text-primary hover:text-primary-hover"
+              >
+                Forgot password
+              </Link>
             </form>
           )}
         </Card>

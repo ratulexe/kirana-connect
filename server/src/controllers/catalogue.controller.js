@@ -5,6 +5,7 @@ import {
   listProductsByIds,
   getProductBySlug,
 } from "../services/catalogue.service.js";
+import { listMomentImages } from "../services/homepageMoments.service.js";
 import { optionalBoolean, optionalString, parseLocation, parsePagination } from "../utils/queryParams.js";
 import { uuidField } from "../utils/validateInventory.js";
 import { badRequest } from "../utils/httpError.js";
@@ -19,6 +20,11 @@ export async function getCategories(req, res) {
 
 export async function getBrands(req, res) {
   const data = await listBrands();
+  res.status(200).json({ success: true, data });
+}
+
+export async function getHomepageMoments(req, res) {
+  const data = await listMomentImages();
   res.status(200).json({ success: true, data });
 }
 

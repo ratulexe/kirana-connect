@@ -72,6 +72,25 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Enter your password"),
 });
 
+export const forgotPasswordSchema = z.object({
+  email: z.string().trim().toLowerCase().pipe(z.email("Enter a valid email address")),
+});
+
+export const resetPasswordSchema = z
+  .object({
+    password: z
+      .string()
+      .min(8, "Use at least 8 characters")
+      .max(72, "Password is too long")
+      .regex(/[a-zA-Z]/, "Include at least one letter")
+      .regex(/[0-9]/, "Include at least one number"),
+    confirmPassword: z.string(),
+  })
+  .refine((values) => values.password === values.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
+
 export const productSchema = z.object({
   name: z.string().trim().min(2, "Enter a product name").max(120, "Name is too long"),
   category_id: z.string().uuid("Choose a category"),

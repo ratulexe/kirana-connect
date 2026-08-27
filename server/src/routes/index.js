@@ -9,6 +9,7 @@ import demandRequestsRoutes from "./demandRequests.routes.js";
 import searchEventsRoutes from "./searchEvents.routes.js";
 import businessCategoriesRoutes from "./businessCategories.routes.js";
 import entrepreneurRoutes from "./entrepreneur.routes.js";
+import reservationsRoutes from "./reservations.routes.js";
 
 const router = Router();
 
@@ -20,6 +21,7 @@ router.use("/", demandRequestsRoutes);
 router.use("/", searchEventsRoutes);
 router.use("/", businessCategoriesRoutes);
 router.use("/", entrepreneurRoutes);
+router.use("/", reservationsRoutes);
 router.use("/", catalogueRoutes);
 router.use("/", discoveryRoutes);
 

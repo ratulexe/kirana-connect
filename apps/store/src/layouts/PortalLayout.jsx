@@ -1,5 +1,6 @@
 import { Link, NavLink, Outlet, useNavigate, useSearchParams } from "react-router-dom";
 import {
+  BookmarkCheck,
   Boxes,
   CircleCheck,
   Clock,
@@ -19,6 +20,7 @@ const STORE_NAV = [
   { to: "/status", label: "Dashboard", icon: LayoutDashboard },
   { to: "/store-details", label: "Store details", icon: StoreIcon },
   { to: "/inventory", label: "Products", icon: Boxes },
+  { to: "/reservations", label: "Reservations", icon: BookmarkCheck },
   { to: "/customer-demand", label: "Customer demand", icon: Megaphone },
 ];
 
@@ -110,7 +112,8 @@ export default function PortalLayout() {
 
               <nav aria-label="Store portal navigation" className="mt-2 flex flex-wrap gap-1">
                 {STORE_NAV.filter(
-                  ({ to }) => (to !== "/inventory" && to !== "/customer-demand") || isApproved,
+                  ({ to }) =>
+                    (to !== "/inventory" && to !== "/customer-demand" && to !== "/reservations") || isApproved,
                 ).map(
                   ({ to, label, icon: Icon }) => (
                     <NavLink

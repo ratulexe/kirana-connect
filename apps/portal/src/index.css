@@ -15,7 +15,6 @@
 
 @theme {
   --font-sans: "Parkinsans", system-ui, sans-serif;
-  --font-brand: "Birthstone", cursive;
 
   --color-canvas: #faf7f0;
   --color-surface: #fffdf8;
@@ -128,6 +127,74 @@
 
   .live-dot {
     animation: live-pulse 1.5s ease-in-out infinite;
+  }
+
+  /* Gateway loading screen: "Kirana" then "Connect" fade up into place, a
+     progress bar underneath that fills once from empty to full -- reaching
+     100% is what tells Gateway.jsx (via onAnimationEnd) to swap in the real
+     page, not an independent timer. Plain CSS animations (not GSAP) on
+     purpose -- no JS timing to get wrong, and the app's own global
+     prefers-reduced-motion rule above already neutralises all three for
+     free since it targets every animation-duration. */
+  .kc-loader-word {
+    opacity: 0;
+    animation: kc-loader-word-in 450ms ease-out forwards;
+  }
+
+  .kc-loader-track {
+    position: relative;
+    width: 8rem;
+    height: 4px;
+    border-radius: var(--radius-pill);
+    background-color: color-mix(in srgb, var(--color-ink) 12%, transparent);
+    overflow: hidden;
+  }
+
+  .kc-loader-track::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    border-radius: var(--radius-pill);
+    background: #1b2cc1;
+    animation: kc-loader-fill 1.3s ease-in-out forwards;
+  }
+
+  .kc-loader-content-in {
+    animation: kc-loader-fade-in 400ms ease-out both;
+  }
+}
+
+@keyframes kc-loader-word-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Plays once (no infinite loop) and stays at 100% (`forwards`) -- the
+   .kc-loader-track's onAnimationEnd handler in Gateway.jsx fires the
+   instant this reaches `to`, which is what actually reveals the real page. */
+@keyframes kc-loader-fill {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+@keyframes kc-loader-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
 

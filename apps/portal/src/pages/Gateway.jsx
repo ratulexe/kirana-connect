@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowUpRight, Store, TrendingUp } from "lucide-react";
 import Container from "../components/common/Container.jsx";
+import AppLoader from "../components/common/AppLoader.jsx";
 import { CONSUMER_APP_URL } from "../config/urls.js";
 
 const PLATFORMS = [
@@ -64,23 +66,30 @@ function PlatformCard({ icon: Icon, title, description, ctaLabel, href, external
 }
 
 export default function Gateway() {
+  const [loading, setLoading] = useState(true);
+
+  if (loading) return <AppLoader onDone={() => setLoading(false)} />;
+
   return (
-    <div className="flex min-h-dvh flex-col justify-center py-14 sm:py-20">
+    <div className="kc-loader-content-in flex min-h-dvh flex-col justify-center py-14 sm:py-20">
       <Container>
         <div className="mx-auto max-w-2xl text-center">
           <p
-            className="font-brand text-[3rem] leading-none font-normal text-ink sm:text-[3.5rem]"
+            className="inline-block font-sans text-[2rem] font-extrabold tracking-tight text-ink sm:text-[2.375rem]"
             aria-label="Kirana Connect"
           >
-            Kirana <span className="text-primary">Connect</span>
+            Kirana{" "}
+            <span className="bg-gradient-to-r from-[#7c3aed] via-[#e93483] to-[#ffd45e] bg-clip-text text-transparent">
+              Connect
+            </span>
           </p>
           <h1 className="mt-4 text-heading text-balance text-ink">Choose how you want to use Kirana Connect</h1>
           <p className="mt-3 text-body text-ink-muted">One platform, two ways in -- shop nearby, or plan your next business.</p>
         </div>
 
         <div className="mx-auto mt-10 grid max-w-4xl gap-5 sm:grid-cols-2">
-          {PLATFORMS.map((platform) => (
-            <PlatformCard key={platform.key} {...platform} />
+          {PLATFORMS.map(({ key, ...platform }) => (
+            <PlatformCard key={key} {...platform} />
           ))}
         </div>
 

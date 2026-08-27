@@ -54,14 +54,21 @@ function buildUrl(path, params) {
 
 /**
  * Performs a GET and unwraps the API's { success, data, meta } envelope.
+ *
+ * `auth: true` attaches the current session's bearer token for the small
+ * set of GETs that need a signed-in customer (e.g. "my reservations").
+ * Defaults to false so every existing public-read caller is unaffected.
  */
-export async function apiGet(path, { params, signal } = {}) {
+export async function apiGet(path, { params, signal, auth = false } = {}) {
   let response;
 
   try {
     response = await fetch(buildUrl(path, params), {
       signal,
-      headers: { Accept: "application/json" },
+      headers: {
+        Accept: "application/json",
+        ...(auth ? await authHeader() : {}),
+      },
     });
   } catch (cause) {
     // A cancelled request is not a failure. React Query aborts in-flight

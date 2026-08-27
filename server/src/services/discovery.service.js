@@ -3,6 +3,7 @@ import { notFoundError, httpError } from "../utils/httpError.js";
 import { boundingBox, haversineKm, roundKm } from "../utils/geo.js";
 import { getProductBySlug } from "./catalogue.service.js";
 import { getExpiryStatus } from "../utils/expiryStatus.js";
+import { getActiveReservedQuantities, computeAvailableQuantity } from "../utils/reservationAvailability.js";
 
 // The nearby search runs in two stages, which is what lets the project avoid a
 // PostGIS dependency:
@@ -245,15 +246,45 @@ export async function getStoreBySlug(slug) {
  * The price-comparison read path: every nearby store currently stocking one
  * canonical product, with that store's own price.
  */
-function pickVariant(product, variantId) {
+/**
+ * When the caller pins an exact size, that size wins outright. Otherwise, if
+ * a location was given and this product has more than one size, prefer
+ * whichever size actually has a nearby, available store over always
+ * defaulting to the first one -- the catalogue's own "available nearby"
+ * badge (see catalogue.service.js's attachNearbyAvailability) is computed
+ * per *product*, across every size, so blindly picking the first size here
+ * could easily be a size nobody nearby stocks, turning a real "available
+ * nearby" into a false "not available nearby" on the product page.
+ */
+async function pickVariant(product, variantId, location) {
   const variants = [...(product.variants ?? [])].filter((variant) => variant.is_active);
   if (variantId) return variants.find((variant) => variant.id === variantId) ?? null;
-  return variants[0] ?? null;
+  if (variants.length <= 1 || !location) return variants[0] ?? null;
+
+  let query = getPublicClient()
+    .from("store_products")
+    .select("product_variant_id, store:stores!inner(latitude, longitude)")
+    .in("product_variant_id", variants.map((variant) => variant.id))
+    .eq("is_available", true);
+  query = applyBoundingBox(query, "store.", location);
+
+  const { data, error } = await query;
+  if (error) throw failed("nearby size lookup", error);
+
+  const nearbyVariantId = (data ?? []).find(
+    (row) =>
+      row.store &&
+      haversineKm(location.lat, location.lng, Number(row.store.latitude), Number(row.store.longitude)) <=
+        location.radiusKm,
+  )?.product_variant_id;
+
+  const nearbyVariant = nearbyVariantId && variants.find((variant) => variant.id === nearbyVariantId);
+  return nearbyVariant || variants[0] || null;
 }
 
 export async function findStoresStockingProduct({ slug, variantId, location, sort, limit, highlightStoreSlug }) {
   const product = await getProductBySlug(slug);
-  const variant = pickVariant(product, variantId);
+  const variant = await pickVariant(product, variantId, location);
   if (!variant) {
     throw notFoundError(variantId ? "That product size was not found." : "No active size was found for this product.");
   }
@@ -280,6 +311,8 @@ export async function findStoresStockingProduct({ slug, variantId, location, sor
   const { data, error } = await query;
   if (error) throw failed("store product lookup", error);
 
+  const reservedByStoreProduct = await getActiveReservedQuantities((data ?? []).map((row) => row.id));
+
   const mrp = Number(variant.mrp);
   const shapedRows = (data ?? []).map((row) => ({ ...row, store: shapeBusinessCategories(row.store) }));
 
@@ -296,6 +329,14 @@ export async function findStoresStockingProduct({ slug, variantId, location, sor
       const savings = mrp - sellingPrice;
       const { status: expiry_status, days_until_expiry } = getExpiryStatus(row.expiry_date);
 
+      // available_quantity is the number that must drive every reservation
+      // decision on this offer: physical stock minus whatever is currently
+      // held by an active, unexpired reservation. quantity_available itself
+      // is left untouched here (and reservation never writes it) -- it is
+      // only ever decremented at collection.
+      const activeReserved = reservedByStoreProduct.get(row.id) ?? 0;
+      const availableQuantity = computeAvailableQuantity(row.quantity_available, activeReserved);
+
       return {
         store: row.store,
         distance_km: row.distance_km,
@@ -308,6 +349,14 @@ export async function findStoresStockingProduct({ slug, variantId, location, sor
           mrp > 0 && savings > 0 ? Math.round((savings / mrp) * 1000) / 10 : 0,
         stock_status: row.stock_status,
         quantity_available: row.quantity_available,
+        // Reservation fields: store_product_id is the id the reservation API
+        // expects. is_reservable requires an exact tracked quantity (a store
+        // that only tracks a coarse stock_status has nothing to hold against)
+        // and at least one unit not already actively held by someone else.
+        store_product_id: row.id,
+        active_reserved_quantity: activeReserved,
+        available_quantity: availableQuantity,
+        is_reservable: availableQuantity !== null && availableQuantity > 0,
         last_stock_update: row.last_stock_update,
         expiry_date: row.expiry_date,
         expiry_status,

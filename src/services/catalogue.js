@@ -77,6 +77,12 @@ export async function fetchTopDeal({ signal } = {}) {
   return data;
 }
 
+/** Admin-set background image per homepage "Browse by mood" card, keyed by slug. */
+export async function fetchHomepageMoments({ signal } = {}) {
+  const { data } = await apiGet("/homepage-moments", { signal });
+  return data;
+}
+
 /** Every listing with a genuine markdown against MRP, biggest discount first. */
 export async function fetchBestOffers({ limit = 24, offset = 0, signal } = {}) {
   const { data, meta } = await apiGet("/deals/best", { signal, params: { limit, offset } });

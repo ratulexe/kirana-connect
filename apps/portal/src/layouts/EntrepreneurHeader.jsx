@@ -6,6 +6,10 @@ import Container from '../components/common/Container.jsx';
  * surface, not a storefront, so this carries none of the Consumer app's
  * shopping chrome (search, cart, categories, notifications, account
  * controls, Flash Deals).
+ *
+ * The entrance moment lives in the app-level loading screen shown once on
+ * entering the Business experience (see AppLoader.jsx / EntrepreneurLayout),
+ * not here.
  */
 export default function EntrepreneurHeader() {
   return (
@@ -17,12 +21,12 @@ export default function EntrepreneurHeader() {
             className="group inline-flex shrink-0 items-center rounded-control py-2"
             aria-label="Kirana Connect Business, go to Entrepreneur home"
           >
-            <span className="relative font-brand text-[1.75rem] leading-none font-normal text-ink sm:text-[2rem]">
-              Kirana Connect <span className="text-primary">Business</span>
-              <span
-                aria-hidden="true"
-                className="absolute top-0 right-[-0.5rem] size-[5px] rounded-pill bg-accent live-dot transition-transform duration-200 ease-brand group-hover:scale-125"
-              />
+            <span className="inline-block font-sans text-[1.25rem] font-extrabold tracking-tight text-ink sm:text-[1.5rem]">
+              Kirana{" "}
+              <span className="bg-gradient-to-r from-[#7c3aed] via-[#e93483] to-[#ffd45e] bg-clip-text text-transparent">
+                Connect
+              </span>{" "}
+              <span className="text-primary">Business</span>
             </span>
           </Link>
 

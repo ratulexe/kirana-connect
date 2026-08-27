@@ -111,4 +111,11 @@ export const api = {
     request("/business-categories", { auth: false, signal }),
   updateStoreBusinessCategories: (storeId, body) =>
     request(`/store-onboarding/stores/${storeId}/business-categories`, { method: "PUT", body }),
+
+  getStoreReservations: ({ storeId, signal }) =>
+    request("/store-reservations", { signal, params: { store_id: storeId } }),
+  lookupStoreReservation: ({ storeId, code, signal }) =>
+    request("/store-reservations/lookup", { signal, params: { store_id: storeId, code } }),
+  collectStoreReservation: ({ reservationId, storeId }) =>
+    request(`/store-reservations/${reservationId}/collect`, { method: "POST", params: { store_id: storeId } }),
 };
