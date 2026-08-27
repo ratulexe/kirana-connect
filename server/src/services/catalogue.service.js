@@ -166,11 +166,36 @@ async function attachNearbyAvailability(products, location) {
   if (!location) return { products, nearbyStoreCount: null };
   if (products.length === 0) return { products, nearbyStoreCount: 0 };
 
+  // Matched by variant, not by the coarser product_id: each product's own
+  // .variants array here has already been through withVariantSummary /
+  // removePlaceholderPieceVariants, so it is exactly the set of sizes a
+  // customer can actually see and select. Matching on product_id instead
+  // would also count a store whose store_products row still points at a
+  // variant that got filtered out of that display list (e.g. a leftover "1
+  // pc" placeholder from before real sizes were added to the product) --
+  // that store is nearby, but nothing about it is actually selectable, so
+  // findStoresStockingProduct (which does filter by the resolved variant)
+  // would then correctly find nothing, contradicting this badge.
+  const variantToProduct = new Map();
+  for (const product of products) {
+    for (const variant of product.variants ?? []) {
+      variantToProduct.set(variant.id, product.id);
+    }
+  }
+  const variantIds = [...variantToProduct.keys()];
+  if (variantIds.length === 0) return { products, nearbyStoreCount: 0 };
+
   const box = boundingBox(location.lat, location.lng, location.radiusKm);
   const { data, error } = await getPublicClient()
     .from("store_products")
-    .select("product_id, store:stores!inner(id, latitude, longitude)")
-    .in("product_id", products.map((product) => product.id))
+    .select("product_variant_id, store:stores!inner(id, latitude, longitude)")
+    .in("product_variant_id", variantIds)
+    // Must match the same filter the actual per-product offers query uses
+    // (findStoresStockingProduct in discovery.service.js), or this "available
+    // nearby" badge can be true for a listing whose real store search then
+    // comes back empty -- a delisted/unavailable row is still a nearby row,
+    // just not a buyable one.
+    .eq("is_available", true)
     .gte("store.latitude", box.minLat)
     .lte("store.latitude", box.maxLat)
     .gte("store.longitude", box.minLng)
@@ -184,7 +209,8 @@ async function attachNearbyAvailability(products, location) {
     if (!row.store) continue;
     const distance = haversineKm(location.lat, location.lng, Number(row.store.latitude), Number(row.store.longitude));
     if (distance <= location.radiusKm) {
-      nearbyProductIds.add(row.product_id);
+      const productId = variantToProduct.get(row.product_variant_id);
+      if (productId) nearbyProductIds.add(productId);
       nearbyStoreIds.add(row.store.id);
     }
   }

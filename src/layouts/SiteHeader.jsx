@@ -1,23 +1,22 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Bell, Heart, LogOut, Search, UserRound, Zap } from 'lucide-react';
+import { Bell, BookmarkCheck, Heart, LogOut, Search, UserRound, Zap } from 'lucide-react';
 import Container from '../components/common/Container.jsx';
 import IconButton from '../components/common/IconButton.jsx';
 import ConsumerSearchBar from '../components/common/ConsumerSearchBar.jsx';
 import LocationControl from '../components/common/LocationControl.jsx';
+import AuthDrawer from '../components/common/AuthDrawer.jsx';
 import { useAuth } from '../auth/useAuth.js';
 import { useCustomerProfile } from '../features/customer/useCustomer.js';
-import { useCategories } from '../hooks/useCategories.js';
 import { useWishlist } from '../hooks/useWishlist.js';
 
-const CATEGORY_NAV_LIMIT = 8;
-
 /**
- * Birthstone is expressive and legible at wordmark size but gets hard to
- * read fast in long strings or at small sizes -- so it carries only the
- * brand name, never the whole product title, and is set noticeably larger
- * than surrounding text (never used for a paragraph or a control, per this
- * app's own type rule).
+ * Parkinsans (the body font) rather than a display/script face, so the
+ * wordmark stays legible at every size and never used for a paragraph or a
+ * control, per this app's own type rule). The entrance moment lives in the
+ * app-level loading screen (see AppLoader.jsx / App.jsx), not here -- an
+ * animation on the header too would just be a redundant second entrance
+ * right after that one finishes.
  */
 function Wordmark() {
   return (
@@ -26,18 +25,17 @@ function Wordmark() {
       className="group inline-flex shrink-0 items-center rounded-control py-2"
       aria-label="Kirana Connect, go to home"
     >
-      <span className="relative font-brand text-[2rem] leading-none font-normal text-ink sm:text-[2.375rem]">
-        Kirana <span className="text-primary">Connect</span>
-        <span
-          aria-hidden="true"
-          className=""
-        />
+      <span className="inline-block font-sans text-[1.375rem] font-extrabold tracking-tight text-ink sm:text-[1.625rem]">
+        Kirana{" "}
+        <span className="bg-gradient-to-r from-[#7c3aed] via-[#e93483] to-[#ffd45e] bg-clip-text text-transparent">
+          Connect
+        </span>
       </span>
     </Link>
   );
 }
 
-function AccountControl() {
+function AccountControl({ onSignInClick }) {
   const auth = useAuth();
   const profile = useCustomerProfile();
   const [open, setOpen] = useState(false);
@@ -59,13 +57,14 @@ function AccountControl() {
 
   if (!auth.isAuthenticated) {
     return (
-      <Link
-        to="/login"
+      <button
+        type="button"
+        onClick={onSignInClick}
         className="neon-btn inline-flex h-9 items-center gap-1.5 rounded-control border border-line bg-surface px-3 text-meta font-semibold text-ink transition-colors hover:border-primary/40 hover:bg-primary-soft"
       >
         <UserRound className="size-4" aria-hidden="true" />
         <span className="hidden sm:inline">Sign in</span>
-      </Link>
+      </button>
     );
   }
 
@@ -73,6 +72,7 @@ function AccountControl() {
 
   const MENU_ITEMS = [
     { icon: UserRound, label: 'Account', to: '/account' },
+    { icon: BookmarkCheck, label: 'My reservations', to: '/reserved' },
     { icon: Heart, label: 'Wishlist', to: '/wishlist' },
     { icon: Bell, label: 'Notifications', to: '/notifications' },
   ];
@@ -120,10 +120,9 @@ function AccountControl() {
 export default function SiteHeader() {
   const navigate = useNavigate();
   const routerLocation = useLocation();
-  const { data: categories } = useCategories();
-  const navCategories = (categories ?? []).slice(0, CATEGORY_NAV_LIMIT);
   const { ids: wishlistIds } = useWishlist();
   const wishlistCount = wishlistIds.length;
+  const [authDrawerOpen, setAuthDrawerOpen] = useState(false);
   // The /search page renders its own prominent, live ConsumerSearchBar (see
   // SearchResults.jsx) -- the header's copy steps aside there so there is
   // never a moment with two visible search bars on screen at once.
@@ -131,8 +130,8 @@ export default function SiteHeader() {
 
   // Published as a CSS var so any page can stick its own content directly
   // below this sticky header without hard-coding a height that drifts every
-  // time the promo strip wraps to a second line or the category nav shows
-  // or hides. SearchResults.jsx's sticky search bar is the current consumer.
+  // time the promo strip wraps to a second line. SearchResults.jsx's sticky
+  // search bar is the current consumer.
   const headerRef = useRef(null);
   useEffect(() => {
     const node = headerRef.current;
@@ -144,7 +143,7 @@ export default function SiteHeader() {
     const observer = new ResizeObserver(setHeightVar);
     observer.observe(node);
     return () => observer.disconnect();
-  }, [navCategories.length]);
+  }, []);
 
   // /search owns its own compact top bar (back button + the live search
   // field, see SearchResults.jsx) instead of stacking a second search row
@@ -210,30 +209,13 @@ export default function SiteHeader() {
                 ) : null}
               </Link>
 
-              <AccountControl />
+              <AccountControl onSignInClick={() => setAuthDrawerOpen(true)} />
             </div>
           </div>
         </Container>
       </div>
 
-      {/* Category nav */}
-      {navCategories.length > 0 ? (
-        <div className="hidden border-b border-line/50 bg-white/70 backdrop-blur-xl lg:block">
-          <Container>
-            <nav className="flex gap-0.5 py-1.5" aria-label="Category navigation">
-              {navCategories.map(({ name, slug }) => (
-                <Link
-                  key={slug}
-                  to={`/search?category=${slug}`}
-                  className="rounded-control px-3 py-1.5 text-[13px] font-semibold text-ink-muted transition-colors hover:bg-primary-soft hover:text-primary"
-                >
-                  {name}
-                </Link>
-              ))}
-            </nav>
-          </Container>
-        </div>
-      ) : null}
+      <AuthDrawer open={authDrawerOpen} onClose={() => setAuthDrawerOpen(false)} />
     </header>
   );
 }

@@ -127,7 +127,7 @@ export default function ConsumerSearchBar({
   const shell = (
     <div
       className={cn(
-        "group relative flex w-full items-center gap-2 rounded-pill border border-line bg-surface",
+        "group relative flex w-full items-center gap-2 rounded-xl border border-line bg-surface",
         "pr-1.5 pl-4 shadow-subtle sm:pl-5",
         "transition-[border-color,box-shadow] duration-200 ease-brand",
         "focus-within:border-primary focus-within:shadow-raised",

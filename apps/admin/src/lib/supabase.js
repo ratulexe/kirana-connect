@@ -20,3 +20,7 @@ export const supabase = isSupabaseConfigured
       },
     })
   : null;
+
+/** Where a password-reset email link lands, to actually set the new password. */
+export const passwordResetRedirectUrl =
+  typeof window !== "undefined" ? `${window.location.origin}/reset-password` : undefined;

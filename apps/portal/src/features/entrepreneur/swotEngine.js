@@ -86,7 +86,12 @@ function buildWeaknesses({ demandSupply, financialPlan, priceIntelligence, marke
     );
   }
 
-  if (marketReach?.analysisStatus === "ok" && marketReach.population.status !== "available") {
+  // Unlike demandSupply/priceIntelligence, Market Reach has no partial-success
+  // "analysisStatus" of its own -- analyzeMarketReach() either succeeds
+  // outright or throws, so a successfully loaded object is all there is to
+  // check (matching buildAdvisorContext.js's summarizeMarketReach, which
+  // checks marketReachState.status === "loaded" for the same reason).
+  if (marketReach && marketReach.population.status !== "available") {
     weaknesses.push(
       item(
         "No verified population estimate",

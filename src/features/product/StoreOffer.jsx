@@ -4,6 +4,7 @@ import StockBadge from "../../components/common/StockBadge.jsx";
 import ExpiryBadge from "../../components/common/ExpiryBadge.jsx";
 import PriceDisplay from "../../components/common/PriceDisplay.jsx";
 import Button from "../../components/common/Button.jsx";
+import ReserveControl from "../reservation/ReserveControl.jsx";
 import { formatDistance } from "../../utils/format.js";
 import { directionsUrl } from "../../utils/directions.js";
 
@@ -14,7 +15,7 @@ import { directionsUrl } from "../../utils/directions.js";
  * can also be sorted by distance, and "first" would then quietly mean something
  * different.
  */
-export default function StoreOffer({ offer, mrp }) {
+export default function StoreOffer({ offer, mrp, product }) {
   const { store } = offer;
 
   return (
@@ -75,16 +76,25 @@ export default function StoreOffer({ offer, mrp }) {
           size="md"
         />
 
-        <Button
-          as="a"
-          href={directionsUrl(store)}
-          target="_blank"
-          rel="noopener noreferrer"
-          size="sm"
-        >
-          <Navigation className="size-4" aria-hidden="true" />
-          Go to store
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            as="a"
+            href={directionsUrl(store)}
+            target="_blank"
+            rel="noopener noreferrer"
+            size="sm"
+          >
+            <Navigation className="size-4" aria-hidden="true" />
+            Go to store
+          </Button>
+
+          {/* Reservations only exist for our own participating stores' own
+              tracked inventory -- offer.is_reservable is already false
+              whenever quantity_available is untracked, so this never shows
+              a Reserve control against stock this app cannot actually
+              verify. */}
+          <ReserveControl offer={offer} product={product} />
+        </div>
       </div>
     </li>
   );

@@ -14,6 +14,7 @@ export const adminKeys = {
   product: (id) => ["admin", "products", id],
   productMedia: (productId) => ["admin", "products", productId, "media"],
   categories: ["admin", "categories"],
+  homepageMoments: ["admin", "homepage-moments"],
   brands: ["admin", "brands"],
   businessCategories: ["admin", "business-categories"],
   productCategoryMappings: (categoryId) => ["admin", "business-categories", categoryId, "product-category-mappings"],
@@ -97,6 +98,13 @@ export function useCategories() {
   return useQuery({
     queryKey: adminKeys.categories,
     queryFn: ({ signal }) => api.categories({ signal }).then((r) => r.data),
+  });
+}
+
+export function useHomepageMoments() {
+  return useQuery({
+    queryKey: adminKeys.homepageMoments,
+    queryFn: ({ signal }) => api.homepageMoments({ signal }).then((r) => r.data),
   });
 }
 
@@ -189,6 +197,9 @@ export const useCreateCategory = () =>
 
 export const useUpdateCategory = () =>
   useAdminMutation(({ id, body }) => api.updateCategory(id, body), [adminKeys.categories]);
+
+export const useUpdateHomepageMoment = () =>
+  useAdminMutation(({ slug, body }) => api.updateHomepageMoment(slug, body), [adminKeys.homepageMoments]);
 
 export const useCreateBusinessCategory = () =>
   useAdminMutation((body) => api.createBusinessCategory(body), [adminKeys.businessCategories]);

@@ -3,7 +3,19 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Container from '../components/common/Container.jsx';
 
-const STORE_PORTAL_URL = import.meta.env.VITE_STORE_PORTAL_URL ?? 'http://localhost:5174';
+// Fall back to the real production domains rather than localhost, so a
+// deploy that forgets to set these env vars still links somewhere real
+// instead of silently sending visitors to a dev server that doesn't exist
+// for them. Local dev still falls back to the local dev server ports.
+const STORE_PORTAL_URL =
+  import.meta.env.VITE_STORE_PORTAL_URL ??
+  (import.meta.env.PROD ? 'https://kirana-connect-store.vercel.app' : 'http://localhost:5174');
+
+const ENTREPRENEUR_PORTAL_URL =
+  import.meta.env.VITE_ENTREPRENEUR_PORTAL_URL ??
+  (import.meta.env.PROD
+    ? 'https://kirana-connect-portal.vercel.app/entrepreneur'
+    : 'http://localhost:5176/entrepreneur');
 
 const FOOTER_LINKS = {
   Discover: [
@@ -77,8 +89,15 @@ export default function SiteFooter() {
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
           {/* Brand col */}
           <div>
-            <p className="font-brand text-[1.75rem] leading-none font-normal text-ink">
-              Kirana <span className="text-primary">Connect</span>
+            <p className="relative inline-block font-sans text-[1.25rem] font-extrabold tracking-tight text-ink">
+              Kirana{" "}
+              <span className="bg-gradient-to-r from-[#7c3aed] to-[#e93483] bg-clip-text text-transparent">
+                Connect
+              </span>
+              <span
+                aria-hidden="true"
+                className="absolute top-0 right-[-0.5rem] size-[5px] rounded-pill bg-accent live-dot"
+              />
             </p>
             <p className="mt-3 max-w-xs text-sm text-ink-muted leading-relaxed">
               Find what your neighbourhood shops actually have on the shelf, and what they charge for it.
@@ -120,7 +139,11 @@ export default function SiteFooter() {
                   Register your store <ArrowUpRight className="size-3.5" />
                 </a>
               </li>
-              <li><span className="text-sm text-ink-muted/60">How it works for sellers</span></li>
+              <li>
+                <a href={ENTREPRENEUR_PORTAL_URL} className="group flex items-center gap-1.5 text-sm text-ink-muted transition hover:text-primary">
+                  Analyze your business <ArrowUpRight className="size-3.5" />
+                </a>
+              </li>
             </ul>
 
             {/* Newsletter */}

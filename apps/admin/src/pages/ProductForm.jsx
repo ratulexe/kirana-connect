@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { AlertTriangle, ArrowLeft, Image as ImageIcon, Plus, Trash2, Upload } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, Image as ImageIcon, Pencil, Plus, Trash2, Upload } from "lucide-react";
 import { useFieldArray, useForm } from "react-hook-form";
 import Alert from "../components/Alert.jsx";
 import Button from "../components/Button.jsx";
@@ -10,6 +10,7 @@ import SearchableSelect from "../components/SearchableSelect.jsx";
 import Skeleton from "../components/Skeleton.jsx";
 import ProductMediaSection from "../components/ProductMediaSection.jsx";
 import { sizedVariantConfigForSlug } from "../features/admin/variantConfig.js";
+import { addCustomSizeOption, getCustomSizeOptions } from "../features/admin/customSizeOptions.js";
 import {
   useBrands,
   useCategories,
@@ -48,6 +49,11 @@ const EMPTY_SIZED_VARIANT = {
   image_url: "",
   is_active: true,
 };
+
+// Stable reference (not recreated per render) for categories with no preset
+// size list -- sizing is opted into via the toggle rather than a category
+// default, so it starts empty and fills up entirely from admin-added sizes.
+const GENERIC_SIZED_CONFIG = { sizeOptions: [], hasColor: true };
 
 const DEFAULTS = {
   name: "",
@@ -262,7 +268,45 @@ export default function ProductForm({ mode }) {
   const watchedVariants = watch("variants");
   const imageUrl = watch("image_url");
   const categorySlug = categories.data?.find((category) => category.id === watchedCategory)?.slug;
-  const sizedConfig = sizedVariantConfigForSlug(categorySlug);
+  const categoryDefaultConfig = sizedVariantConfigForSlug(categorySlug);
+
+  // Sized variants (Size/Color instead of Quantity/Unit) aren't limited to
+  // Fashion and Furniture -- any category can use them, the admin just has
+  // to opt in via the toggle below. Fashion/Furniture still default to
+  // sized automatically since that's true for virtually every product in
+  // them; everything else defaults to measured but can switch per product.
+  // null means "no explicit choice yet, follow the category's default".
+  const [forceMode, setForceMode] = useState(null);
+  const isSizedMode = forceMode ? forceMode === "sized" : Boolean(categoryDefaultConfig);
+  const sizedConfig = isSizedMode ? (categoryDefaultConfig ?? GENERIC_SIZED_CONFIG) : null;
+
+  // Admin-added sizes beyond the fixed list (e.g. an "XL" sofa for
+  // Furniture, which only ships Small/Medium/Large out of the box, or any
+  // size at all for a category with no preset list) --
+  // persisted per category slug, see customSizeOptions.js. customSizeTick
+  // just forces a re-read after adding one, since localStorage writes
+  // don't trigger a React re-render on their own.
+  const [customSizeTick, setCustomSizeTick] = useState(0);
+  const [addingSizeForIndex, setAddingSizeForIndex] = useState(null);
+  const [newSizeValue, setNewSizeValue] = useState("");
+  const sizeOptions = useMemo(() => {
+    if (!sizedConfig) return [];
+    const custom = getCustomSizeOptions(categorySlug).filter(
+      (size) => !sizedConfig.sizeOptions.some((option) => option.toLowerCase() === size.toLowerCase()),
+    );
+    return [...sizedConfig.sizeOptions, ...custom];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sizedConfig, categorySlug, customSizeTick]);
+
+  const commitNewSize = (index) => {
+    const added = addCustomSizeOption(categorySlug, newSizeValue);
+    if (!added) return;
+    setValue(`variants.${index}.size_label`, added, { shouldValidate: true, shouldDirty: true });
+    setCustomSizeTick((tick) => tick + 1);
+    setAddingSizeForIndex(null);
+    setNewSizeValue("");
+  };
+
   const duplicateNameSearch = normalize(watchedName);
   const duplicateNameProducts = useProducts(
     { q: duplicateNameSearch, limit: 8 },
@@ -344,6 +388,12 @@ export default function ProductForm({ mode }) {
       })),
       is_active: Boolean(product.data.is_active),
     });
+    // A product saved with real size_label data was sized when it was
+    // created, regardless of what its category defaults to today -- editing
+    // it should keep showing Size/Color, not silently fall back to
+    // Quantity/Unit just because this category isn't Fashion or Furniture.
+    const hasSizedVariants = (product.data.variants ?? []).some((variant) => variant.size_label);
+    setForceMode(hasSizedVariants ? "sized" : null);
   }, [product.data, reset]);
 
   if (isEdit && product.isPending) return <Skeleton className="h-[32rem]" />;
@@ -436,7 +486,7 @@ export default function ProductForm({ mode }) {
   const addVariant = () => {
     if (sizedConfig) {
       const usedSizes = new Set((watchedVariants ?? []).map((variant) => (variant.size_label ?? "").toLowerCase()));
-      const nextOption = sizedConfig.sizeOptions.find((size) => !usedSizes.has(size.toLowerCase()));
+      const nextOption = sizeOptions.find((size) => !usedSizes.has(size.toLowerCase()));
       append({ ...EMPTY_SIZED_VARIANT, size_label: nextOption ?? "" });
       return;
     }
@@ -644,6 +694,33 @@ export default function ProductForm({ mode }) {
               </Button>
             </div>
 
+            <div
+              role="group"
+              aria-label="How this product's variants are distinguished"
+              className="mt-4 inline-flex rounded-control border border-line bg-surface p-1"
+            >
+              <button
+                type="button"
+                aria-pressed={!isSizedMode}
+                onClick={() => setForceMode("measured")}
+                className={`rounded-control px-3.5 py-1.5 text-meta font-semibold transition-colors ${
+                  !isSizedMode ? "bg-primary text-primary-fg" : "text-ink-muted hover:text-ink"
+                }`}
+              >
+                Quantity / unit
+              </button>
+              <button
+                type="button"
+                aria-pressed={isSizedMode}
+                onClick={() => setForceMode("sized")}
+                className={`rounded-control px-3.5 py-1.5 text-meta font-semibold transition-colors ${
+                  isSizedMode ? "bg-primary text-primary-fg" : "text-ink-muted hover:text-ink"
+                }`}
+              >
+                Named sizes
+              </button>
+            </div>
+
             <div className="mt-4 space-y-4">
               {fields.map((field, index) => {
                 const variant = watchedVariants?.[index] ?? {};
@@ -682,18 +759,64 @@ export default function ProductForm({ mode }) {
                           <input type="hidden" {...register(`variants.${index}.quantity`)} />
                           <input type="hidden" {...register(`variants.${index}.unit_code`)} />
                           <Field label="Size" required error={errors.variants?.[index]?.size_label?.message}>
-                            {(input) => (
-                              <SelectInput
-                                {...input}
-                                {...register(`variants.${index}.size_label`)}
-                                invalid={Boolean(errors.variants?.[index]?.size_label)}
-                              >
-                                <option value="">Choose a size</option>
-                                {sizedConfig.sizeOptions.map((size) => (
-                                  <option key={size} value={size}>{size}</option>
-                                ))}
-                              </SelectInput>
-                            )}
+                            {(input) =>
+                              addingSizeForIndex === index ? (
+                                <div className="flex gap-1.5">
+                                  <TextInput
+                                    {...input}
+                                    autoFocus
+                                    value={newSizeValue}
+                                    onChange={(event) => setNewSizeValue(event.target.value)}
+                                    onKeyDown={(event) => {
+                                      if (event.key === "Enter") {
+                                        event.preventDefault();
+                                        commitNewSize(index);
+                                      }
+                                      if (event.key === "Escape") {
+                                        setAddingSizeForIndex(null);
+                                        setNewSizeValue("");
+                                      }
+                                    }}
+                                    placeholder="New size, e.g. XL"
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="secondary"
+                                    disabled={!newSizeValue.trim()}
+                                    onClick={() => commitNewSize(index)}
+                                    aria-label="Save new size"
+                                  >
+                                    <Check className="size-4" aria-hidden="true" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="flex gap-1.5">
+                                  <SelectInput
+                                    {...input}
+                                    {...register(`variants.${index}.size_label`)}
+                                    invalid={Boolean(errors.variants?.[index]?.size_label)}
+                                    className="flex-1"
+                                  >
+                                    <option value="">Choose a size</option>
+                                    {sizeOptions.map((size) => (
+                                      <option key={size} value={size}>{size}</option>
+                                    ))}
+                                  </SelectInput>
+                                  <Button
+                                    type="button"
+                                    variant="secondary"
+                                    onClick={() => {
+                                      setAddingSizeForIndex(index);
+                                      setNewSizeValue("");
+                                    }}
+                                    aria-label="Add a new size"
+                                    title="Add a new size"
+                                  >
+                                    <Pencil className="size-4" aria-hidden="true" />
+                                  </Button>
+                                </div>
+                              )
+                            }
                           </Field>
 
                           {sizedConfig.hasColor ? (

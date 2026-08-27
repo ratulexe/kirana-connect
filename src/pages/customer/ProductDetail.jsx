@@ -93,13 +93,22 @@ export default function ProductDetail() {
   const item = product.data;
   const variants = item?.variants ?? [];
   const queryVariantId = params.get("variant");
+  // Only a size the user (or the URL) actually picked counts as explicit.
+  // Anything else is left unset so the backend can pick whichever size has a
+  // nearby store instead of this always forcing the first size -- otherwise
+  // a product correctly flagged "available nearby" in a listing (because
+  // some store stocks, say, its 1 kg pack) could default here to a
+  // different size nobody nearby carries, and wrongly show "not available".
+  const explicitVariant = variants.find((variant) => variant.id === queryVariantId && variant.is_active) ?? null;
+  const highlightStore = params.get("store");
+  const offers = useProductOffers({ slug, variantId: explicitVariant?.id, location, radiusKm, sort, highlightStore });
+  const resolvedVariantId = offers.data?.product?.selected_variant?.id;
   const selectedVariant =
-    variants.find((variant) => variant.id === queryVariantId && variant.is_active) ??
+    explicitVariant ??
+    variants.find((variant) => variant.id === resolvedVariantId) ??
     variants.find((variant) => variant.is_active) ??
     variants[0] ??
     null;
-  const highlightStore = params.get("store");
-  const offers = useProductOffers({ slug, variantId: selectedVariant?.id, location, radiusKm, sort, highlightStore });
   const list = offers.data?.offers ?? EMPTY_OFFERS;
   const filteredOffers = useMemo(() => {
     const query = normalize(shopSearch);
@@ -408,7 +417,12 @@ export default function ProductDetail() {
 
               <ul className="divide-y divide-line-soft overflow-hidden rounded-panel border border-line bg-surface">
                 {filteredOffers.map((offer) => (
-                  <StoreOffer key={offer.store.id} offer={offer} mrp={displayMrp} />
+                  <StoreOffer
+                    key={offer.store.id}
+                    offer={offer}
+                    mrp={displayMrp}
+                    product={{ name: item.name, unit_label: selectedVariant?.unit_label ?? item.unit_label }}
+                  />
                 ))}
               </ul>
             </>

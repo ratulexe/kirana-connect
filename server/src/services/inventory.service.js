@@ -2,6 +2,7 @@ import { getServiceClient } from "../config/supabase.js";
 import { httpError, notFoundError } from "../utils/httpError.js";
 import { getExpiryStatus } from "../utils/expiryStatus.js";
 import { fulfillNearbyDemand } from "./demandRequests.service.js";
+import { getActiveReservedQuantities, computeAvailableQuantity } from "../utils/reservationAvailability.js";
 
 /**
  * Store inventory for the authenticated owner.
@@ -31,7 +32,7 @@ function failed(operation, error) {
   return httpError(502, `Could not ${operation}. Please try again.`);
 }
 
-function withVariantDisplay(item) {
+function withVariantDisplay(item, activeReserved = 0) {
   if (!item) return item;
   const imageUrl = item.variant?.image_url ?? item.product?.image_url ?? null;
   const { status: expiry_status, days_until_expiry } = getExpiryStatus(item.expiry_date);
@@ -40,6 +41,13 @@ function withVariantDisplay(item) {
     expiry_status,
     days_until_expiry,
     product_variant_id: item.variant?.id ?? item.product_variant_id,
+    // On hand / Reserved / Available: reserved is never subtracted from
+    // quantity_available itself (a reservation is a hold, not a stock
+    // write) -- it is only ever surfaced alongside it for display, and
+    // available is derived the same way every other availability
+    // calculation in this app derives it.
+    reserved_quantity: activeReserved,
+    available_quantity: computeAvailableQuantity(item.quantity_available, activeReserved),
     product: {
       ...item.product,
       unit_label: item.variant?.unit_label ?? item.product?.unit_label,
@@ -99,7 +107,12 @@ export async function listInventory({ userId, storeId }) {
 
   if (error) throw failed("load your inventory", error);
 
-  return { store, items: (data ?? []).map(withVariantDisplay) };
+  const reservedByItem = await getActiveReservedQuantities((data ?? []).map((row) => row.id));
+
+  return {
+    store,
+    items: (data ?? []).map((item) => withVariantDisplay(item, reservedByItem.get(item.id) ?? 0)),
+  };
 }
 
 export async function addInventoryItem({ userId, storeId, payload }) {
@@ -164,6 +177,21 @@ export async function updateInventoryItem({ userId, itemId, storeId, buildPatch 
 
   const patch = buildPatch(current);
 
+  // Physical stock may never drop below what active reservations already
+  // hold -- that would silently invalidate a customer's confirmed hold
+  // instead of resolving it (cancel/expire first, or wait for collection).
+  // Only checked when quantity_available is actually part of this write.
+  if (Object.hasOwn(patch, "quantity_available") && patch.quantity_available !== null) {
+    const reservedByItem = await getActiveReservedQuantities([itemId]);
+    const activeReserved = reservedByItem.get(itemId) ?? 0;
+    if (patch.quantity_available < activeReserved) {
+      throw httpError(
+        409,
+        `Cannot set quantity below ${activeReserved}: ${activeReserved} unit(s) are already held by active reservations. Wait for them to be collected or expire first.`,
+      );
+    }
+  }
+
   const { data, error } = await client
     .from("store_products")
     .update(patch)
@@ -174,7 +202,8 @@ export async function updateInventoryItem({ userId, itemId, storeId, buildPatch 
 
   if (error) throw failed("update that product", error);
 
-  return withVariantDisplay(data);
+  const reservedByItem = await getActiveReservedQuantities([itemId]);
+  return withVariantDisplay(data, reservedByItem.get(itemId) ?? 0);
 }
 
 export async function removeInventoryItem({ userId, itemId, storeId }) {

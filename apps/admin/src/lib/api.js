@@ -162,6 +162,9 @@ export const api = {
   createCategory: (body) => request("/categories", { method: "POST", body }),
   updateCategory: (id, body) => request(`/categories/${id}`, { method: "PATCH", body }),
 
+  homepageMoments: (options) => request("/homepage-moments", options),
+  updateHomepageMoment: (slug, body) => request(`/homepage-moments/${slug}`, { method: "PUT", body }),
+
   businessCategories: (options) => request("/business-categories", options),
   createBusinessCategory: (body) => request("/business-categories", { method: "POST", body }),
   updateBusinessCategory: (id, body) => request(`/business-categories/${id}`, { method: "PATCH", body }),

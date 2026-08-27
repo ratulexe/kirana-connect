@@ -82,21 +82,26 @@ The frontend and the backend are separate npm packages with separate
 
 ## Applications
 
-Three separate frontends share one Express API and one Supabase project.
+Four separate frontends share one Express API and one Supabase project.
 
 | App | Location | Dev port | Deploys to |
 | --- | --- | --- | --- |
-| Consumer | repository root | 5173 | kirana-connect.vercel.app |
+| Consumer | repository root | 5173 | kirana-connect-one.vercel.app |
 | Store Portal | `apps/store` | 5174 | kirana-connect-store.vercel.app |
 | Admin Panel | `apps/admin` | 5175 | kirana-connect-admin.vercel.app |
+| Entrepreneur Portal | `apps/portal` | 5176 | kirana-connect-portal.vercel.app |
 | Express API | `server` | 5000 | Render |
 
 Each frontend is its own npm package with its own `node_modules`, `.env` and
 Vite config. There is deliberately no monorepo tool: the prototype does not need
 one.
 
-The consumer site links to the Store Portal from one discreet footer entry,
-"For businesses - Register your store". There is no admin link anywhere on the
+The consumer site links to the other two frontends from one discreet
+"For businesses" footer entry: "Register your store" (Store Portal) and
+"Analyze your business" (Entrepreneur Portal, `/entrepreneur` route). Both
+URLs fall back to their real production domain (not localhost) when their
+override env var isn't set -- see `VITE_STORE_PORTAL_URL` and
+`VITE_ENTREPRENEUR_PORTAL_URL` below. There is no admin link anywhere on the
 public site, and no seller dashboard link in the consumer header.
 
 The Admin Panel is reached directly by known admins. It is not linked from the
@@ -148,8 +153,34 @@ npm run dev --prefix apps/admin
 Serves on http://localhost:5175. Other scripts: `npm run build --prefix apps/admin`,
 `npm run lint --prefix apps/admin`.
 
+### Entrepreneur Portal
+
+```bash
+npm install --prefix apps/portal
+npm run dev --prefix apps/portal
+```
+
+Serves on http://localhost:5176. Other scripts: `npm run build --prefix apps/portal`,
+`npm run lint --prefix apps/portal`.
+
 Run each app in its own terminal. The API must allow every frontend origin it
 serves, so `CLIENT_URL` in `server/.env` is a comma-separated list.
+
+## Demo / evaluator accounts
+
+Ready-made logins so an evaluator can open each app and see real data immediately,
+without going through signup, store onboarding, or admin review first.
+
+| App | URL | Email | Password | Notes |
+| --- | --- | --- | --- | --- |
+| Admin | http://localhost:5175 | `demo@gmail.com` | *(the account's existing password)* | Promoted to `role = 'admin'` in `profiles`. |
+| Store Portal | http://localhost:5174 | `demo-store@gmail.com` | `Evaluator@2026` | Owns **Demo Evaluator Store**, a pre-verified store in Singur with 8 stocked products already loaded (one, Maggi 2-minute Masala Noodles, is deliberately left at quantity 1 so the reservation "last unit" flow can be tried immediately). |
+| Consumer | http://localhost:5173 | any account, or browse signed out | - | No demo account needed - search and price comparison work without signing in; sign-in is only required to place a reservation. |
+
+Both demo accounts are ordinary Supabase Auth users (`email_confirm: true`, no
+real inbox behind them) with a normal `profiles` row - they carry no special-cased
+logic anywhere in the app, so removing them later is a plain delete, never a code
+change.
 
 ## Environment files
 
@@ -162,12 +193,20 @@ VITE_API_BASE_URL=http://localhost:5000
 VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
 VITE_STORE_PORTAL_URL=http://localhost:5174
+VITE_ENTREPRENEUR_PORTAL_URL=http://localhost:5176/entrepreneur
 ```
 
 `VITE_API_BASE_URL` points the customer app at the Express API. Discovery reads
 go React -> Express -> Supabase; the frontend Supabase client is reserved for
 authentication and other client-side Supabase work, so discovery components must
 not query the database directly. In production set it to the deployed Render URL.
+
+`VITE_STORE_PORTAL_URL` and `VITE_ENTREPRENEUR_PORTAL_URL` are optional: if
+omitted, the footer already falls back to the right URL for dev vs.
+production, so a deploy that forgets to set them still links to the real
+Store Portal / Entrepreneur Portal instead of a dev-only localhost URL. Only
+set these if either app is deployed somewhere other than its documented
+production domain above.
 
 ### Backend - `server/.env` (from `server/.env.example`)
 
@@ -429,6 +468,8 @@ service-role key and never performs privileged table mutations directly.
 - Store Portal: Vercel as a **separate project**, root directory `apps/store`.
   Its own environment variables, its own domain.
 - Admin Panel: Vercel as a **separate project**, root directory `apps/admin`.
+  Its own environment variables, its own domain.
+- Entrepreneur Portal: Vercel as a **separate project**, root directory `apps/portal`.
   Its own environment variables, its own domain.
 - Backend: Render, with root directory `server`, build `npm install`, start `npm start`.
   Render supplies `PORT`; the remaining backend variables are set in the Render

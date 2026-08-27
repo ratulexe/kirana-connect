@@ -12,9 +12,15 @@ function requireClient() {
   return supabase;
 }
 
-function cleanAddress(values, userId) {
+// user_id is deliberately never included here: the table's column-level
+// GRANT UPDATE for `authenticated` only covers the editable address fields
+// (see supabase/migrations/20260824090000_customer_addresses.sql), not
+// user_id, id, created_at or updated_at. Postgres checks column privileges
+// against every column named in the SET clause -- even when the value is
+// unchanged -- so putting user_id in an update body gets the whole request
+// rejected with a permission-denied 403. It's added back in only for insert.
+function cleanAddress(values) {
   return {
-    user_id: userId,
     label: values.label,
     address_line_1: values.address_line_1,
     address_line_2: values.address_line_2 || null,
@@ -96,7 +102,7 @@ export function useSaveCustomerAddress() {
   return useMutation({
     mutationFn: async ({ id, values }) => {
       const client = requireClient();
-      const body = cleanAddress(values, user.id);
+      const body = cleanAddress(values);
 
       if (body.is_default) {
         let clearQuery = client
@@ -110,7 +116,7 @@ export function useSaveCustomerAddress() {
 
       const query = id
         ? client.from("customer_addresses").update(body).eq("id", id)
-        : client.from("customer_addresses").insert(body);
+        : client.from("customer_addresses").insert({ ...body, user_id: user.id });
       const { data, error } = await query
         .select("id, user_id, label, address_line_1, address_line_2, locality, city, state, postal_code, latitude, longitude, is_default, created_at, updated_at")
         .single();

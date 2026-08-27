@@ -1,9 +1,10 @@
-import { Suspense } from 'react';
+import { Suspense, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import EntrepreneurHeader from './EntrepreneurHeader.jsx';
 import EntrepreneurFooter from './EntrepreneurFooter.jsx';
 import Skeleton from '../components/common/Skeleton.jsx';
 import Container from '../components/common/Container.jsx';
+import AppLoader from '../components/common/AppLoader.jsx';
 
 function PageFallback() {
   return (
@@ -19,8 +20,17 @@ function PageFallback() {
  * The Entrepreneur Platform's own shell. No shopping chrome, no particle
  * background, no bottom shopping nav: this is a business advisory surface,
  * calm and analytical rather than vibrant/playful like the Consumer app.
+ *
+ * Shows the "Kirana Connect Business" loading screen once on entering this
+ * layout -- since it (and its header) stay mounted across every
+ * /entrepreneur/* sub-route via the Outlet below, this only plays on first
+ * entry into the Business experience, never on navigation within it.
  */
 export default function EntrepreneurLayout() {
+  const [loading, setLoading] = useState(true);
+
+  if (loading) return <AppLoader onDone={() => setLoading(false)} extraLine="Business" />;
+
   return (
     <div className="flex min-h-dvh flex-col">
       <a
