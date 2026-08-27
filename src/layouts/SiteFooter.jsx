@@ -135,12 +135,12 @@ export default function SiteFooter() {
             <p className="mb-4 text-xs font-bold uppercase tracking-widest text-ink">For Businesses</p>
             <ul className="space-y-2.5">
               <li>
-                <a href={STORE_PORTAL_URL} className="group flex items-center gap-1.5 text-sm text-ink-muted transition hover:text-primary">
+                <a href={STORE_PORTAL_URL} target="_blank" rel="noopener noreferrer" className="group flex items-center gap-1.5 text-sm text-ink-muted transition hover:text-primary">
                   Register your store <ArrowUpRight className="size-3.5" />
                 </a>
               </li>
               <li>
-                <a href={ENTREPRENEUR_PORTAL_URL} className="group flex items-center gap-1.5 text-sm text-ink-muted transition hover:text-primary">
+                <a href={ENTREPRENEUR_PORTAL_URL} target="_blank" rel="noopener noreferrer" className="group flex items-center gap-1.5 text-sm text-ink-muted transition hover:text-primary">
                   Analyze your business <ArrowUpRight className="size-3.5" />
                 </a>
               </li>
