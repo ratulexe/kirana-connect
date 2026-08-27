@@ -19,7 +19,7 @@ export default function StoreOffer({ offer, mrp, product }) {
   const { store } = offer;
 
   return (
-    <li className="flex flex-wrap items-start justify-between gap-x-5 gap-y-4 px-4 py-5 sm:px-6">
+    <li className="flex flex-col gap-y-4 px-4 py-5 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-x-5 sm:px-6">
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <h3 className="text-card text-ink">{store.name}</h3>
