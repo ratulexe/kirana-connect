@@ -45,6 +45,7 @@ export const FINANCIAL_SCHEMES = {
 };
 
 export const OUTSIDE_SCHEME_LIMIT_STATUS = "outside-configured-scheme-limit";
+export const INVALID_INPUT_STATUS = "invalid-input";
 export const ELIGIBLE_STATUS = "eligible";
 
 function toPaise(rupees) {
@@ -75,7 +76,32 @@ function fromPaise(paise) {
  * shortfall the Micro Finance cap alone can create at the top of its band.
  */
 export function calculateFinancialPlan(availableMargin) {
-  const marginPaise = toPaise(availableMargin);
+  // The intake form (entrepreneurInputSchema) and the sessionStorage restore
+  // guard (analysisSessionState.js) both already reject a non-finite or
+  // non-positive margin before it reaches this module through the real UI --
+  // but this function is documented as the single source of truth for this
+  // arithmetic, so it must not depend on every caller pre-validating.
+  // Without this guard, Number(availableMargin) coerces a non-numeric value
+  // to NaN (silently producing a scheme object with NaN money fields) and a
+  // negative value flows straight through into a "valid" plan with negative
+  // rupee figures.
+  const numericMargin = Number(availableMargin);
+  if (!Number.isFinite(numericMargin) || numericMargin <= 0) {
+    return {
+      availableMargin,
+      marginPercentage: MARGIN_PERCENTAGE,
+      projectCost: null,
+      agencySharePercentage: AGENCY_SHARE_PERCENTAGE,
+      potentialAgencyShare: null,
+      eligibleLoan: null,
+      totalIdentifiedFunding: null,
+      fundingGap: null,
+      scheme: null,
+      status: INVALID_INPUT_STATUS,
+    };
+  }
+
+  const marginPaise = toPaise(numericMargin);
   const projectCostPaise = marginPaise * 10;
   const projectCost = fromPaise(projectCostPaise);
   const potentialAgencyShare = fromPaise(Math.round(projectCostPaise * (AGENCY_SHARE_PERCENTAGE / 100)));

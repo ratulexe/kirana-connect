@@ -206,19 +206,42 @@ function pickOpportunity(raw) {
     return { scoreStatus, scoreStatusReason: str(s.scoreStatusReason, 300) };
   }
 
+  const opportunityScore = num(s.opportunityScore);
+  const components = {
+    unmetDemand: pickOpportunityComponent(s.components?.unmetDemand),
+    supplyGap: pickOpportunityComponent(s.components?.supplyGap),
+    competition: pickOpportunityComponent(s.components?.competition),
+    financialFit: pickOpportunityComponent(s.components?.financialFit),
+  };
+  const evidenceVolume = {
+    relevantSearches: num(s.evidenceVolume?.relevantSearches),
+    demandSampleStatus: oneOf(s.evidenceVolume?.demandSampleStatus, DEMAND_SAMPLE_STATUS_VALUES),
+  };
+
+  // This endpoint has no auth gate (the Business Portal is intentionally
+  // open), so reportContext is untrusted input from anyone, not just the
+  // real frontend -- a caller claiming scoreStatus "available" without the
+  // numbers to back it must not reach advisor.service.js's formatter, which
+  // assumes every field here is a real number and calls .toFixed() on it.
+  // Downgrading to the same shape as "insufficient evidence" here is the
+  // one place that protects every current and future consumer of this
+  // whitelist at once.
+  const allNumbersPresent =
+    opportunityScore !== null &&
+    Object.values(components).every(
+      (c) => c.score !== null && c.weight !== null && c.weightedContribution !== null,
+    ) &&
+    evidenceVolume.relevantSearches !== null;
+
+  if (!allNumbersPresent) {
+    return { scoreStatus: "insufficient-demand-evidence", scoreStatusReason: null };
+  }
+
   return {
     scoreStatus,
-    opportunityScore: num(s.opportunityScore),
-    components: {
-      unmetDemand: pickOpportunityComponent(s.components?.unmetDemand),
-      supplyGap: pickOpportunityComponent(s.components?.supplyGap),
-      competition: pickOpportunityComponent(s.components?.competition),
-      financialFit: pickOpportunityComponent(s.components?.financialFit),
-    },
-    evidenceVolume: {
-      relevantSearches: num(s.evidenceVolume?.relevantSearches),
-      demandSampleStatus: oneOf(s.evidenceVolume?.demandSampleStatus, DEMAND_SAMPLE_STATUS_VALUES),
-    },
+    opportunityScore,
+    components,
+    evidenceVolume,
     caveats: list(s.caveats, (c) => str(c, 300), 5),
   };
 }
